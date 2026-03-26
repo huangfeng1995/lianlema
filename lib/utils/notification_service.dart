@@ -1,0 +1,343 @@
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz_data;
+
+class NotificationService {
+  static NotificationService? _instance;
+  final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
+  String? _pendingPayload;
+
+  NotificationService._();
+
+  static Future<NotificationService> getInstance() async {
+    if (_instance == null) {
+      _instance = NotificationService._();
+      await _instance!._init();
+    }
+    return _instance!;
+  }
+
+  Future<void> _init() async {
+    tz_data.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('Asia/Shanghai'));
+
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+
+    const initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
+    );
+
+    await _notifications.initialize(
+      onDidReceiveNotificationResponse: _onNotificationTap,
+      settings: initSettings,
+    );
+
+    // 请求 iOS 权限
+    await _requestPermissions();
+  }
+
+  Future<void> _requestPermissions() async {
+    await _notifications
+        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+  }
+
+  void _onNotificationTap(NotificationResponse response) {
+    _pendingPayload = response.payload;
+  }
+
+  String? get pendingPayload => _pendingPayload;
+
+  void clearPendingPayload() {
+    _pendingPayload = null;
+  }
+
+  /// 获取应用启动时点击的通知详情
+  Future<String?> getNotificationLaunchPayload() async {
+    final launchDetails = await _notifications.getNotificationAppLaunchDetails();
+    return launchDetails?.notificationResponse?.payload;
+  }
+
+  /// 调度每日日报通知（每天早上8点）
+  Future<void> scheduleDailyReport() async {
+    await _notifications.cancel(id: DailyReportNotificationId);
+
+    final scheduledDate = _nextInstanceOfTime(8, 0);
+
+    await _notifications.zonedSchedule(
+      id: DailyReportNotificationId,
+      scheduledDate: scheduledDate,
+      notificationDetails: NotificationDetails(
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          threadIdentifier: 'daily_report',
+        ),
+        android: const AndroidNotificationDetails(
+          'daily_report',
+          '日报',
+          channelDescription: '每日日报提醒',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      title: '📋 今日日报已生成',
+      body: '点击查看你今天的行动总结',
+      payload: 'daily_report',
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+  }
+
+  /// 调度每周周报通知（每周一早上8点）
+  Future<void> scheduleWeeklyReport() async {
+    await _notifications.cancel(id: WeeklyReportNotificationId);
+
+    final scheduledDate = _nextInstanceOfWeekday(DateTime.monday, 8, 0);
+
+    await _notifications.zonedSchedule(
+      id: WeeklyReportNotificationId,
+      scheduledDate: scheduledDate,
+      notificationDetails: NotificationDetails(
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          threadIdentifier: 'weekly_report',
+        ),
+        android: const AndroidNotificationDetails(
+          'weekly_report',
+          '周报',
+          channelDescription: '每周周报提醒',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      title: '📊 周报已生成',
+      body: '点击查看你本周的行动总结',
+      payload: 'weekly_report',
+      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+    );
+  }
+
+  /// 调度每月月报通知（每月1号早上8点）
+  Future<void> scheduleMonthlyReport() async {
+    await _notifications.cancel(id: MonthlyReportNotificationId);
+
+    final scheduledDate = _nextInstanceOfMonth(1, 8, 0);
+
+    await _notifications.zonedSchedule(
+      id: MonthlyReportNotificationId,
+      scheduledDate: scheduledDate,
+      notificationDetails: NotificationDetails(
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          threadIdentifier: 'monthly_report',
+        ),
+        android: const AndroidNotificationDetails(
+          'monthly_report',
+          '月报',
+          channelDescription: '每月月报提醒',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      title: '📈 月报已生成',
+      body: '点击查看你本月的行动总结',
+      payload: 'monthly_report',
+      matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
+    );
+  }
+
+  /// 调度每年年报通知（每年1月1号早上8点）
+  Future<void> scheduleYearlyReport() async {
+    await _notifications.cancel(id: YearlyReportNotificationId);
+
+    final scheduledDate = _nextInstanceOfNewYear(8, 0);
+
+    await _notifications.zonedSchedule(
+      id: YearlyReportNotificationId,
+      scheduledDate: scheduledDate,
+      notificationDetails: NotificationDetails(
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          threadIdentifier: 'yearly_report',
+        ),
+        android: const AndroidNotificationDetails(
+          'yearly_report',
+          '年报',
+          channelDescription: '每年年报提醒',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      title: '🎉 年报已生成',
+      body: '点击查看你今年的行动总结',
+      payload: 'yearly_report',
+      matchDateTimeComponents: DateTimeComponents.dateAndTime,
+    );
+  }
+
+  /// 调度每日杠杆早安提醒（每天早上9点）
+  Future<void> scheduleLeverReminder() async {
+    await _notifications.cancel(id: LeverReminderNotificationId);
+
+    final scheduledDate = _nextInstanceOfTime(9, 0);
+
+    await _notifications.zonedSchedule(
+      id: LeverReminderNotificationId,
+      scheduledDate: scheduledDate,
+      notificationDetails: NotificationDetails(
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          threadIdentifier: 'lever_reminder',
+        ),
+        android: const AndroidNotificationDetails(
+          'lever_reminder',
+          '杠杆提醒',
+          channelDescription: '每日杠杆提醒',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      title: '🔥 今日杠杆待完成',
+      body: '今天你要练的是什么？打开App开始行动！',
+      payload: 'lever_reminder',
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+  }
+
+  /// 取消每日杠杆提醒
+  Future<void> cancelLeverReminder() async {
+    await _notifications.cancel(id: LeverReminderNotificationId);
+  }
+
+  /// 调度所有报告通知
+  Future<void> scheduleAllReports() async {
+    await Future.wait([
+      scheduleDailyReport(),
+      scheduleWeeklyReport(),
+      scheduleMonthlyReport(),
+      scheduleYearlyReport(),
+      scheduleLeverReminder(),
+    ]);
+  }
+
+  /// 取消所有报告通知
+  Future<void> cancelAllReportNotifications() async {
+    await Future.wait([
+      _notifications.cancel(id: DailyReportNotificationId),
+      _notifications.cancel(id: WeeklyReportNotificationId),
+      _notifications.cancel(id: MonthlyReportNotificationId),
+      _notifications.cancel(id: YearlyReportNotificationId),
+      _notifications.cancel(id: LeverReminderNotificationId),
+    ]);
+  }
+
+  /// 获取下一个特定时间点
+  tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduledDate = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
+
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+
+    return scheduledDate;
+  }
+
+  /// 获取下一个特定周几的早上8点
+  tz.TZDateTime _nextInstanceOfWeekday(int weekday, int hour, int minute) {
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduledDate = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
+
+    while (scheduledDate.weekday != weekday || scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+
+    return scheduledDate;
+  }
+
+  /// 获取下个月1号的早上8点
+  tz.TZDateTime _nextInstanceOfMonth(int day, int hour, int minute) {
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduledDate = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      day,
+      hour,
+      minute,
+    );
+
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = tz.TZDateTime(
+        tz.local,
+        now.month == 12 ? now.year + 1 : now.year,
+        now.month == 12 ? 1 : now.month + 1,
+        day,
+        hour,
+        minute,
+      );
+    }
+
+    return scheduledDate;
+  }
+
+  /// 获取明年1月1号的早上8点
+  tz.TZDateTime _nextInstanceOfNewYear(int hour, int minute) {
+    final now = tz.TZDateTime.now(tz.local);
+    final scheduledDate = tz.TZDateTime(
+      tz.local,
+      now.year + 1,
+      1,
+      1,
+      hour,
+      minute,
+    );
+
+    return scheduledDate;
+  }
+}
+
+// 通知 ID 常量
+const int DailyReportNotificationId = 1;
+const int WeeklyReportNotificationId = 2;
+const int MonthlyReportNotificationId = 3;
+const int YearlyReportNotificationId = 4;
+const int LeverReminderNotificationId = 5;

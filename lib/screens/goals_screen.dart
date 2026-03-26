@@ -1,0 +1,588 @@
+import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
+import '../models/models.dart';
+import '../utils/storage_service.dart';
+
+class GoalsScreen extends StatefulWidget {
+  const GoalsScreen({super.key});
+
+  @override
+  State<GoalsScreen> createState() => _GoalsScreenState();
+}
+
+class _GoalsScreenState extends State<GoalsScreen> {
+  late StorageService _storage;
+  bool _isLoading = true;
+  bool _isEditing = false;
+  bool _isSaving = false;
+
+  String _antiVision = '';
+  String _vision = '';
+  String _yearGoal = '';
+  List<String> _dailyLevers = [];
+  String _constraints = '';
+  MonthlyBoss? _monthlyBoss;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    _storage = await StorageService.getInstance();
+    _antiVision = _storage.getAntiVision();
+    _vision = _storage.getVision();
+    _yearGoal = _storage.getYearGoal();
+    _dailyLevers = _storage.getDailyLevers();
+    _constraints = _storage.getConstraints();
+    _monthlyBoss = _storage.getMonthlyBoss();
+
+    setState(() => _isLoading = false);
+  }
+
+  Future<void> _saveChanges() async {
+    setState(() => _isSaving = true);
+    try {
+      await _storage.saveYearGoal(_yearGoal);
+      await _storage.saveDailyLevers(_dailyLevers);
+      if (_monthlyBoss != null) {
+        await _storage.saveMonthlyBoss(_monthlyBoss!);
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('保存成功'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        setState(() => _isEditing = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('保存失败: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        title: const Text('目标设定'),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          if (_isEditing)
+            TextButton(
+              onPressed: _isSaving ? null : _saveChanges,
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                    )
+                  : const Text(
+                      '保存',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+            )
+          else
+            TextButton(
+              onPressed: () => setState(() => _isEditing = true),
+              child: const Text(
+                '编辑',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildAntiVisionCard(),
+                  const SizedBox(height: 16),
+                  _buildVisionCard(),
+                  const SizedBox(height: 16),
+                  _buildYearGoalCard(),
+                  const SizedBox(height: 16),
+                  _buildMonthlyBossCard(),
+                  const SizedBox(height: 16),
+                  _buildDailyLeversCard(),
+                  const SizedBox(height: 16),
+                  _buildConstraintsCard(),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildAntiVisionCard() {
+    return _buildCard(
+      icon: '⚠️',
+      title: '反愿景',
+      subtitle: '锁定1年不可更改',
+      subtitleColor: AppColors.textLight,
+      content: _antiVision,
+      isLocked: true,
+      borderColor: AppColors.textLight.withValues(alpha: 0.3),
+    );
+  }
+
+  Widget _buildVisionCard() {
+    return _buildCard(
+      icon: '✨',
+      title: '愿景',
+      subtitle: '锁定1年不可更改',
+      subtitleColor: AppColors.textLight,
+      content: _vision,
+      isLocked: true,
+      borderColor: AppColors.textLight.withValues(alpha: 0.3),
+    );
+  }
+
+  Widget _buildYearGoalCard() {
+    return _buildCard(
+      icon: '🎯',
+      title: '一年目标',
+      subtitle: '每年可改1次',
+      subtitleColor: AppColors.primary,
+      content: _yearGoal,
+      isLocked: false,
+      canEdit: _isEditing,
+      onEditChanged: (v) => _yearGoal = v,
+      borderColor: AppColors.primary.withValues(alpha: 0.3),
+    );
+  }
+
+  Widget _buildMonthlyBossCard() {
+    final boss = _monthlyBoss;
+    final now = DateTime.now();
+    final hp = boss != null && boss.month == now.month && boss.year == now.year
+        ? boss.hp
+        : 0;
+    final total = boss != null && boss.month == now.month && boss.year == now.year
+        ? boss.totalDays
+        : appDateDaysInMonth(now);
+    final bossContent = boss != null && boss.month == now.month && boss.year == now.year
+        ? boss.content
+        : '';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Text('👹', style: TextStyle(fontSize: 18)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '本月Boss战',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      'HP: $hp/$total',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  bossContent.isNotEmpty ? bossContent : '设置你的本月Boss目标',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: total > 0 ? hp / total : 0,
+                    backgroundColor: AppColors.textLight.withValues(alpha: 0.2),
+                    valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    minHeight: 8,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_isEditing) ...[
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () => _showEditBossDialog(),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Text(
+                    '设置/更换Boss目标',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  int appDateDaysInMonth(DateTime date) {
+    return DateTime(date.year, date.month + 1, 0).day;
+  }
+
+  void _showEditBossDialog() {
+    final controller = TextEditingController(
+      text: _monthlyBoss != null ? _monthlyBoss!.content : '',
+    );
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        title: const Text('设置本月Boss目标'),
+        content: TextField(
+          controller: controller,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            hintText: '例如：每天运动30分钟',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final now = DateTime.now();
+              _monthlyBoss = MonthlyBoss(
+                content: controller.text,
+                month: now.month,
+                year: now.year,
+                totalDays: appDateDaysInMonth(now),
+                hp: 0,
+              );
+              Navigator.pop(context);
+              setState(() {});
+            },
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDailyLeversCard() {
+    // 确保至少有3个槽位
+    while (_dailyLevers.length < 3) {
+      _dailyLevers.add('');
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Text('🔨', style: TextStyle(fontSize: 18)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '每日杠杆',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const Text(
+                      '每天可调整',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...List.generate(_dailyLevers.length, (index) {
+            final hasContent = _dailyLevers[index].isNotEmpty;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: hasContent
+                          ? AppColors.primary.withValues(alpha: 0.1)
+                          : AppColors.textLight.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${index + 1}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: hasContent ? AppColors.primary : AppColors.textLight,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _isEditing
+                        ? TextField(
+                            decoration: const InputDecoration(
+                              hintText: '添加杠杆...',
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                            controller: TextEditingController(text: _dailyLevers[index]),
+                            onChanged: (v) => _dailyLevers[index] = v,
+                          )
+                        : Text(
+                            hasContent ? _dailyLevers[index] : '未设置',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: hasContent ? AppColors.textPrimary : AppColors.textLight,
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConstraintsCard() {
+    return _buildCard(
+      icon: '🚫',
+      title: '约束条件',
+      subtitle: '锁定1年不可更改',
+      subtitleColor: AppColors.textLight,
+      content: _constraints,
+      isLocked: true,
+      borderColor: AppColors.textLight.withValues(alpha: 0.3),
+    );
+  }
+
+  Widget _buildCard({
+    required String icon,
+    required String title,
+    required String subtitle,
+    required Color subtitleColor,
+    required String content,
+    bool isLocked = false,
+    bool canEdit = false,
+    Function(String)? onEditChanged,
+    Color? borderColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: borderColor ?? AppColors.primary.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: Text(icon, style: const TextStyle(fontSize: 18)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: subtitleColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isLocked)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.textLight.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.lock_outline, size: 12, color: AppColors.textLight),
+                      SizedBox(width: 4),
+                      Text(
+                        '锁定',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textLight,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: canEdit
+                ? TextField(
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      hintText: '请输入...',
+                      border: InputBorder.none,
+                    ),
+                    controller: TextEditingController(text: content),
+                    onChanged: onEditChanged,
+                  )
+                : Text(
+                    content.isNotEmpty ? content : '暂无内容',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: content.isNotEmpty ? AppColors.textPrimary : AppColors.textLight,
+                      height: 1.5,
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
