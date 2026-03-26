@@ -8,7 +8,6 @@ import '../utils/xp_service.dart';
 import '../utils/date_utils.dart' as app_date;
 import 'profile_screen.dart';
 import 'monthly_review_screen.dart';
-import 'monthly_review_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -37,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
   MonthlyBoss? _monthlyBoss;
   List<CheckIn> _checkIns = [];
   bool _minimalMode = false;
+  String _temptingBundling = '';
 
   @override
   void initState() {
@@ -61,6 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final checkIns = _storage.getCheckIns();
     final monthlyBoss = _storage.getMonthlyBoss();
     final minimalMode = _storage.getMinimalMode();
+    final temptingBundling = _storage.getTemptingBundling();
 
     // 检查今天是否已打卡
     final today = DateTime.now();
@@ -88,6 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _checkIns = checkIns;
       _isCheckedInToday = checkedIn;
       _minimalMode = minimalMode;
+      _temptingBundling = temptingBundling;
       _isLoading = false;
     });
 
@@ -294,6 +296,36 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: AppColors.textPrimary,
                 ),
               ),
+              if (_temptingBundling.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('🎁', style: TextStyle(fontSize: 18)),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          '你赢得：$_temptingBundling',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),

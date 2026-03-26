@@ -34,6 +34,7 @@ class StorageService {
   static const String _keyMinimalMode = 'minimal_mode';
   static const String _keyTemptingBundling = 'tempting_bundling';
   static const String _keyLastReviewMonth = 'last_review_month';
+  static const String _keyAnnualIdentity = 'annual_identity';
 
   // ====== Onboarding ======
   bool get isOnboardingComplete => _prefs.getBool(_keyOnboardingComplete) ?? false;
@@ -174,6 +175,15 @@ class StorageService {
       }
     }
     return [year, month];
+  }
+
+  // ====== 年度身份 ======
+  Future<void> saveAnnualIdentity(String content) async {
+    await _prefs.setString(_keyAnnualIdentity, content);
+  }
+
+  String getAnnualIdentity() {
+    return _prefs.getString(_keyAnnualIdentity) ?? '';
   }
 
   // ====== 打卡记录 ======

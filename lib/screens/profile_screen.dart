@@ -32,6 +32,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<AppBadge> _badges = [];
   String _antiVision = '';
   String _vision = '';
+  String _annualIdentity = '';
   List<CheckIn> _checkIns = [];
 
   @override
@@ -47,6 +48,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final badges = _storage.getBadges();
     final antiVision = _storage.getAntiVision();
     final vision = _storage.getVision();
+    final annualIdentity = _storage.getAnnualIdentity();
     final checkIns = _storage.getCheckIns();
 
     setState(() {
@@ -54,6 +56,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _badges = badges;
       _antiVision = antiVision;
       _vision = vision;
+      _annualIdentity = annualIdentity;
       _checkIns = checkIns;
       _isLoading = false;
     });
@@ -102,6 +105,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   _buildStatsCard(),
                   const SizedBox(height: 24),
+                  if (_annualIdentity.isNotEmpty) ...[
+                    _buildAnnualIdentitySection(),
+                    const SizedBox(height: 24),
+                  ],
                   _buildCalendarSection(),
                   const SizedBox(height: 24),
                   _buildBadgesSection(),
@@ -236,6 +243,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildAnnualIdentitySection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary.withValues(alpha: 0.12),
+            AppColors.primaryLight.withValues(alpha: 0.06),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Center(
+              child: Text('🌟', style: TextStyle(fontSize: 24)),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '我是',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _annualIdentity,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  '的行动派',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -440,11 +513,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
               ),
-              // 战损红色斜线标记（未打卡的历史日期）
+              // 未打卡的历史日期：灰色虚线圆圈（去除污名化）
               if (isMissedDay)
                 CustomPaint(
                   size: const Size(28, 28),
-                  painter: _DamageSlashPainter(),
+                  painter: _MissedDayPainter(),
                 ),
             ],
           ),
