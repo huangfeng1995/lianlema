@@ -90,8 +90,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 context,
                 MaterialPageRoute(builder: (_) => const SettingsScreen()),
               );
-                ),
-              );
             },
           ),
         ],
@@ -517,7 +515,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (isMissedDay)
                 CustomPaint(
                   size: const Size(28, 28),
-                  painter: _MissedDayPainter(),
+                  painter: _DamageSlashPainter(),
                 ),
             ],
           ),

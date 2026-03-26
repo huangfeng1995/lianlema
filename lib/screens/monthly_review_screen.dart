@@ -11,13 +11,13 @@ import 'home_screen.dart';
 /// 触发条件：月度Boss击败 或 每月25日-5日打开App
 class MonthlyReviewScreen extends StatefulWidget {
   /// 要复盘的月份，默认为上个月（月初复盘时）
-  final int reviewYear;
-  final int reviewMonth;
+  final int? reviewYear;
+  final int? reviewMonth;
 
   const MonthlyReviewScreen({
     super.key,
-    required this.reviewYear,
-    required this.reviewMonth,
+    this.reviewYear,
+    this.reviewMonth,
   });
 
   @override
@@ -75,8 +75,8 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
     // 如果上上月boss被保留在storage，则需要特殊处理
     // 这里直接用 generateMonthlyReport
     _lastMonthReport = _reportService.generateMonthlyReport(
-      widget.reviewYear,
-      widget.reviewMonth,
+      widget.reviewYear ?? DateTime.now().year,
+      widget.reviewMonth ?? DateTime.now().month,
     );
 
     setState(() => _isLoading = false);
@@ -99,8 +99,8 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
 
     try {
       // 1. 计算下个月
-      int nextYear = widget.reviewYear;
-      int nextMonth = widget.reviewMonth + 1;
+      int nextYear = widget.reviewYear ?? DateTime.now().year;
+      int nextMonth = (widget.reviewMonth ?? DateTime.now().month) + 1;
       if (nextMonth > 12) {
         nextMonth = 1;
         nextYear += 1;
@@ -119,7 +119,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
       }
 
       // 3. 标记复盘完成
-      final currentMonth = '${widget.reviewYear}-${widget.reviewMonth.toString().padLeft(2, '0')}';
+      final currentMonth = '${widget.reviewYear ?? DateTime.now().year}-${(widget.reviewMonth ?? DateTime.now().month).toString().padLeft(2, '0')}';
       await _storage.saveLastReviewMonth(currentMonth);
 
       if (mounted) {
@@ -219,6 +219,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
         child: Column(
           children: [
             _buildHeader(),
+            _buildReportSummary(),
             Expanded(
               child: PageView(
                 controller: _pageController,
@@ -233,6 +234,99 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
               ),
             ),
             _buildBottomButton(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ====== 月度数据总览（原月报内容） ======
+  Widget _buildReportSummary() {
+    final report = _lastMonthReport;
+    if (report == null) return const SizedBox.shrink();
+
+    final boss = _lastMonthBoss;
+    final reviewYear = widget.reviewYear ?? DateTime.now().year;
+    final reviewMonth = widget.reviewMonth ?? DateTime.now().month;
+    final isBossForReviewMonth = boss != null &&
+        boss.year == reviewYear &&
+        boss.month == reviewMonth;
+    final bossHp = isBossForReviewMonth ? boss.hp : 0;
+    final bossTotal = isBossForReviewMonth ? boss.totalDays : 0;
+    final isDefeated = bossHp >= bossTotal && bossTotal > 0;
+    final attendance = report.totalDays > 0 ? report.checkInDays / report.totalDays : 0.0;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('本月战报', style: TextStyle(
+                fontSize: 15, fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              )),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isDefeated
+                      ? AppColors.success.withValues(alpha: 0.15)
+                      : const Color(0xFFFF9500).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  isDefeated ? '🏆 Boss击败' : '👹 Boss进行中',
+                  style: TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w600,
+                    color: isDefeated ? AppColors.success : const Color(0xFFFF9500),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _buildStatChip('📅 出勤', '${report.checkInDays}天'),
+              const SizedBox(width: 8),
+              _buildStatChip('⚡ 出勤率', '${(attendance * 100).toInt()}%'),
+              const SizedBox(width: 8),
+              _buildStatChip('⭐ XP', '+${report.xpEarned}'),
+              const SizedBox(width: 8),
+              _buildStatChip('🔥 连续', '${report.longestStreak}天'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatChip(String label, String value) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          children: [
+            Text(value, style: const TextStyle(
+              fontSize: 14, fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+            )),
+            const SizedBox(height: 2),
+            Text(label, style: const TextStyle(
+              fontSize: 10, color: AppColors.textSecondary,
+            ), textAlign: TextAlign.center, maxLines: 1),
           ],
         ),
       ),
@@ -319,11 +413,13 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
   Widget _buildStep1_BossReview() {
     final report = _lastMonthReport;
     final boss = _lastMonthBoss;
+    final reviewYear = widget.reviewYear ?? DateTime.now().year;
+    final reviewMonth = widget.reviewMonth ?? DateTime.now().month;
 
     // 判断是否是当月boss还是上月boss
     final isBossForReviewMonth = boss != null &&
-        boss.year == widget.reviewYear &&
-        boss.month == widget.reviewMonth;
+        boss.year == reviewYear &&
+        boss.month == reviewMonth;
 
     final bossContent = isBossForReviewMonth ? boss.content : (report?.bossDefeated == false ? '本月Boss' : '—');
     final bossHp = isBossForReviewMonth ? boss.hp : (report?.checkInDays ?? 0);
@@ -343,7 +439,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              '${widget.reviewYear}年${widget.reviewMonth}月',
+              '${reviewYear}年${reviewMonth}月',
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -595,7 +691,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            '${widget.reviewYear}年${widget.reviewMonth}月，哪些时刻让你骄傲？',
+            '${widget.reviewYear ?? DateTime.now().year}年${widget.reviewMonth ?? DateTime.now().month}月，哪些时刻让你骄傲？',
             style: const TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,
@@ -786,8 +882,8 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
 
   // ====== Step 4: 新Boss选择 ======
   Widget _buildStep4_NewBoss() {
-    int nextYear = widget.reviewYear;
-    int nextMonth = widget.reviewMonth + 1;
+    int nextYear = widget.reviewYear ?? DateTime.now().year;
+    int nextMonth = (widget.reviewMonth ?? DateTime.now().month) + 1;
     if (nextMonth > 12) {
       nextMonth = 1;
       nextYear += 1;

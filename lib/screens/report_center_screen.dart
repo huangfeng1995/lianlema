@@ -5,7 +5,7 @@ import '../utils/report_service.dart';
 import '../utils/date_utils.dart' as app_date;
 import 'daily_report_screen.dart';
 import 'weekly_report_screen.dart';
-import 'monthly_report_screen.dart';
+import 'monthly_review_screen.dart';
 import 'yearly_report_screen.dart';
 
 class ReportCenterScreen extends StatefulWidget {
@@ -113,7 +113,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                     color: const Color(0xFFFF9500),
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const MonthlyReportScreen()),
+                      MaterialPageRoute(builder: (_) => const MonthlyReviewScreen()),
                     ),
                   ),
                   const SizedBox(height: 16),
