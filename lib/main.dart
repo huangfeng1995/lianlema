@@ -28,7 +28,7 @@ void main() async {
 }
 
 // GlobalKey 供 SettingsScreen 触发主题重建
-final GlobalKey<State<MaterialApp>> appKey = GlobalKey<State<MaterialApp>>();
+final GlobalKey<_LianlemaAppState> appKey = GlobalKey<_LianlemaAppState>();
 
 class LianlemaApp extends StatefulWidget {
   final String? initialPage;
@@ -51,6 +51,15 @@ class _LianlemaAppState extends State<LianlemaApp> {
   Future<void> _loadTheme() async {
     final storage = await StorageService.getInstance();
     final isDark = storage.getDarkMode();
+    setState(() {
+      _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
+    });
+  }
+
+  // 供 SettingsScreen 调用以切换主题
+  Future<void> toggleDarkMode(bool isDark) async {
+    final storage = await StorageService.getInstance();
+    await storage.saveDarkMode(isDark);
     setState(() {
       _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
     });

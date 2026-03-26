@@ -213,14 +213,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Icon(
-            Icons.local_fire_department,
-            size: 80,
-            color: AppColors.primary,
+        children: [
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: const Center(
+              child: Text('🔥', style: TextStyle(fontSize: 56)),
+            ),
           ),
-          SizedBox(height: 32),
-          Text(
+          const SizedBox(height: 32),
+          const Text(
             '欢迎来到练了吗',
             style: TextStyle(
               fontSize: 28,
@@ -229,8 +235,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
             textAlign: TextAlign.center,
           ),
-          SizedBox(height: 16),
-          Text(
+          const SizedBox(height: 16),
+          const Text(
             '从今天开始发生改变\n每天行动一点点，成为你想成为的人',
             style: TextStyle(
               fontSize: 16,
@@ -239,8 +245,63 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
             textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 32),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.cardBackground,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                _buildFeatureRow('🔥', '每日打卡', '完成行动，积累连续天数'),
+                const SizedBox(height: 12),
+                _buildFeatureRow('⛩️', '月度Boss战', '设定目标，月底检验成果'),
+                const SizedBox(height: 12),
+                _buildFeatureRow('🎯', '每日杠杆', '2-3件关键行动，撬动大改变'),
+              ],
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFeatureRow(String emoji, String title, String desc) {
+    return Row(
+      children: [
+        Text(emoji, style: const TextStyle(fontSize: 24)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              Text(
+                desc,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

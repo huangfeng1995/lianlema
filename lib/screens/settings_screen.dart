@@ -95,10 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: _darkMode,
               onChanged: (value) async {
                 setState(() => _darkMode = value);
-                if (_storage != null) {
-                  await _storage!.saveDarkMode(value);
-                  appKey.currentState?.setState(() {});
-                }
+                await appKey.currentState?.toggleDarkMode(value);
               },
             ),
             const SizedBox(height: 24),
