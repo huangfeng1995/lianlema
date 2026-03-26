@@ -35,6 +35,7 @@ class StorageService {
   static const String _keyTemptingBundling = 'tempting_bundling';
   static const String _keyLastReviewMonth = 'last_review_month';
   static const String _keyAnnualIdentity = 'annual_identity';
+  static const String _keyDarkMode = 'dark_mode';
 
   // ====== Onboarding ======
   bool get isOnboardingComplete => _prefs.getBool(_keyOnboardingComplete) ?? false;
@@ -184,6 +185,15 @@ class StorageService {
 
   String getAnnualIdentity() {
     return _prefs.getString(_keyAnnualIdentity) ?? '';
+  }
+
+  // ====== 暗色模式 ======
+  Future<void> saveDarkMode(bool isDark) async {
+    await _prefs.setBool(_keyDarkMode, isDark);
+  }
+
+  bool getDarkMode() {
+    return _prefs.getBool(_keyDarkMode) ?? false;
   }
 
   // ====== 打卡记录 ======

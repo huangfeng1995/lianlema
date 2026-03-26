@@ -94,6 +94,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   if (_currentPage > 0)
                     GestureDetector(
                       onTap: () {
+                        setState(() => _currentPage -= 1);
                         _pageController.previousPage(
                           duration: const Duration(milliseconds: 300),
                           curve: Curves.easeInOut,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../theme/app_theme.dart';
 import '../utils/storage_service.dart';
+import '../main.dart';
 
 /// 设置页面
 class SettingsScreen extends StatefulWidget {
@@ -18,6 +19,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // 极简模式
   bool _minimalMode = false;
+
+  // 暗色模式
+  bool _darkMode = false;
 
   // 通知开关
   bool _notificationsEnabled = true;
@@ -38,6 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _storage = storage;
       _minimalMode = storage.getMinimalMode();
+      _darkMode = storage.getDarkMode();
     });
   }
 
@@ -80,6 +85,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 setState(() => _minimalMode = value);
                 if (_storage != null) {
                   await _storage!.saveMinimalMode(value);
+                }
+              },
+            ),
+            _buildSwitchItem(
+              icon: '🌙',
+              title: '暗色模式',
+              subtitle: '深色主题',
+              value: _darkMode,
+              onChanged: (value) async {
+                setState(() => _darkMode = value);
+                if (_storage != null) {
+                  await _storage!.saveDarkMode(value);
+                  appKey.currentState?.setState(() {});
                 }
               },
             ),
