@@ -25,9 +25,9 @@ class NotificationService {
 
       const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
       const iosSettings = DarwinInitializationSettings(
-        requestAlertPermission: false,
-        requestBadgePermission: false,
-        requestSoundPermission: false,
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
       );
 
       const initSettings = InitializationSettings(
@@ -39,6 +39,9 @@ class NotificationService {
         onDidReceiveNotificationResponse: _onNotificationTap,
         settings: initSettings,
       );
+
+      // 请求iOS权限
+      await _requestPermissions();
     } catch (e) {
       // 通知服务初始化失败，App仍可正常运行
       debugPrint('NotificationService init failed: $e');

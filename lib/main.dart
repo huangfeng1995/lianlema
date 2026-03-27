@@ -15,13 +15,14 @@ void main() async {
     ),
   );
 
-  // 初始化存储服务（同步）
-  await StorageService.getInstance();
+  // 初始化存储服务
+  final storage = await StorageService.getInstance();
 
-  // 通知服务在后台初始化
-  NotificationService.getInstance().then((notificationService) {
-    notificationService.scheduleAllReports();
-  });
+  // 如果通知开启，则初始化通知服务并调度
+  if (storage.getNotificationsEnabled()) {
+    final notificationService = await NotificationService.getInstance();
+    await notificationService.scheduleAllReports();
+  }
 
   runApp(const LianlemaApp());
 }

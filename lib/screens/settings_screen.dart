@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../theme/app_theme.dart';
 import '../utils/storage_service.dart';
+import '../utils/notification_service.dart';
 import '../main.dart';
 
 /// 设置页面
@@ -111,6 +112,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onChanged: (value) async {
                 setState(() => _notificationsEnabled = value);
                 await _storage?.saveNotificationsEnabled(value);
+
+                // 根据开关状态启用或取消通知
+                final notificationService = await NotificationService.getInstance();
+                if (value) {
+                  await notificationService.scheduleAllReports();
+                } else {
+                  await notificationService.cancelAllReportNotifications();
+                }
               },
             ),
             const SizedBox(height: 24),
