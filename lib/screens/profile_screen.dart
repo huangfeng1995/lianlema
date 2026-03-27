@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
 import '../models/models.dart';
@@ -83,6 +84,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('我的'),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.download_outlined),
+            onPressed: _exportData,
+            tooltip: '导出数据',
+          ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             onPressed: () {
@@ -607,13 +613,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '反愿景提醒',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              '反愿景提醒',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            TextButton.icon(
+              onPressed: _shareWithFriends,
+              icon: const Icon(Icons.share_outlined, size: 18),
+              label: const Text('告诉朋友'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                textStyle: const TextStyle(fontSize: 13),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         Container(
@@ -686,6 +706,89 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ],
     );
+  }
+
+  /// 导出数据到剪贴板
+  Future<void> _exportData() async {
+    final now = DateTime.now();
+    final unlockedBadges = _badges.where((b) => b.isUnlocked).toList();
+
+    // 计算每月出勤
+    final monthlyStats = <String>[];
+    for (int m = 1; m <= 12; m++) {
+      final monthCheckIns = _checkIns.where((c) => c.date.year == now.year && c.date.month == m).length;
+      final totalDays = DateTime(now.year, m + 1, 0).day;
+      final actualDays = (m == now.month) ? now.day : totalDays;
+      if (monthCheckIns > 0 || m <= now.month) {
+        monthlyStats.add('${m}月：$monthCheckIns/$actualDays天');
+      }
+    }
+
+    final report = StringBuffer();
+    report.writeln('=== 练了吗 数据导出 ===');
+    report.writeln('导出时间：${DateFormat('yyyy-MM-dd HH:mm').format(now)}');
+    report.writeln('');
+    report.writeln('【基本信息】');
+    report.writeln('连续打卡：${_stats.streak}天');
+    report.writeln('总打卡次数：${_stats.totalCheckIns}天');
+    report.writeln('等级：Lv${_stats.level}');
+    report.writeln('总经验值：${_stats.totalXP} XP');
+    if (unlockedBadges.isNotEmpty) {
+      report.writeln('徽章：${unlockedBadges.map((b) => '${b.icon}${b.name}').join(' / ')}');
+    }
+    report.writeln('');
+    report.writeln('【愿景】');
+    report.writeln('反愿景：${_antiVision.isNotEmpty ? _antiVision : '未设置'}');
+    report.writeln('愿景：${_vision.isNotEmpty ? _vision : '未设置'}');
+    if (_annualIdentity.isNotEmpty) {
+      report.writeln('年度身份：我是${_annualIdentity}的行动派');
+    }
+    report.writeln('');
+    report.writeln('【${now.year}年打卡日历】');
+    for (final stat in monthlyStats) {
+      report.writeln(stat);
+    }
+    report.writeln('');
+    report.writeln('【约束条件】');
+    final constraints = _storage.getConstraints();
+    report.writeln(constraints.isNotEmpty ? constraints : '未设置');
+
+    final text = report.toString();
+
+    await Clipboard.setData(ClipboardData(text: text));
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('数据已复制到剪贴板'),
+          backgroundColor: AppColors.success,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  /// 分享给朋友（复制到剪贴板）
+  Future<void> _shareWithFriends() async {
+    final text = '''我最近在用『练了吗』养成每日习惯，一起加油！
+
+🔥 我的反愿景：${_antiVision.isNotEmpty ? _antiVision : '成为每天虚度光阴的人'}
+✨ 我的愿景：${_vision.isNotEmpty ? _vision : '活成自己想要的样子'}
+
+从今天开始发生改变 📍
+#练了吗''';
+
+    await Clipboard.setData(ClipboardData(text: text));
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('分享文案已复制，去粘贴告诉朋友吧'),
+          backgroundColor: AppColors.primary,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   void _showBadgeDetail(AppBadge badge) {

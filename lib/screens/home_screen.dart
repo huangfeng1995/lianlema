@@ -37,6 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<CheckIn> _checkIns = [];
   bool _minimalMode = false;
   String _temptingBundling = '';
+  bool _streakBroken = false; // 检测streak是否昨天断裂
 
   @override
   void initState() {
@@ -68,6 +69,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final todayStr = app_date.AppDateUtils.formatDate(today);
     final checkedIn = checkIns.any((c) => app_date.AppDateUtils.formatDate(c.date) == todayStr);
 
+    // 检查昨天是否漏打卡（streak断裂但今天还没打卡）
+    final yesterday = today.subtract(const Duration(days: 1));
+    final yesterdayStr = app_date.AppDateUtils.formatDate(yesterday);
+    final yesterdayCheckedIn = checkIns.any((c) => app_date.AppDateUtils.formatDate(c.date) == yesterdayStr);
+    final streakBroken = !checkedIn && !yesterdayCheckedIn && checkIns.isNotEmpty;
+
     // 计算连续打卡天数
     final checkInDates = checkIns.map((c) => c.date).toList();
     final streak = app_date.AppDateUtils.calculateStreak(checkInDates);
@@ -88,6 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _monthlyBoss = monthlyBoss;
       _checkIns = checkIns;
       _isCheckedInToday = checkedIn;
+      _streakBroken = streakBroken;
       _minimalMode = minimalMode;
       _temptingBundling = temptingBundling;
       _isLoading = false;
@@ -751,11 +759,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-                const Text(
-                  '连续打卡',
+                Text(
+                  _streakBroken ? '重新开始' : '连续打卡',
                   style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.textSecondary,
+                    color: _streakBroken ? AppColors.primary : AppColors.textSecondary,
                   ),
                 ),
               ],
