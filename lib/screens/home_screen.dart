@@ -38,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _minimalMode = false;
   String _temptingBundling = '';
   bool _streakBroken = false; // 检测streak是否昨天断裂
+  bool _canUseRemedy = false; // 本月是否可以使用补救
 
   @override
   void initState() {
@@ -96,6 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _checkIns = checkIns;
       _isCheckedInToday = checkedIn;
       _streakBroken = streakBroken;
+      _canUseRemedy = _storage.canUseStreakRemedy();
       _minimalMode = minimalMode;
       _temptingBundling = temptingBundling;
       _isLoading = false;
@@ -770,23 +772,50 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: _isCheckedInToday
-                    ? AppColors.success.withValues(alpha: 0.1)
-                    : AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                _isCheckedInToday ? '✅ 今日已完成' : '🔥 去打卡',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: _isCheckedInToday ? AppColors.success : AppColors.primary,
+            if (_streakBroken && _canUseRemedy && !_isCheckedInToday)
+              GestureDetector(
+                onTap: _showRemedyDialog,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('🔧', style: TextStyle(fontSize: 12)),
+                      SizedBox(width: 4),
+                      Text(
+                        '补救',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.amber,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _isCheckedInToday
+                      ? AppColors.success.withValues(alpha: 0.1)
+                      : AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  _isCheckedInToday ? '✅ 今日已完成' : '🔥 去打卡',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _isCheckedInToday ? AppColors.success : AppColors.primary,
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -970,6 +999,99 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  void _showRemedyDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Text('🔧', style: TextStyle(fontSize: 24)),
+            SizedBox(width: 8),
+            Text('补救机会'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '你已经漏掉了昨天的打卡，但这个月还有一次补救机会！',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '回答一个问题即可补救：',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                '「今天你愿意为昨天的缺席做点什么？」',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.primary,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _applyStreakRemedy();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.amber,
+            ),
+            child: const Text('确认补救 🔥'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _applyStreakRemedy() async {
+    // 使用补救
+    await _storage.useStreakRemedy();
+
+    // 更新状态
+    setState(() {
+      _canUseRemedy = false;
+    });
+
+    // 显示成功
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('补救成功！本月还有0次补救机会 🔧'),
+          backgroundColor: Colors.amber,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   Widget _buildAntiVisionCard() {

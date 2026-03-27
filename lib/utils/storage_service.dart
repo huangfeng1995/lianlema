@@ -36,6 +36,7 @@ class StorageService {
   static const String _keyLastReviewMonth = 'last_review_month';
   static const String _keyAnnualIdentity = 'annual_identity';
   static const String _keyDarkMode = 'dark_mode';
+  static const String _keyStreakRemedyUsedMonths = 'streak_remedy_used_months'; // 用过的补救月份
   static const String _keyReminderHour = 'reminder_hour';
   static const String _keyReminderMinute = 'reminder_minute';
   static const String _keyNotificationsEnabled = 'notifications_enabled';
@@ -219,6 +220,31 @@ class StorageService {
 
   Future<void> saveNotificationsEnabled(bool enabled) async {
     await _prefs.setBool(_keyNotificationsEnabled, enabled);
+  }
+
+  // ====== Streak补救 ======
+  /// 检查本月是否已使用过补救
+  bool isStreakRemedyUsedThisMonth() {
+    final now = DateTime.now();
+    final monthKey = '${now.year}-${now.month}';
+    final usedMonths = _prefs.getStringList(_keyStreakRemedyUsedMonths) ?? [];
+    return usedMonths.contains(monthKey);
+  }
+
+  /// 使用补救（标记本月已使用）
+  Future<void> useStreakRemedy() async {
+    final now = DateTime.now();
+    final monthKey = '${now.year}-${now.month}';
+    final usedMonths = _prefs.getStringList(_keyStreakRemedyUsedMonths) ?? [];
+    if (!usedMonths.contains(monthKey)) {
+      usedMonths.add(monthKey);
+      await _prefs.setStringList(_keyStreakRemedyUsedMonths, usedMonths);
+    }
+  }
+
+  /// 获取本月是否可补救
+  bool canUseStreakRemedy() {
+    return !isStreakRemedyUsedThisMonth();
   }
 
   // ====== 打卡记录 ======
