@@ -27,6 +27,87 @@ class AppColors {
 }
 
 class AppTheme {
+  // ====== 通用阴影 ======
+  static List<BoxShadow> cardShadow({bool isDark = false}) => [
+    BoxShadow(
+      color: isDark 
+          ? Colors.black.withValues(alpha: 0.3)
+          : AppColors.primary.withValues(alpha: 0.08),
+      blurRadius: 12,
+      offset: const Offset(0, 4),
+    ),
+  ];
+
+  static List<BoxShadow> cardShadowLight = [
+    BoxShadow(
+      color: AppColors.primary.withValues(alpha: 0.08),
+      blurRadius: 12,
+      offset: const Offset(0, 4),
+    ),
+  ];
+
+  static List<BoxShadow> cardShadowDark = [
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.3),
+      blurRadius: 12,
+      offset: const Offset(0, 4),
+    ),
+  ];
+
+  // ====== 输入框主题 ======
+  static InputDecorationTheme get inputDecorationTheme => InputDecorationTheme(
+    filled: true,
+    fillColor: AppColors.background,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide.none,
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide.none,
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Colors.red, width: 1),
+    ),
+    hintStyle: const TextStyle(
+      color: AppColors.textLight,
+      fontSize: 14,
+    ),
+  );
+
+  static InputDecorationTheme get darkInputDecorationTheme => InputDecorationTheme(
+    filled: true,
+    fillColor: AppColors.darkCard,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide.none,
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide.none,
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Colors.red, width: 1),
+    ),
+    hintStyle: const TextStyle(
+      color: AppColors.darkTextLight,
+      fontSize: 14,
+    ),
+  );
+
+  // ====== 亮色主题 ======
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
@@ -58,6 +139,8 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
+          disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.35),
+          disabledForegroundColor: Colors.white.withValues(alpha: 0.6),
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
@@ -69,6 +152,16 @@ class AppTheme {
           ),
         ),
       ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          textStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      inputDecorationTheme: inputDecorationTheme,
       textTheme: const TextTheme(
         headlineLarge: TextStyle(
           fontSize: 28,
@@ -106,6 +199,7 @@ class AppTheme {
     );
   }
 
+  // ====== 暗色主题 ======
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
@@ -137,6 +231,8 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
+          disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.35),
+          disabledForegroundColor: Colors.white.withValues(alpha: 0.6),
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
@@ -148,6 +244,16 @@ class AppTheme {
           ),
         ),
       ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          textStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      inputDecorationTheme: darkInputDecorationTheme,
       textTheme: const TextTheme(
         headlineLarge: TextStyle(
           fontSize: 28,

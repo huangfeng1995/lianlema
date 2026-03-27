@@ -78,6 +78,7 @@ class BottomNavBar extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          const SizedBox(height: 4),
           Icon(
             isActive ? activeIcon : icon,
             size: 26,
@@ -90,6 +91,16 @@ class BottomNavBar extends StatelessWidget {
               fontSize: 11,
               color: color,
               fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+          const SizedBox(height: 4),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: isActive ? 20 : 0,
+            height: 3,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(2),
             ),
           ),
         ],
