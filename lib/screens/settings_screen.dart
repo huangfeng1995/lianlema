@@ -43,6 +43,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _storage = storage;
       _minimalMode = storage.getMinimalMode();
       _darkMode = storage.getDarkMode();
+      _reminderHour = storage.getReminderHour();
+      _reminderMinute = storage.getReminderMinute();
+      _notificationsEnabled = storage.getNotificationsEnabled();
     });
   }
 
@@ -105,7 +108,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: '通知开关',
               subtitle: '接收打卡提醒和成就通知',
               value: _notificationsEnabled,
-              onChanged: (value) => setState(() => _notificationsEnabled = value),
+              onChanged: (value) async {
+                setState(() => _notificationsEnabled = value);
+                await _storage?.saveNotificationsEnabled(value);
+              },
             ),
             const SizedBox(height: 24),
             _buildSectionHeader('关于'),
@@ -411,11 +417,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _reminderHour,
                   _reminderMinute,
                 ),
-                onDateTimeChanged: (DateTime newDateTime) {
+                onDateTimeChanged: (DateTime newDateTime) async {
                   setState(() {
                     _reminderHour = newDateTime.hour;
                     _reminderMinute = newDateTime.minute;
                   });
+                  await _storage?.saveReminderTime(_reminderHour, _reminderMinute);
                 },
               ),
             ),

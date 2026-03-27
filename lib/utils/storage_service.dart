@@ -36,6 +36,9 @@ class StorageService {
   static const String _keyLastReviewMonth = 'last_review_month';
   static const String _keyAnnualIdentity = 'annual_identity';
   static const String _keyDarkMode = 'dark_mode';
+  static const String _keyReminderHour = 'reminder_hour';
+  static const String _keyReminderMinute = 'reminder_minute';
+  static const String _keyNotificationsEnabled = 'notifications_enabled';
 
   // ====== Onboarding ======
   bool get isOnboardingComplete => _prefs.getBool(_keyOnboardingComplete) ?? false;
@@ -194,6 +197,28 @@ class StorageService {
 
   bool getDarkMode() {
     return _prefs.getBool(_keyDarkMode) ?? false;
+  }
+
+  // ====== 提醒设置 ======
+  int getReminderHour() {
+    return _prefs.getInt(_keyReminderHour) ?? 21;
+  }
+
+  int getReminderMinute() {
+    return _prefs.getInt(_keyReminderMinute) ?? 0;
+  }
+
+  Future<void> saveReminderTime(int hour, int minute) async {
+    await _prefs.setInt(_keyReminderHour, hour);
+    await _prefs.setInt(_keyReminderMinute, minute);
+  }
+
+  bool getNotificationsEnabled() {
+    return _prefs.getBool(_keyNotificationsEnabled) ?? true;
+  }
+
+  Future<void> saveNotificationsEnabled(bool enabled) async {
+    await _prefs.setBool(_keyNotificationsEnabled, enabled);
   }
 
   // ====== 打卡记录 ======
