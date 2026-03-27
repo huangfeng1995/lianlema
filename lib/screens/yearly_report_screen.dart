@@ -4,6 +4,7 @@ import '../models/report_models.dart';
 import '../utils/storage_service.dart';
 import '../utils/report_service.dart';
 import '../utils/xp_service.dart';
+import 'yearly_review_screen.dart';
 
 class YearlyReportScreen extends StatefulWidget {
   const YearlyReportScreen({super.key});
@@ -89,12 +90,83 @@ class _YearlyReportScreenState extends State<YearlyReportScreen> {
   Widget _buildBody() {
     final report = _report!;
     final maxBarHeight = 120.0;
+    final now = DateTime.now();
+    final isYearEnd = now.month == 12;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 年度复盘入口
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const YearlyReviewScreen()),
+              );
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primary.withValues(alpha: 0.15),
+                    AppColors.primaryLight.withValues(alpha: 0.08),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Center(
+                      child: Text('📝', style: TextStyle(fontSize: 22)),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '年度复盘',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          isYearEnd ? '完成你的年度复盘吧' : '回顾这一年的成长',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right,
+                    color: AppColors.primary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
