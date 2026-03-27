@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>练了吗 - 设计稿 v0.3</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #E85A1C;
+      --primary-light: #FF8E72;
+      --bg: #F5F0EB;
+      --card: #FFFFFF;
+      --text: #1A1A1A;
+      --text-secondary: #8B7355;
+      --text-light: #999999;
+      --success: #4CAF50;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Noto Sans SC', -apple-system, sans-serif;
+      background: #1A1A1A;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #F5F0EB;
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #8B7355;
+      font-size: 14px;
+      margin-bottom: 40px;
+    }
+
+    .screens {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 32px;
+    }
+
+    .screen {
+      background: var(--bg);
+      border-radius: 40px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+
+    .screen-header {
+      height: 44px;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .screen-header::before {
+      content: '';
+      width: 80px;
+      height: 24px;
+      background: #1A1A1A;
+      border-radius: 20px;
+    }
+
+    .screen-content {
+      padding: 20px;
+      min-height: 500px;
+      background: var(--bg);
+    }
+
+    .screen-title {
+      color: var(--text);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+      padding-left: 4px;
+    }
+
+    /* 首页 */
+    .home-card {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 16px rgba(232, 90, 28, 0.08);
+    }
+
+    .streak-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .streak-icon {
+      font-size: 36px;
+    }
+
+    .streak-info h3 {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .streak-info span {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .streak-badge {
+      margin-left: auto;
+      background: rgba(232, 90, 28, 0.1);
+      color: var(--primary);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+      margin: 20px 0 12px;
+    }
+
+    .lever-item {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+
+    .lever-num {
+      width: 24px;
+      height: 24px;
+      background: rgba(232, 90, 28, 0.1);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .lever-text {
+      flex: 1;
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    .check-btn {
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 16px;
+      font-weight: 600;
+      margin-top: 16px;
+      cursor: pointer;
+    }
+
+    /* 底部导航 */
+    .bottom-nav {
+      display: flex;
+      justify-content: space-around;
+      padding: 12px 20px;
+      background: var(--card);
+      border-top: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-light);
+      font-size: 11px;
+    }
+
+    .nav-item.active {
+      color: var(--primary);
+    }
+
+    .nav-item svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .nav-indicator {
+      width: 20px;
+      height: 3px;
+      background: var(--primary);
+      border-radius: 2px;
+      margin-top: 2px;
+    }
+
+    /* Onboarding */
+    .ob-icon {
+      width: 80px;
+      height: 80px;
+      background: rgba(232, 90, 28, 0.1);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      margin: 20px auto;
+    }
+
+    .ob-title {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text);
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .ob-desc {
+      font-size: 15px;
+      color: var(--text-secondary);
+      text-align: center;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+
+    .feature-card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    }
+
+    .feature-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .feature-row span:first-child {
+      font-size: 24px;
+    }
+
+    .feature-row h4 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .feature-row p {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* 报告页 */
+    .report-header {
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      border-radius: 20px;
+      padding: 20px;
+      color: white;
+      margin-bottom: 20px;
+    }
+
+    .report-header h2 {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .report-header p {
+      font-size: 13px;
+      opacity: 0.85;
+      margin-top: 4px;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-item {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .stat-item h4 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .stat-item p {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .calendar-row {
+      display: flex;
+      gap: 4px;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+
+    .calendar-day {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: var(--card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: var(--text-light);
+    }
+
+    .calendar-day.checked {
+      background: var(--primary);
+      color: white;
+    }
+
+    .calendar-day.today {
+      border: 2px solid var(--primary);
+    }
+
+    /* 设置页 */
+    .settings-item {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .settings-icon {
+      width: 40px;
+      height: 40px;
+      background: rgba(232, 90, 28, 0.1);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .settings-info {
+      flex: 1;
+    }
+
+    .settings-info h4 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .settings-info p {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .toggle {
+      width: 48px;
+      height: 28px;
+      background: #ddd;
+      border-radius: 14px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .toggle.on {
+      background: var(--primary);
+    }
+
+    .toggle::after {
+      content: '';
+      width: 24px;
+      height: 24px;
+      background: white;
+      border-radius: 50%;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      transition: 0.2s;
+    }
+
+    .toggle.on::after {
+      left: 22px;
+    }
+
+    /* 暗色模式预览 */
+    .dark-mode .screen-content {
+      background: #0A0A0A;
+    }
+
+    .dark-mode .home-card,
+    .dark-mode .lever-item,
+    .dark-mode .stat-item,
+    .dark-mode .settings-item {
+      background: #1C1C1E;
+    }
+
+    .dark-mode .streak-info h3,
+    .dark-mode .streak-info span,
+    .dark-mode .section-title,
+    .dark-mode .lever-text,
+    .dark-mode .ob-title,
+    .dark-mode .feature-row h4,
+    .dark-mode .settings-info h4 {
+      color: #F5F0EB;
+    }
+
+    .dark-mode .stat-item h4,
+    .dark-mode .report-header h2 {
+      color: #F5F0EB;
+    }
+
+    .dark-mode .streak-badge {
+      background: rgba(232, 90, 28, 0.2);
+    }
+
+    .dark-mode .lever-num {
+      background: rgba(232, 90, 28, 0.2);
+    }
+
+    .dark-mode .ob-desc,
+    .dark-mode .feature-row p,
+    .dark-mode .settings-info p,
+    .dark-mode .stat-item p {
+      color: #B0A090;
+    }
+
+    /* 底部标注 */
+    .legend {
+      margin-top: 60px;
+      padding: 24px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 20px;
+    }
+
+    .legend h3 {
+      color: #F5F0EB;
+      font-size: 16px;
+      margin-bottom: 16px;
+    }
+
+    .color-row {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .color-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #B0A090;
+      font-size: 13px;
+    }
+
+    .color-swatch {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>练了吗 - 设计稿 v0.3</h1>
+    <p class="subtitle">炭火橙 + 宣纸米白品牌设计系统 | 375px 移动端适配</p>
+
+    <div class="screens">
+      <!-- 首页 -->
+      <div class="screen">
+        <div class="screen-header"></div>
+        <div class="screen-content">
+          <p class="screen-title">首页 / 打卡</p>
+          
+          <div class="home-card">
+            <div class="streak-row">
+              <span class="streak-icon">🔥</span>
+              <div class="streak-info">
+                <h3>7<span style="font-size:14px;color:var(--text-secondary)">天</span></h3>
+                <span>连续打卡</span>
+              </div>
+              <div class="streak-badge">✅ 今日已完成</div>
+            </div>
+          </div>
+
+          <div class="home-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <span class="section-title" style="margin:0">今日行动</span>
+              <span style="font-size:14px;color:var(--text-secondary)">2/3</span>
+            </div>
+
+            <div class="lever-item">
+              <div class="lever-num">1</div>
+              <span class="lever-text">IF早上有空 THEN 写日记30分钟</span>
+            </div>
+            <div class="lever-item">
+              <div class="lever-num">2</div>
+              <span class="lever-text">IF晚上8点 THEN 读书25分钟</span>
+            </div>
+            <div class="lever-item" style="opacity:0.5">
+              <div class="lever-num">3</div>
+              <span class="lever-text">未设置</span>
+            </div>
+          </div>
+
+          <button class="check-btn">🎉 打卡完成！</button>
+        </div>
+        <div class="bottom-nav">
+          <div class="nav-item active">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            <span>首页</span>
+            <div class="nav-indicator"></div>
+          </div>
+          <div class="nav-item">
+            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="3"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+            <span>目标</span>
+          </div>
+          <div class="nav-item">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
+            <span>报告</span>
+          </div>
+          <div class="nav-item">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            <span>我的</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 暗色首页 -->
+      <div class="screen dark-mode">
+        <div class="screen-header"></div>
+        <div class="screen-content">
+          <p class="screen-title">首页 / 暗色模式</p>
+          
+          <div class="home-card">
+            <div class="streak-row">
+              <span class="streak-icon">🔥</span>
+              <div class="streak-info">
+                <h3>7<span style="font-size:14px;color:#B0A090">天</span></h3>
+                <span style="color:#B0A090">连续打卡</span>
+              </div>
+              <div class="streak-badge">✅ 今日已完成</div>
+            </div>
+          </div>
+
+          <div class="home-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <span class="section-title" style="margin:0">今日行动</span>
+              <span style="font-size:14px;color:#B0A090">2/3</span>
+            </div>
+
+            <div class="lever-item">
+              <div class="lever-num">1</div>
+              <span class="lever-text">IF早上有空 THEN 写日记30分钟</span>
+            </div>
+            <div class="lever-item">
+              <div class="lever-num">2</div>
+              <span class="lever-text">IF晚上8点 THEN 读书25分钟</span>
+            </div>
+          </div>
+
+          <button class="check-btn">🎉 打卡完成！</button>
+        </div>
+        <div class="bottom-nav" style="background:#1C1C1E">
+          <div class="nav-item active">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            <span>首页</span>
+            <div class="nav-indicator"></div>
+          </div>
+          <div class="nav-item" style="color:#6E6E6E">
+            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="3"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+            <span>目标</span>
+          </div>
+          <div class="nav-item" style="color:#6E6E6E">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
+            <span>报告</span>
+          </div>
+          <div class="nav-item" style="color:#6E6E6E">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            <span>我的</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Onboarding -->
+      <div class="screen">
+        <div class="screen-header"></div>
+        <div class="screen-content">
+          <p class="screen-title">Onboarding / 欢迎页</p>
+          
+          <div class="ob-icon">🔥</div>
+          <h2 class="ob-title">欢迎来到练了吗</h2>
+          <p class="ob-desc">从今天开始发生改变<br>每天行动一点点，成为你想成为的人</p>
+
+          <div class="feature-card">
+            <div class="feature-row">
+              <span>🔥</span>
+              <div>
+                <h4>每日打卡</h4>
+                <p>完成行动，积累连续天数</p>
+              </div>
+            </div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-row">
+              <span>⛩️</span>
+              <div>
+                <h4>月度Boss战</h4>
+                <p>设定目标，月底检验成果</p>
+              </div>
+            </div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-row">
+              <span>🎯</span>
+              <div>
+                <h4>每日杠杆</h4>
+                <p>2-3件关键行动，撬动大改变</p>
+              </div>
+            </div>
+          </div>
+
+          <button class="check-btn">下一步</button>
+        </div>
+      </div>
+
+      <!-- 周报 -->
+      <div class="screen">
+        <div class="screen-header"></div>
+        <div class="screen-content">
+          <p class="screen-title">报告 / 周报</p>
+
+          <div class="report-header">
+            <h2>本周战报</h2>
+            <p>3月17日 - 3月23日</p>
+          </div>
+
+          <div class="stat-grid">
+            <div class="stat-item">
+              <h4>5</h4>
+              <p>打卡天数</p>
+            </div>
+            <div class="stat-item">
+              <h4>+85</h4>
+              <p>获得XP</p>
+            </div>
+            <div class="stat-item">
+              <h4>Lv.3</h4>
+              <p>当前等级</p>
+            </div>
+          </div>
+
+          <p class="section-title">打卡日历</p>
+          <div style="background:var(--card);border-radius:14px;padding:14px">
+            <div class="calendar-row">
+              <div class="calendar-day">一</div>
+              <div class="calendar-day checked">17</div>
+              <div class="calendar-day checked">18</div>
+              <div class="calendar-day">19</div>
+              <div class="calendar-day checked">20</div>
+              <div class="calendar-day checked">21</div>
+              <div class="calendar-day checked">22</div>
+            </div>
+            <div class="calendar-row">
+              <div class="calendar-day">23</div>
+              <div class="calendar-day today">24</div>
+              <div class="calendar-day">25</div>
+              <div class="calendar-day">26</div>
+              <div class="calendar-day">27</div>
+              <div class="calendar-day">28</div>
+              <div class="calendar-day">29</div>
+            </div>
+          </div>
+
+          <button class="check-btn">周复盘</button>
+        </div>
+      </div>
+
+      <!-- 设置 -->
+      <div class="screen">
+        <div class="screen-header"></div>
+        <div class="screen-content">
+          <p class="screen-title">设置页</p>
+
+          <div class="settings-item">
+            <div class="settings-icon">☀️</div>
+            <div class="settings-info">
+              <h4>极简模式</h4>
+              <p>隐藏打卡动画和特效</p>
+            </div>
+            <div class="toggle"></div>
+          </div>
+
+          <div class="settings-item">
+            <div class="settings-icon">🌙</div>
+            <div class="settings-info">
+              <h4>暗色模式</h4>
+              <p>深色主题</p>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+
+          <div class="settings-item">
+            <div class="settings-icon">🔔</div>
+            <div class="settings-info">
+              <h4>通知开关</h4>
+              <p>接收打卡提醒和成就通知</p>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+
+          <div style="margin-top:24px">
+            <p class="section-title">数据</p>
+            <div class="settings-item" style="border:1px solid rgba(255,0,0,0.2)">
+              <div class="settings-icon" style="background:rgba(255,0,0,0.1)">🗑️</div>
+              <div class="settings-info">
+                <h4 style="color:#f44336">清空所有数据</h4>
+                <p>重新开始</p>
+              </div>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#f44336"><path d="M10 17l5-5-5-5v10z"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <h3>品牌色彩系统</h3>
+      <div class="color-row">
+        <div class="color-item">
+          <div class="color-swatch" style="background:#E85A1C"></div>
+          <span>炭火橙 / Primary</span>
+        </div>
+        <div class="color-item">
+          <div class="color-swatch" style="background:#FF8E72"></div>
+          <span>浅橙 / Primary Light</span>
+        </div>
+        <div class="color-item">
+          <div class="color-swatch" style="background:#F5F0EB"></div>
+          <span>宣纸米白 / Background</span>
+        </div>
+        <div class="color-item">
+          <div class="color-swatch" style="background:#1A1A1A"></div>
+          <span>深炭色 / Text</span>
+        </div>
+        <div class="color-item">
+          <div class="color-swatch" style="background:#8B7355"></div>
+          <span>暖灰 / Text Secondary</span>
+        </div>
+        <div class="color-item">
+          <div class="color-swatch" style="background:#4CAF50"></div>
+          <span>成功绿 / Success</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
