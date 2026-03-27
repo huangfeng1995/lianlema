@@ -17,6 +17,8 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
   late ReportService _reportService;
   bool _isLoading = true;
   DailyReport? _report;
+  final TextEditingController _reflectionController = TextEditingController();
+  bool _isSavingReflection = false;
 
   @override
   void initState() {
@@ -128,6 +130,9 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
             ),
           ),
           const SizedBox(height: 24),
+          // 今日一刻（可选的睡前记录）
+          if (isToday) _buildDailyReflectionCard(),
+          const SizedBox(height: 24),
           const Text(
             '完成情况',
             style: TextStyle(
@@ -225,5 +230,118 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
         ),
       ],
     );
+  }
+
+  Widget _buildDailyReflectionCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.amber.withValues(alpha: 0.15),
+            Colors.orange.withValues(alpha: 0.08),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.amber.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('✨', style: TextStyle(fontSize: 20)),
+              const SizedBox(width: 8),
+              const Text(
+                '今日一刻',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.amber,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  '可选',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.amber,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '睡前记住今天最值得的一刻',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _reflectionController,
+            maxLines: 3,
+            maxLength: 200,
+            decoration: InputDecoration(
+              hintText: '例如：今天最棒的一刻是...',
+              hintStyle: const TextStyle(color: AppColors.textLight),
+              filled: true,
+              fillColor: AppColors.cardBackground,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.all(12),
+              counterStyle: const TextStyle(color: AppColors.textLight),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _isSavingReflection ? null : _saveReflection,
+              child: _isSavingReflection
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('保存'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _saveReflection() async {
+    if (_reflectionController.text.trim().isEmpty) return;
+
+    setState(() => _isSavingReflection = true);
+
+    // TODO: 保存到storage
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('已保存 ✨'),
+          backgroundColor: Colors.amber,
+          duration: Duration(seconds: 1),
+        ),
+      );
+      setState(() => _isSavingReflection = false);
+    }
   }
 }
