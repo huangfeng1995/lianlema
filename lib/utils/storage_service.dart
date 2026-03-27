@@ -40,6 +40,7 @@ class StorageService {
   static const String _keyReminderHour = 'reminder_hour';
   static const String _keyReminderMinute = 'reminder_minute';
   static const String _keyNotificationsEnabled = 'notifications_enabled';
+  static const String _keyFocusReminders = 'focus_reminders'; // 专注时段提醒
 
   // ====== Onboarding ======
   bool get isOnboardingComplete => _prefs.getBool(_keyOnboardingComplete) ?? false;
@@ -245,6 +246,41 @@ class StorageService {
   /// 获取本月是否可补救
   bool canUseStreakRemedy() {
     return !isStreakRemedyUsedThisMonth();
+  }
+
+  // ====== 专注时段提醒 ======
+  /// 专注提醒数据结构
+  static const List<int> focusDurations = [15, 25, 30, 45, 60];
+
+  Future<void> saveFocusReminders(List<Map<String, dynamic>> reminders) async {
+    await _prefs.setString(_keyFocusReminders, jsonEncode(reminders));
+  }
+
+  List<Map<String, dynamic>> getFocusReminders() {
+    final str = _prefs.getString(_keyFocusReminders);
+    if (str == null) return [];
+    final list = jsonDecode(str) as List;
+    return list.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> addFocusReminder(String leverId, String leverContent, int hour, int minute, int duration) async {
+    final reminders = getFocusReminders();
+    // 检查是否已存在
+    reminders.removeWhere((r) => r['leverId'] == leverId);
+    reminders.add({
+      'leverId': leverId,
+      'leverContent': leverContent,
+      'hour': hour,
+      'minute': minute,
+      'duration': duration,
+    });
+    await saveFocusReminders(reminders);
+  }
+
+  Future<void> removeFocusReminder(String leverId) async {
+    final reminders = getFocusReminders();
+    reminders.removeWhere((r) => r['leverId'] == leverId);
+    await saveFocusReminders(reminders);
   }
 
   // ====== 打卡记录 ======

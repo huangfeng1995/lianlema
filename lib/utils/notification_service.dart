@@ -7,6 +7,7 @@ class NotificationService {
   static NotificationService? _instance;
   final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
   String? _pendingPayload;
+  static final tz.Location _location = tz.getLocation('Asia/Shanghai');
 
   NotificationService._();
 
@@ -239,6 +240,97 @@ class NotificationService {
     await _notifications.cancel(id: LeverReminderNotificationId);
   }
 
+  /// 调度专注时段提醒（开始通知 + 结束通知）
+  Future<void> scheduleFocusReminder({
+    required int leverIndex,
+    required String content,
+    required int hour,
+    required int minute,
+    required int durationMinutes,
+  }) async {
+    final baseId = FocusReminderBaseId + (leverIndex * 2);
+
+    // 取消旧的（如果存在）
+    await _notifications.cancel(id: baseId);
+    await _notifications.cancel(id: baseId + 1);
+
+    // 计算开始时间（明天这个时间）
+    final now = DateTime.now();
+    var startTime = DateTime(now.year, now.month, now.day, hour, minute);
+    if (startTime.isBefore(now) || startTime.isAtSameMomentAs(now)) {
+      startTime = startTime.add(const Duration(days: 1));
+    }
+
+    // 结束时间
+    final endTime = startTime.add(Duration(minutes: durationMinutes));
+
+    // 调度开始提醒
+    await _notifications.zonedSchedule(
+      id: baseId,
+      scheduledDate: tz.TZDateTime.from(startTime, _location),
+      notificationDetails: NotificationDetails(
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          threadIdentifier: 'focus_reminder',
+        ),
+        android: const AndroidNotificationDetails(
+          'focus_reminder',
+          '专注提醒',
+          channelDescription: '专注时段提醒',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      title: '🎯 专注时间开始',
+      body: content,
+      payload: 'focus_start',
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+
+    // 调度结束提醒
+    await _notifications.zonedSchedule(
+      id: baseId + 1,
+      scheduledDate: tz.TZDateTime.from(endTime, _location),
+      notificationDetails: NotificationDetails(
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          threadIdentifier: 'focus_reminder',
+        ),
+        android: const AndroidNotificationDetails(
+          'focus_reminder',
+          '专注提醒',
+          channelDescription: '专注时段提醒',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      title: '⏰ 专注时间结束',
+      body: '$durationMinutes分钟的专注完成！你做到了！',
+      payload: 'focus_end',
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+  }
+
+  /// 取消单个专注提醒
+  Future<void> cancelFocusReminder(int leverIndex) async {
+    final baseId = FocusReminderBaseId + (leverIndex * 2);
+    await _notifications.cancel(id: baseId);
+    await _notifications.cancel(id: baseId + 1);
+  }
+
+  /// 取消所有专注提醒
+  Future<void> cancelAllFocusReminders() async {
+    for (int i = 0; i < 10; i++) {
+      await cancelFocusReminder(i);
+    }
+  }
+
   /// 调度所有报告通知
   Future<void> scheduleAllReports() async {
     await Future.wait([
@@ -347,3 +439,4 @@ const int WeeklyReportNotificationId = 2;
 const int MonthlyReportNotificationId = 3;
 const int YearlyReportNotificationId = 4;
 const int LeverReminderNotificationId = 5;
+const int FocusReminderBaseId = 100; // 专注提醒从100开始，每个lever占2个ID（开始+结束）

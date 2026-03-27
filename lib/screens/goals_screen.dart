@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import '../theme/app_theme.dart';
 import '../models/models.dart';
 import '../utils/storage_service.dart';
+import '../utils/notification_service.dart';
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
@@ -18,6 +20,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
   String _antiVision = '';
   String _vision = '';
+
+  // 专注提醒数据
+  List<Map<String, dynamic>> _focusReminders = [];
   String _yearGoal = '';
   String _annualIdentity = '';
   List<String> _dailyLevers = [];
@@ -39,6 +44,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
     _dailyLevers = _storage.getDailyLevers();
     _constraints = _storage.getConstraints();
     _monthlyBoss = _storage.getMonthlyBoss();
+    _focusReminders = _storage.getFocusReminders();
 
     setState(() => _isLoading = false);
   }
@@ -425,52 +431,88 @@ class _GoalsScreenState extends State<GoalsScreen> {
           const SizedBox(height: 12),
           ...List.generate(_dailyLevers.length, (index) {
             final hasContent = _dailyLevers[index].isNotEmpty;
+            final leverId = 'lever_$index';
+            final hasReminder = _focusReminders.any((r) => r['leverId'] == leverId);
+            final reminder = hasReminder ? _focusReminders.firstWhere((r) => r['leverId'] == leverId) : null;
+
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                children: [
-                  Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: hasContent
-                          ? AppColors.primary.withValues(alpha: 0.1)
-                          : AppColors.textLight.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${index + 1}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: hasContent ? AppColors.primary : AppColors.textLight,
+              child: GestureDetector(
+                onTap: hasContent ? () => _showFocusReminderSheet(index) : null,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: hasContent
+                            ? AppColors.primary.withValues(alpha: 0.1)
+                            : AppColors.textLight.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${index + 1}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: hasContent ? AppColors.primary : AppColors.textLight,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _isEditing
-                        ? TextField(
-                            decoration: const InputDecoration(
-                              hintText: '添加杠杆...',
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _isEditing
+                          ? TextField(
+                              decoration: const InputDecoration(
+                                hintText: '添加杠杆...',
+                                border: InputBorder.none,
+                                isDense: true,
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                              controller: TextEditingController(text: _dailyLevers[index]),
+                              onChanged: (v) => _dailyLevers[index] = v,
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  hasContent ? _dailyLevers[index] : '未设置',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: hasContent ? AppColors.textPrimary : AppColors.textLight,
+                                  ),
+                                ),
+                                if (hasReminder && reminder != null) ...[
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.notifications_active, size: 12, color: AppColors.primary),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${(reminder['hour'] as int).toString().padLeft(2, '0')}:${(reminder['minute'] as int).toString().padLeft(2, '0')} · ${reminder['duration']}分钟',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
                             ),
-                            controller: TextEditingController(text: _dailyLevers[index]),
-                            onChanged: (v) => _dailyLevers[index] = v,
-                          )
-                        : Text(
-                            hasContent ? _dailyLevers[index] : '未设置',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: hasContent ? AppColors.textPrimary : AppColors.textLight,
-                            ),
-                          ),
-                  ),
-                ],
+                    ),
+                    if (hasContent && !_isEditing) ...[
+                      const SizedBox(width: 8),
+                      Icon(
+                        hasReminder ? Icons.notifications_active : Icons.notifications_none,
+                        size: 20,
+                        color: hasReminder ? AppColors.primary : AppColors.textLight,
+                      ),
+                    ],
+                  ],
+                ),
               ),
             );
           }),
@@ -605,5 +647,241 @@ class _GoalsScreenState extends State<GoalsScreen> {
         ],
       ),
     );
+  }
+
+  /// 显示专注提醒设置
+  void _showFocusReminderSheet(int index) {
+    if (index >= _dailyLevers.length || _dailyLevers[index].isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('请先填写杠杆内容'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // 检查是否已有提醒
+    final existingReminder = _focusReminders.where((r) => r['leverId'] == 'lever_$index').toList();
+    final hasReminder = existingReminder.isNotEmpty;
+    int selectedHour = hasReminder ? existingReminder.first['hour'] : 9;
+    int selectedMinute = hasReminder ? existingReminder.first['minute'] : 0;
+    int selectedDuration = hasReminder ? existingReminder.first['duration'] : 25;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.textLight,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                hasReminder ? '修改专注提醒' : '设置专注提醒',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _dailyLevers[index],
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 24),
+              // 时间选择
+              const Text(
+                '开始时间',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () async {
+                  final time = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay(hour: selectedHour, minute: selectedMinute),
+                  );
+                  if (time != null) {
+                    setSheetState(() {
+                      selectedHour = time.hour;
+                      selectedMinute = time.minute;
+                    });
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const Icon(Icons.access_time, color: AppColors.primary),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // 时长选择
+              const Text(
+                '持续时间',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: StorageService.focusDurations.map((duration) {
+                  final isSelected = selectedDuration == duration;
+                  return GestureDetector(
+                    onTap: () {
+                      setSheetState(() => selectedDuration = duration);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppColors.primary : AppColors.background,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '$duration分钟',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: isSelected ? Colors.white : AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+              // 操作按钮
+              Row(
+                children: [
+                  if (hasReminder)
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          await _removeFocusReminder(index);
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Text('删除提醒'),
+                      ),
+                    ),
+                  if (hasReminder) const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await _saveFocusReminder(index, selectedHour, selectedMinute, selectedDuration);
+                      },
+                      child: Text(hasReminder ? '修改' : '保存'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _saveFocusReminder(int index, int hour, int minute, int duration) async {
+    final leverContent = _dailyLevers[index];
+    final leverId = 'lever_$index';
+
+    // 保存到storage
+    await _storage.addFocusReminder(leverId, leverContent, hour, minute, duration);
+
+    // 调度通知
+    final notificationService = await NotificationService.getInstance();
+    await notificationService.scheduleFocusReminder(
+      leverIndex: index,
+      content: leverContent,
+      hour: hour,
+      minute: minute,
+      durationMinutes: duration,
+    );
+
+    // 更新本地状态
+    _focusReminders = _storage.getFocusReminders();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('已设置 ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} 开始，$duration分钟后提醒'),
+          backgroundColor: AppColors.primary,
+        ),
+      );
+    }
+  }
+
+  Future<void> _removeFocusReminder(int index) async {
+    final leverId = 'lever_$index';
+
+    // 从storage删除
+    await _storage.removeFocusReminder(leverId);
+
+    // 取消通知
+    final notificationService = await NotificationService.getInstance();
+    await notificationService.cancelFocusReminder(index);
+
+    // 更新本地状态
+    _focusReminders = _storage.getFocusReminders();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('已删除专注提醒'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
   }
 }
