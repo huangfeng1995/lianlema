@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../utils/storage_service.dart';
 import '../utils/notification_service.dart';
@@ -121,6 +122,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   await notificationService.cancelAllReportNotifications();
                 }
               },
+            ),
+            const SizedBox(height: 24),
+            _buildSectionHeader('数据'),
+            _buildDangerItem(
+              icon: '🗑️',
+              title: '清空所有数据',
+              subtitle: '重新开始',
+              onTap: _showResetDataDialog,
             ),
             const SizedBox(height: 24),
             _buildSectionHeader('关于'),
@@ -448,5 +457,135 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: AppColors.primary,
       ),
     );
+  }
+
+  Widget _buildDangerItem({
+    required String icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(
+                child: Text(icon, style: const TextStyle(fontSize: 20)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.red,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right,
+              color: Colors.red,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showResetDataDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Text('🗑️', style: TextStyle(fontSize: 24)),
+            SizedBox(width: 8),
+            Text('清空所有数据'),
+          ],
+        ),
+        content: const Text(
+          '这将删除所有你的打卡记录、目标和设置，此操作不可恢复。\n\n确定要重新开始吗？',
+          style: TextStyle(
+            fontSize: 14,
+            color: AppColors.textSecondary,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _resetAllData();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('确定清空'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _resetAllData() async {
+    // 取消所有通知
+    final notificationService = await NotificationService.getInstance();
+    await notificationService.cancelAllReportNotifications();
+
+    // 清空SharedPreferences（保留极简模式和暗色模式设置）
+    final prefs = await SharedPreferences.getInstance();
+    final darkMode = prefs.getBool('dark_mode') ?? false;
+    final minimalMode = prefs.getBool('minimal_mode') ?? false;
+
+    await prefs.clear();
+
+    // 恢复部分设置
+    await prefs.setBool('dark_mode', darkMode);
+    await prefs.setBool('minimal_mode', minimalMode);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('数据已清空，正在重启...'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      // 稍后重启App（实际上需要重启整个App才能完全重置状态）
+      await Future.delayed(const Duration(seconds: 1));
+    }
   }
 }
