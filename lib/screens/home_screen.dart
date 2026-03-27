@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:confetti/confetti.dart';
 import '../theme/app_theme.dart';
 import '../models/models.dart';
 import '../utils/storage_service.dart';
@@ -17,9 +16,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late ConfettiController _confettiController;
   late StorageService _storage;
   bool _isLoading = true;
+
+  // 打卡成功反馈
+  bool _showSuccessFeedback = false;
+  int _xpEarnedPreview = 0;
 
   UserStats _stats = UserStats(
     level: 1,
@@ -43,14 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _confettiController = ConfettiController(duration: const Duration(seconds: 2));
     _loadData();
-  }
-
-  @override
-  void dispose() {
-    _confettiController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -185,9 +180,9 @@ class _HomeScreenState extends State<HomeScreen> {
     await _storage.saveUserStats(finalStats);
     await _storage.saveBadges(updatedBadges);
 
-    // 播放庆祝动画（非极简模式）
+    // 微妙成功反馈（非极简模式）
     if (!_minimalMode) {
-      _confettiController.play();
+      _playSuccessFeedback(xpEarned);
     }
 
     setState(() {
@@ -450,26 +445,77 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          if (!_minimalMode)
-            Align(
-              alignment: Alignment.topCenter,
-              child: ConfettiWidget(
-                confettiController: _confettiController,
-                blastDirectionality: BlastDirectionality.explosive,
-                particleDrag: 0.05,
-                emissionFrequency: 0.05,
-                numberOfParticles: 30,
-                gravity: 0.1,
-                colors: const [
-                  AppColors.primary,
-                  AppColors.primaryLight,
-                  Color(0xFFFFD700),
-                  Color(0xFFFF6B5B),
-                  Color(0xFF4CAF50),
-                ],
-              ),
-            ),
+          if (_showSuccessFeedback) _buildSuccessFeedback(),
         ],
+      ),
+    );
+  }
+
+  void _playSuccessFeedback(int xp) {
+    setState(() {
+      _showSuccessFeedback = true;
+      _xpEarnedPreview = xp;
+    });
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        setState(() => _showSuccessFeedback = false);
+      }
+    });
+  }
+
+  Widget _buildSuccessFeedback() {
+    return AnimatedOpacity(
+      opacity: _showSuccessFeedback ? 1.0 : 0.0,
+      duration: const Duration(milliseconds: 300),
+      child: Container(
+        color: AppColors.primary.withValues(alpha: 0.15),
+        child: Center(
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.8, end: 1.0),
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.elasticOut,
+            builder: (context, scale, child) {
+              return Transform.scale(
+                scale: scale,
+                child: child,
+              );
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.4),
+                        blurRadius: 20,
+                        spreadRadius: 5,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: Colors.white,
+                    size: 44,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '+$_xpEarnedPreview XP',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
