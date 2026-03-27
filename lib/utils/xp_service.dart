@@ -108,6 +108,10 @@ class XpService {
     required int totalCheckIns,
     required int currentStreak,
     required bool yearGoalAchieved,
+    bool bossDefeated = false,
+    bool perfectMonth = false,
+    bool restartedAfterBreak = false,
+    int bossesDefeatedCount = 0,
   }) {
     final updated = currentBadges.map((badge) {
       if (badge.isUnlocked) return badge;
@@ -116,7 +120,7 @@ class XpService {
 
       switch (badge.id) {
         case '1':
-          // 初次行动
+          // 初醒 - 完成第一次打卡
           shouldUnlock = totalCheckIns >= 1;
           break;
         case '2':
@@ -124,16 +128,35 @@ class XpService {
           shouldUnlock = currentStreak >= 7;
           break;
         case '3':
+          // 连续14天
+          shouldUnlock = currentStreak >= 14;
+          break;
+        case '4':
           // 连续30天
           shouldUnlock = currentStreak >= 30;
           break;
-        case '4':
-          // 完成100次
-          shouldUnlock = totalCheckIns >= 100;
-          break;
         case '5':
-          // 年度目标达成
-          shouldUnlock = yearGoalAchieved;
+          // 连续100天
+          shouldUnlock = currentStreak >= 100;
+          break;
+        case '6':
+          // 完成第1个Boss
+          shouldUnlock = bossDefeated;
+          break;
+        case '7':
+          // 月度冠军 - 12个月内击败≥6个Boss
+          shouldUnlock = bossesDefeatedCount >= 6;
+          break;
+        case '8':
+          // 反愿景坚守者 - 需要365天，这个只能通过时间判断，暂不支持
+          break;
+        case '9':
+          // 完美月份 - 单月30天全勤
+          shouldUnlock = perfectMonth;
+          break;
+        case '10':
+          // 重新出发 - 中断后重新连续打卡7天
+          shouldUnlock = restartedAfterBreak && currentStreak >= 7;
           break;
       }
 

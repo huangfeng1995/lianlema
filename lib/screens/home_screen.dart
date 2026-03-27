@@ -154,6 +154,9 @@ class _HomeScreenState extends State<HomeScreen> {
     // 计算新连续天数
     final newStreak = _stats.streak + 1;
 
+    // 检查 Boss 是否被击败（在徽章检查之前）
+    final bool bossDefeated = updatedBoss != null && updatedBoss.hp >= updatedBoss.totalDays;
+
     // 更新 UserStats
     final oldStats = _stats;
     final newStats = XpService.addXP(_stats, xpEarned);
@@ -165,6 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
       totalCheckIns: oldStats.totalCheckIns + 1,
       currentStreak: newStreak,
       yearGoalAchieved: false,
+      bossDefeated: bossDefeated,
     );
     final newUnlockedBadges = XpService.getNewlyUnlockedBadges(badges, updatedBadges);
 
@@ -183,9 +187,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!_minimalMode) {
       _confettiController.play();
     }
-
-    // 检查 Boss 是否被击败
-    final bool bossDefeated = updatedBoss != null && updatedBoss.hp >= updatedBoss.totalDays;
 
     setState(() {
       _stats = finalStats;
