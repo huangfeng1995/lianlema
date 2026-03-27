@@ -810,16 +810,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: AppColors.textPrimary,
                 ),
               ),
-              Text(
-                '${_todayLevers.where((l) => l.isCompleted).length}/${_todayLevers.length}',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
+              if (_todayLevers.isNotEmpty)
+                Text(
+                  '${_todayLevers.where((l) => l.isCompleted).length}/${_todayLevers.length}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 12),
+          if (_todayLevers.isEmpty) _buildEmptyLeversCard(),
           ...List.generate(_todayLevers.length, (index) {
             final lever = _todayLevers[index];
             return Padding(
@@ -902,6 +904,69 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyLeversCard() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          const Text(
+            '🎯',
+            style: TextStyle(fontSize: 40),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            '还没有设置今日行动',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '点击下方「目标」标签\n设置你的每日杠杆',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              height: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.lightbulb_outline, size: 16, color: AppColors.primary),
+                SizedBox(width: 6),
+                Text(
+                  'IF-THEN格式效果更好',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
