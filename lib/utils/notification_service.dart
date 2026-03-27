@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
@@ -18,28 +19,30 @@ class NotificationService {
   }
 
   Future<void> _init() async {
-    tz_data.initializeTimeZones();
-    tz.setLocalLocation(tz.getLocation('Asia/Shanghai'));
+    try {
+      tz_data.initializeTimeZones();
+      tz.setLocalLocation(tz.getLocation('Asia/Shanghai'));
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
+      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const iosSettings = DarwinInitializationSettings(
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
+      );
 
-    const initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
+      const initSettings = InitializationSettings(
+        android: androidSettings,
+        iOS: iosSettings,
+      );
 
-    await _notifications.initialize(
-      onDidReceiveNotificationResponse: _onNotificationTap,
-      settings: initSettings,
-    );
-
-    // 请求 iOS 权限
-    await _requestPermissions();
+      await _notifications.initialize(
+        onDidReceiveNotificationResponse: _onNotificationTap,
+        settings: initSettings,
+      );
+    } catch (e) {
+      // 通知服务初始化失败，App仍可正常运行
+      debugPrint('NotificationService init failed: $e');
+    }
   }
 
   Future<void> _requestPermissions() async {

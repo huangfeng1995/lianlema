@@ -209,52 +209,53 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildWelcomePage() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          const SizedBox(height: 40),
           Container(
-            width: 100,
-            height: 100,
+            width: 80,
+            height: 80,
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(20),
             ),
             child: const Center(
-              child: Text('🔥', style: TextStyle(fontSize: 56)),
+              child: Text('🔥', style: TextStyle(fontSize: 40)),
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
           const Text(
             '欢迎来到练了吗',
             style: TextStyle(
-              fontSize: 28,
+              fontSize: 26,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           const Text(
             '从今天开始发生改变\n每天行动一点点，成为你想成为的人',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 15,
               color: AppColors.textSecondary,
-              height: 1.6,
+              height: 1.5,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: AppColors.cardBackground,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 12,
+                  blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
               ],
@@ -262,13 +263,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             child: Column(
               children: [
                 _buildFeatureRow('🔥', '每日打卡', '完成行动，积累连续天数'),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 _buildFeatureRow('⛩️', '月度Boss战', '设定目标，月底检验成果'),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 _buildFeatureRow('🎯', '每日杠杆', '2-3件关键行动，撬动大改变'),
               ],
             ),
           ),
+          const SizedBox(height: 40),
         ],
       ),
     );

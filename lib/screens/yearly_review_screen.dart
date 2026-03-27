@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import '../models/models.dart';
 import '../utils/storage_service.dart';
-import '../utils/report_service.dart';
 import '../utils/xp_service.dart';
 
 /// 年度复盘流程（4步骤）
@@ -25,7 +23,6 @@ class _YearlyReviewScreenState extends State<YearlyReviewScreen> {
   final int _totalSteps = 4;
 
   late StorageService _storage;
-  late ReportService _reportService;
   bool _isLoading = true;
 
   // 年度数据
@@ -42,9 +39,6 @@ class _YearlyReviewScreenState extends State<YearlyReviewScreen> {
 
   // 下一年的身份升级
   String _nextYearIdentity = '';
-
-  // 新年度目标
-  String _newYearGoal = '';
 
   bool _isSaving = false;
 
@@ -63,7 +57,6 @@ class _YearlyReviewScreenState extends State<YearlyReviewScreen> {
 
   Future<void> _loadData() async {
     _storage = await StorageService.getInstance();
-    _reportService = ReportService(_storage);
 
     final reviewYear = widget.reviewYear ?? DateTime.now().year;
 

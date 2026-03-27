@@ -15,16 +15,15 @@ void main() async {
     ),
   );
 
-  // 初始化通知服务
-  final notificationService = await NotificationService.getInstance();
+  // 初始化存储服务（同步）
+  await StorageService.getInstance();
 
-  // 获取启动时是否从通知进入
-  final launchPayload = await notificationService.getNotificationLaunchPayload();
+  // 通知服务在后台初始化
+  NotificationService.getInstance().then((notificationService) {
+    notificationService.scheduleAllReports();
+  });
 
-  // 调度所有报告通知
-  await notificationService.scheduleAllReports();
-
-  runApp(LianlemaApp(initialPage: launchPayload));
+  runApp(const LianlemaApp());
 }
 
 // GlobalKey 供 SettingsScreen 触发主题重建
