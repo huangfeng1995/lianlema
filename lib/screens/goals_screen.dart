@@ -19,6 +19,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
   String _antiVision = '';
   String _vision = '';
   String _yearGoal = '';
+  String _annualIdentity = '';
   List<String> _dailyLevers = [];
   String _constraints = '';
   MonthlyBoss? _monthlyBoss;
@@ -34,6 +35,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
     _antiVision = _storage.getAntiVision();
     _vision = _storage.getVision();
     _yearGoal = _storage.getYearGoal();
+    _annualIdentity = _storage.getAnnualIdentity();
     _dailyLevers = _storage.getDailyLevers();
     _constraints = _storage.getConstraints();
     _monthlyBoss = _storage.getMonthlyBoss();
@@ -45,6 +47,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
     setState(() => _isSaving = true);
     try {
       await _storage.saveYearGoal(_yearGoal);
+      await _storage.saveAnnualIdentity(_annualIdentity);
       await _storage.saveDailyLevers(_dailyLevers);
       if (_monthlyBoss != null) {
         await _storage.saveMonthlyBoss(_monthlyBoss!);
@@ -128,6 +131,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
                   const SizedBox(height: 16),
                   _buildYearGoalCard(),
                   const SizedBox(height: 16),
+                  _buildAnnualIdentityCard(),
+                  const SizedBox(height: 16),
                   _buildMonthlyBossCard(),
                   const SizedBox(height: 16),
                   _buildDailyLeversCard(),
@@ -174,6 +179,21 @@ class _GoalsScreenState extends State<GoalsScreen> {
       isLocked: false,
       canEdit: _isEditing,
       onEditChanged: (v) => _yearGoal = v,
+      borderColor: AppColors.primary.withValues(alpha: 0.3),
+    );
+  }
+
+  Widget _buildAnnualIdentityCard() {
+    return _buildCard(
+      icon: '🌟',
+      title: '年度身份',
+      subtitle: '我是_____的行动派',
+      subtitleColor: AppColors.primary,
+      content: _annualIdentity,
+      isLocked: false,
+      canEdit: _isEditing,
+      onEditChanged: (v) => _annualIdentity = v,
+      hintText: '例如：早起读书、持续运动、写作',
       borderColor: AppColors.primary.withValues(alpha: 0.3),
     );
   }
@@ -481,6 +501,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
     bool canEdit = false,
     Function(String)? onEditChanged,
     Color? borderColor,
+    String? hintText,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -565,8 +586,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
             child: canEdit
                 ? TextField(
                     maxLines: 4,
-                    decoration: const InputDecoration(
-                      hintText: '请输入...',
+                    decoration: InputDecoration(
+                      hintText: hintText ?? '请输入...',
                       border: InputBorder.none,
                     ),
                     controller: TextEditingController(text: content),
