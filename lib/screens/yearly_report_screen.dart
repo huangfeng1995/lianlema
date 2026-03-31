@@ -321,7 +321,7 @@ class _YearlyReportScreenState extends State<YearlyReportScreen> {
                 child: _buildStatCard(
                   label: '最长连续',
                   value: '${report.longestStreak}天',
-                  icon: '🔥',
+                  icon: Icons.local_fire_department,
                   color: AppColors.streak,
                 ),
               ),
@@ -330,7 +330,7 @@ class _YearlyReportScreenState extends State<YearlyReportScreen> {
                 child: _buildStatCard(
                   label: '击败Boss',
                   value: '${report.bossesDefeated}个',
-                  icon: '🏆',
+                  icon: Icons.emoji_events,
                   color: const Color(0xFFFFD700),
                 ),
               ),
@@ -451,7 +451,7 @@ class _YearlyReportScreenState extends State<YearlyReportScreen> {
   Widget _buildStatCard({
     required String label,
     required String value,
-    required String icon,
+    required IconData icon,
     required Color color,
   }) {
     return Container(
@@ -463,7 +463,7 @@ class _YearlyReportScreenState extends State<YearlyReportScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(icon, style: const TextStyle(fontSize: 24)),
+          Icon(icon, size: 24, color: color),
           const SizedBox(height: 8),
           Text(
             value,

@@ -138,8 +138,8 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('周复盘已完成 🎉'),
+          SnackBar(
+            content: Row(children: [const Icon(Icons.check_circle, color: Colors.white, size: 18), const SizedBox(width: 8), const Text('周复盘已完成')]),
             backgroundColor: AppColors.success,
           ),
         );
@@ -257,7 +257,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
                     color: Colors.white,
                   ),
                 )
-              : Text(_currentStep == _totalSteps - 1 ? '完成复盘 🎉' : '下一步'),
+              : Text(_currentStep == _totalSteps - 1 ? '完成复盘 ✨' : '下一步'),
         ),
       ),
     );
@@ -287,9 +287,9 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
             ),
           ),
           const SizedBox(height: 32),
-          _buildStatRow('📅', '打卡天数', '$_checkInDays / 7 天'),
+          _buildStatRow(Icons.calendar_today, AppColors.primary, '打卡天数', '$_checkInDays / 7 天'),
           const SizedBox(height: 16),
-          _buildStatRow('🎯', '每日杠杆', '$_completedLevers / $_totalLevers 项'),
+          _buildStatRow(Icons.star, const Color(0xFFFFD700), '每日杠杆', '$_completedLevers / $_totalLevers 项'),
           const SizedBox(height: 32),
           Container(
             padding: const EdgeInsets.all(16),
@@ -318,7 +318,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
     );
   }
 
-  Widget _buildStatRow(String emoji, String label, String value) {
+  Widget _buildStatRow(IconData icon, Color iconColor, String label, String value) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -330,7 +330,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
       ),
       child: Row(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 28)),
+          Icon(icon, size: 32, color: iconColor),
           const SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,

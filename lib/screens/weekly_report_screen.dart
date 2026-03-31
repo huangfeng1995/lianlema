@@ -202,7 +202,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
                 child: _buildStatCard(
                   label: '本周获得XP',
                   value: '+${report.xpEarned}',
-                  icon: '⚡',
+                  icon: Icons.bolt,
                   color: const Color(0xFF6C63FF),
                 ),
               ),
@@ -211,7 +211,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
                 child: _buildStatCard(
                   label: '最长连续',
                   value: '${report.longestStreak}天',
-                  icon: '🔥',
+                  icon: Icons.local_fire_department,
                   color: AppColors.streak,
                 ),
               ),
@@ -301,7 +301,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
   Widget _buildStatCard({
     required String label,
     required String value,
-    required String icon,
+    required IconData icon,
     required Color color,
   }) {
     return Container(
@@ -313,7 +313,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(icon, style: const TextStyle(fontSize: 24)),
+          Icon(icon, size: 24, color: color),
           const SizedBox(height: 8),
           Text(
             value,

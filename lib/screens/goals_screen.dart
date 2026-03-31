@@ -42,6 +42,10 @@ class _GoalsScreenState extends State<GoalsScreen> {
     _yearGoal = _storage.getYearGoal();
     _annualIdentity = _storage.getAnnualIdentity();
     _dailyLevers = _storage.getDailyLevers();
+    // 确保至少有3个槽位（不在 build 中修改状态）
+    while (_dailyLevers.length < 3) {
+      _dailyLevers.add('');
+    }
     _constraints = _storage.getConstraints();
     _monthlyBoss = _storage.getMonthlyBoss();
     _focusReminders = _storage.getFocusReminders();
@@ -89,10 +93,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
         backgroundColor: AppColors.background,
         title: const Text('目标设定'),
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: const SizedBox(width: 48), // GoalsScreen 是底部 Tab 页面，无需返回按钮
         actions: [
           if (_isEditing)
             TextButton(
@@ -153,7 +154,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
   Widget _buildAntiVisionCard() {
     return _buildCard(
-      icon: '⚠️',
+      icon: 'assets/images/icon/warning_icon.png',
       title: '反愿景',
       subtitle: '锁定1年不可更改',
       subtitleColor: AppColors.textLight,
@@ -177,7 +178,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
   Widget _buildYearGoalCard() {
     return _buildCard(
-      icon: '🎯',
+      icon: 'assets/images/icon/target_icon.png',
       title: '一年目标',
       subtitle: '每年可改1次',
       subtitleColor: AppColors.primary,
@@ -238,8 +239,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Center(
-                  child: Text('👹', style: TextStyle(fontSize: 18)),
+                child: Center(
+                  child: const Icon(Icons.whatshot, size: 18, color: AppColors.primary),
                 ),
               ),
               const SizedBox(width: 12),
@@ -308,7 +309,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Center(
+                child: Center(
                   child: Text(
                     '设置/更换Boss目标',
                     style: TextStyle(
@@ -373,11 +374,6 @@ class _GoalsScreenState extends State<GoalsScreen> {
   }
 
   Widget _buildDailyLeversCard() {
-    // 确保至少有3个槽位
-    while (_dailyLevers.length < 3) {
-      _dailyLevers.add('');
-    }
-
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -399,7 +395,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Center(
+                child: Center(
                   child: Text('🔨', style: TextStyle(fontSize: 18)),
                 ),
               ),
@@ -600,7 +596,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                     color: AppColors.textLight.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.lock_outline, size: 12, color: AppColors.textLight),

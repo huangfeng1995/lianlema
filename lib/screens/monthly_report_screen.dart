@@ -178,7 +178,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                 ),
                 child: Center(
                   child: Text(
-                    isBossDefeated ? '🏆' : '👹',
+                    isBossDefeated ? '🏆' : '🔥',
                     style: const TextStyle(fontSize: 22),
                   ),
                 ),
@@ -198,7 +198,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      isBossDefeated ? '✅ 已击败！太厉害了' : 'HP: ${report.checkInDays}/${report.bossTotalHp}',
+                      isBossDefeated ? '✓ 已击败！太厉害了' : 'HP: ${report.checkInDays}/${report.bossTotalHp}',
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,

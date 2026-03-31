@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../utils/storage_service.dart';
 import '../utils/xp_service.dart';
 import '../utils/date_utils.dart' as app_date;
+import '../utils/badge_icon.dart';
 import 'settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -199,12 +200,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(
-                      '🔥 ${_stats.streak}天',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.white,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.local_fire_department, size: 14, color: AppColors.streak),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${_stats.streak}天',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -580,12 +588,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                       child: Center(
-                        child: Text(
-                          badge.icon,
-                          style: TextStyle(
-                            fontSize: 28,
-                            color: badge.isUnlocked ? null : Colors.grey,
-                          ),
+                        child: Icon(
+                          getBadgeIcon(badge.icon),
+                          size: 36,
+                          color: badge.isUnlocked
+                              ? AppColors.primary
+                              : AppColors.textLight.withValues(alpha: 0.35),
                         ),
                       ),
                     ),
@@ -734,7 +742,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     report.writeln('等级：Lv${_stats.level}');
     report.writeln('总经验值：${_stats.totalXP} XP');
     if (unlockedBadges.isNotEmpty) {
-      report.writeln('徽章：${unlockedBadges.map((b) => '${b.icon}${b.name}').join(' / ')}');
+      report.writeln('徽章：${unlockedBadges.map((b) => b.name).join(' / ')}');
     }
     report.writeln('');
     report.writeln('【愿景】');
@@ -772,7 +780,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _shareWithFriends() async {
     final text = '''我最近在用『练了吗』养成每日习惯，一起加油！
 
-🔥 我的反愿景：${_antiVision.isNotEmpty ? _antiVision : '成为每天虚度光阴的人'}
+反愿景：${_antiVision.isNotEmpty ? _antiVision : '成为每天虚度光阴的人'}
 ✨ 我的愿景：${_vision.isNotEmpty ? _vision : '活成自己想要的样子'}
 
 从今天开始发生改变 📍
@@ -814,9 +822,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Center(
-                child: Text(
-                  badge.icon,
-                  style: const TextStyle(fontSize: 40),
+                child: Icon(
+                  getBadgeIcon(badge.icon),
+                  size: 56,
+                  color: badge.isUnlocked
+                      ? AppColors.primary
+                      : AppColors.textLight.withValues(alpha: 0.35),
                 ),
               ),
             ),

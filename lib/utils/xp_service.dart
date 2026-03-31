@@ -7,8 +7,11 @@ class XpService {
   /// 完成全部杠杆额外奖励 XP
   static const int allLeversBonusXP = 5;
 
-  /// 连续打卡额外奖励（每7天）
-  static const int streakBonusXP = 3;
+  /// 连续打卡里程碑奖励（每达到一个7天里程碑）
+  static const int streakMilestoneXP = 30;
+
+  /// 月度 Boss 击败奖励
+  static const int bossDefeatXP = 50;
 
   /// 每日首次登录奖励
   static const int dailyLoginXP = 2;
@@ -26,9 +29,12 @@ class XpService {
       xp += allLeversBonusXP;
     }
 
-    // 连续打卡加成（每7天）
-    final streakBonus = (currentStreak ~/ 7) * streakBonusXP;
-    xp += streakBonus;
+    // 连续打卡里程碑加成：每7天 +30，上限 +100
+    final streakWeeks = currentStreak ~/ 7;
+    if (streakWeeks > 0) {
+      xp += streakWeeks * streakMilestoneXP;
+      if (xp > 100) xp = 100; // 封顶
+    }
 
     return xp;
   }

@@ -159,8 +159,8 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
                   ),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Center(
-                  child: Text('🎉', style: TextStyle(fontSize: 36)),
+                child: Center(
+                  child: const Icon(Icons.check_circle, size: 36, color: AppColors.primary),
                 ),
               ),
               const SizedBox(height: 20),
@@ -174,7 +174,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                '下个月，一起继续前行 💪',
+                '下个月，一起继续前行',
                 style: TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
@@ -283,7 +283,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  isDefeated ? '🏆 Boss击败' : '👹 Boss进行中',
+                  isDefeated ? '🏆 Boss击败' : '🔥 Boss进行中',
                   style: TextStyle(
                     fontSize: 11, fontWeight: FontWeight.w600,
                     color: isDefeated ? AppColors.success : const Color(0xFFFF9500),
@@ -403,7 +403,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
                     color: Colors.white,
                   ),
                 )
-              : Text(_currentStep == _totalSteps - 1 ? '完成复盘 🎉' : '下一步'),
+              : Text(_currentStep == _totalSteps - 1 ? '完成复盘 ✨' : '下一步'),
         ),
       ),
     );
@@ -487,7 +487,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
                       ),
                       child: Center(
                         child: Text(
-                          isDefeated ? '🏆' : '👹',
+                          isDefeated ? '🏆' : '🔥',
                           style: const TextStyle(fontSize: 24),
                         ),
                       ),
@@ -576,7 +576,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
             child: Row(
               children: [
                 Text(
-                  isDefeated ? '🎊' : '💪',
+                  isDefeated ? '✨' : '💪',
                   style: const TextStyle(fontSize: 28),
                 ),
                 const SizedBox(width: 14),
@@ -963,7 +963,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
             ),
             child: Row(
               children: [
-                const Text('👹', style: TextStyle(fontSize: 20)),
+                const Icon(Icons.whatshot, size: 20, color: AppColors.primary),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(

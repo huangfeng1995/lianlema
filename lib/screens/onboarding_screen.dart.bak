@@ -130,6 +130,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       }),
                     ),
                   ),
+                  GestureDetector(
+                    onTap: _isSaving ? null : _completeOnboarding,
+                    child: const Text(
+                      '跳过',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

@@ -8,6 +8,11 @@ class StorageService {
 
   StorageService._();
 
+  /// 重置单例（用于数据清除后重新初始化）
+  static void resetInstance() {
+    _instance = null;
+  }
+
   static Future<StorageService> getInstance() async {
     if (_instance == null) {
       _instance = StorageService._();
@@ -316,70 +321,70 @@ class StorageService {
       id: '1',
       name: '初醒',
       description: '开始了，就是最好的时刻',
-      icon: '🐣',
+      icon: 'assets/images/badge/badge_01_hatch.png',
       isUnlocked: false,
     ),
     AppBadge(
       id: '2',
       name: '连续7天',
       description: '7天，你开始形成习惯',
-      icon: '🔥',
+      icon: 'assets/images/badge/badge_02_fire7.png',
       isUnlocked: false,
     ),
     AppBadge(
       id: '3',
       name: '连续14天',
       description: '两周，行动成了本能',
-      icon: '⚡',
+      icon: 'assets/images/badge/badge_03_lightning.png',
       isUnlocked: false,
     ),
     AppBadge(
       id: '4',
       name: '连续30天',
       description: '一个月，你已经不一样了',
-      icon: '💎',
+      icon: 'assets/images/badge/badge_04_gem.png',
       isUnlocked: false,
     ),
     AppBadge(
       id: '5',
       name: '连续100天',
       description: '百日蜕变，你活成了想成为的人',
-      icon: '👑',
+      icon: 'assets/images/badge/badge_05_crown.png',
       isUnlocked: false,
     ),
     AppBadge(
       id: '6',
       name: '完成第1个Boss',
       description: '击败本月Boss，身份又近一步',
-      icon: '🎯',
+      icon: 'assets/images/badge/badge_06_target.png',
       isUnlocked: false,
     ),
     AppBadge(
       id: '7',
       name: '月度冠军',
       description: '半年同行，持续在行动',
-      icon: '🏆',
+      icon: 'assets/images/badge/badge_07_trophy.png',
       isUnlocked: false,
     ),
     AppBadge(
       id: '8',
       name: '反愿景坚守者',
       description: '一年坚守，你活成了反愿景的反面',
-      icon: '💀',
+      icon: 'assets/images/badge/badge_08_skull.png',
       isUnlocked: false,
     ),
     AppBadge(
       id: '9',
       name: '完美月份',
       description: '整月无缺，这是你的证明',
-      icon: '📅',
+      icon: 'assets/images/badge/badge_09_calendar.png',
       isUnlocked: false,
     ),
     AppBadge(
       id: '10',
       name: '重新出发',
       description: '跌倒了再站起来，比第一次更勇敢',
-      icon: '🌱',
+      icon: 'assets/images/badge/badge_10_sprout.png',
       isUnlocked: false,
     ),
   ];

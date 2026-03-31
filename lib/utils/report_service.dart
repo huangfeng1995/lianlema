@@ -178,7 +178,7 @@ class ReportService {
     final badgesEarnedThisMonth = badges
         .where((b) => b.isUnlocked && b.unlockedAt != null &&
             b.unlockedAt!.year == year && b.unlockedAt!.month == month)
-        .map((b) => '${b.icon} ${b.name}')
+        .map((b) => b.name)
         .toList();
 
     String? newIdentity;
@@ -242,7 +242,7 @@ class ReportService {
     final badgesEarnedThisYear = badges
         .where((b) => b.isUnlocked && b.unlockedAt != null &&
             b.unlockedAt!.year == year)
-        .map((b) => '${b.icon} ${b.name}')
+        .map((b) => b.name)
         .toList();
 
     return YearlyReport(

@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../utils/storage_service.dart';
 import '../utils/xp_service.dart';
 import '../utils/date_utils.dart' as app_date;
+import '../utils/badge_icon.dart';
 import 'profile_screen.dart';
 import 'monthly_review_screen.dart';
 
@@ -152,11 +153,17 @@ class _HomeScreenState extends State<HomeScreen> {
     final newStreak = _stats.streak + 1;
 
     // 检查 Boss 是否被击败（在徽章检查之前）
-    final bool bossDefeated = updatedBoss != null && updatedBoss.hp >= updatedBoss.totalDays;
+    final bool bossWasAlreadyDefeated = _monthlyBoss != null && _monthlyBoss!.hp >= _monthlyBoss!.totalDays;
+    final bool bossDefeatedNow = updatedBoss != null && updatedBoss.hp >= updatedBoss.totalDays;
+    final bool bossJustDefeated = bossDefeatedNow && !bossWasAlreadyDefeated;
+
+    // 累计 XP（含 boss 击败奖励，只有刚击败才加）
+    int totalXP = xpEarned;
+    if (bossJustDefeated) totalXP += XpService.bossDefeatXP;
 
     // 更新 UserStats
     final oldStats = _stats;
-    final newStats = XpService.addXP(_stats, xpEarned);
+    final newStats = XpService.addXP(_stats, totalXP);
 
     // 检查徽章
     final badges = _storage.getBadges();
@@ -165,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
       totalCheckIns: oldStats.totalCheckIns + 1,
       currentStreak: newStreak,
       yearGoalAchieved: false,
-      bossDefeated: bossDefeated,
+      bossDefeated: bossDefeatedNow,
     );
     final newUnlockedBadges = XpService.getNewlyUnlockedBadges(badges, updatedBadges);
 
@@ -191,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (updatedBoss != null) _monthlyBoss = updatedBoss;
     });
 
-    if (bossDefeated) {
+    if (bossJustDefeated) {
       _showVictoryDialog(
         updatedBoss!,
         onDismiss: () => _showMonthlyReview(
@@ -224,13 +231,20 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                '👹 VICTORY 👹',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.whatshot, size: 32, color: AppColors.primary),
+                  const Text(
+                    ' VICTORY ',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const Icon(Icons.whatshot, size: 32, color: AppColors.primary),
+                ],
               ),
               const SizedBox(height: 12),
               Text(
@@ -248,13 +262,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: AppColors.success.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
-                  '🎖️ 月度Boss已击败！',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.success,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.emoji_events, size: 16, color: Color(0xFFFFD700)),
+                    const SizedBox(width: 6),
+                    const Text(
+                      '月度Boss已击败！',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.success,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 20),
@@ -294,13 +315,20 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                '🎉 打卡成功！',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.check_circle, size: 28, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  const Text(
+                    '打卡成功！',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
               ),
               if (_temptingBundling.isNotEmpty) ...[
                 const SizedBox(height: 12),
@@ -316,7 +344,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('🎁', style: TextStyle(fontSize: 18)),
+                      const Icon(Icons.military_tech, size: 22, color: Color(0xFFFFD700)),
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
@@ -380,7 +408,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
-                  children: newBadges.map((b) => Text(b.icon, style: const TextStyle(fontSize: 32))).toList(),
+                  children: newBadges.map((b) => Icon(getBadgeIcon(b.icon), size: 36, color: AppColors.primary)).toList(),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -577,12 +605,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Center(
-                    child: Text(
-                      '练',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      color: Colors.white.withValues(alpha: 0.2),
+                      child: const Icon(
+                        Icons.apps,
+                        size: 28,
                         color: Colors.white,
                       ),
                     ),
@@ -704,7 +735,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Center(child: Text('👹', style: TextStyle(fontSize: 20))),
+              child: const Center(child: Icon(Icons.whatshot, size: 28, color: AppColors.primary)),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -779,7 +810,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: Row(
           children: [
-            const Text('🔥', style: TextStyle(fontSize: 36)),
+            Icon(Icons.local_fire_department, size: 36, color: AppColors.streak),
             const SizedBox(width: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -827,12 +858,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Colors.amber.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('🔧', style: TextStyle(fontSize: 12)),
-                      SizedBox(width: 4),
-                      Text(
+                      const Icon(Icons.settings, size: 14, color: Colors.amber),
+                      const SizedBox(width: 4),
+                      const Text(
                         '补救',
                         style: TextStyle(
                           fontSize: 13,
@@ -854,7 +885,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  _isCheckedInToday ? '✅ 今日已完成' : '🔥 去打卡',
+                  _isCheckedInToday ? '✓ 今日已完成' : '去打卡',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -957,7 +988,7 @@ class _HomeScreenState extends State<HomeScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _checkIn,
-                child: const Text('完成打卡 🎉'),
+                child: const Text('完成打卡 ✨'),
               ),
             ),
           if (_isCheckedInToday)
@@ -970,7 +1001,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: const Center(
                 child: Text(
-                  '✅ 今日已打卡，明天继续加油！',
+                  '✓ 今日已打卡，明天继续加油！',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -996,9 +1027,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Column(
         children: [
-          const Text(
-            '🎯',
-            style: TextStyle(fontSize: 40),
+          Icon(
+            Icons.flag,
+            size: 40,
+            color: AppColors.primary,
           ),
           const SizedBox(height: 12),
           const Text(
@@ -1053,11 +1085,11 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.cardBackground,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
           children: [
-            Text('🔧', style: TextStyle(fontSize: 24)),
-            SizedBox(width: 8),
-            Text('补救机会'),
+            const Icon(Icons.settings, size: 24),
+            const SizedBox(width: 8),
+            const Text('补救机会'),
           ],
         ),
         content: Column(
@@ -1112,7 +1144,7 @@ class _HomeScreenState extends State<HomeScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.amber,
             ),
-            child: const Text('确认补救 🔥'),
+            child: const Text('确认补救 ✨'),
           ),
         ],
       ),
@@ -1132,7 +1164,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('补救成功！本月还有0次补救机会 🔧'),
+          content: Text('补救成功！本月还有0次补救机会 ✨'),
           backgroundColor: Colors.amber,
           duration: Duration(seconds: 2),
         ),

@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../utils/storage_service.dart';
 import '../utils/notification_service.dart';
 import '../main.dart';
+import 'splash_screen.dart';
 
 /// 设置页面
 class SettingsScreen extends StatefulWidget {
@@ -582,10 +583,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SnackBar(
           content: Text('数据已清空，正在重启...'),
           backgroundColor: Colors.red,
+          duration: Duration(seconds: 1),
         ),
       );
-      // 稍后重启App（实际上需要重启整个App才能完全重置状态）
-      await Future.delayed(const Duration(seconds: 1));
+      // 重置 StorageService 单例，让它重新初始化
+      StorageService.resetInstance();
+      
+      // 跳转到 SplashScreen 并清除所有导航栈
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const SplashScreen()),
+          (route) => false,  // 清除所有历史导航栈
+        );
+      }
     }
   }
 }

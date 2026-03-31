@@ -133,8 +133,8 @@ class _YearlyReviewScreenState extends State<YearlyReviewScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('年度复盘已完成 🎉'),
+          SnackBar(
+            content: Row(children: [const Icon(Icons.check_circle, color: Colors.white, size: 18), const SizedBox(width: 8), const Text('年度复盘已完成')]),
             backgroundColor: AppColors.success,
           ),
         );
@@ -253,7 +253,7 @@ class _YearlyReviewScreenState extends State<YearlyReviewScreen> {
                     color: Colors.white,
                   ),
                 )
-              : Text(_currentStep == _totalSteps - 1 ? '完成复盘 🎉' : '下一步'),
+              : Text(_currentStep == _totalSteps - 1 ? '完成复盘 ✨' : '下一步'),
         ),
       ),
     );
@@ -283,13 +283,13 @@ class _YearlyReviewScreenState extends State<YearlyReviewScreen> {
             ),
           ),
           const SizedBox(height: 32),
-          _buildStatCard('📅', '打卡天数', '$_totalCheckIns 天'),
+          _buildStatCard(Icons.calendar_today, AppColors.primary, '打卡天数', '$_totalCheckIns 天'),
           const SizedBox(height: 16),
-          _buildStatCard('🔥', '最长连续', '$_longestStreak 天'),
+          _buildStatCard(Icons.local_fire_department, AppColors.streak, '最长连续', '$_longestStreak 天'),
           const SizedBox(height: 16),
-          _buildStatCard('⛩️', '击败Boss', '$_totalBossesDefeated 个'),
+          _buildStatCard(Icons.shield, AppColors.primary, '击败Boss', '$_totalBossesDefeated 个'),
           const SizedBox(height: 16),
-          _buildStatCard('🌟', '当前等级', 'Lv.$_level · ${XpService.levelTitle(_level)}'),
+          _buildStatCard(Icons.star, const Color(0xFFFFD700), '当前等级', 'Lv.$_level · ${XpService.levelTitle(_level)}'),
           const SizedBox(height: 32),
           Container(
             padding: const EdgeInsets.all(16),
@@ -318,7 +318,7 @@ class _YearlyReviewScreenState extends State<YearlyReviewScreen> {
     );
   }
 
-  Widget _buildStatCard(String emoji, String label, String value) {
+  Widget _buildStatCard(IconData icon, Color iconColor, String label, String value) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -330,7 +330,7 @@ class _YearlyReviewScreenState extends State<YearlyReviewScreen> {
       ),
       child: Row(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 28)),
+          Icon(icon, size: 32, color: iconColor),
           const SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
