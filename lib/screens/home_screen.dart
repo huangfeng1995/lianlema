@@ -408,7 +408,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
-                  children: newBadges.map((b) => Icon(getBadgeIcon(b.icon), size: 36, color: AppColors.primary)).toList(),
+                  children: newBadges.map((b) => Icon(getBadgeIcon(b.icon), size: 36, color: Color(0xFFFF6B00))).toList(),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -810,7 +810,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: Row(
           children: [
-            Icon(Icons.local_fire_department, size: 36, color: AppColors.streak),
+            Icon(Icons.local_fire_department, size: 36, color: Color(0xFFFF4500)),
             const SizedBox(width: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
