@@ -970,15 +970,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.2)),
+                        borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.2), width: 1.5),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.2)),
+                        borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.2), width: 1.5),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Color(0xFFFF8E53), width: 1.5),
+                        borderSide: const BorderSide(color: Color(0xFFFF8E53), width: 2),
                       ),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       isDense: true,

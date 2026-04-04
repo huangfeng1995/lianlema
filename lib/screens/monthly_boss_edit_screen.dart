@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../models/models.dart';
@@ -15,47 +16,95 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
   bool _isLoading = true;
   bool _isSaving = false;
 
-  // Boss 内容（多任务用 "；" 分隔）
-  late TextEditingController _bossContentController;
-  
-  // 每日行动列表
-  late List<TextEditingController> _actionControllers;
+  // 所有 Boss keys（template name 或 custom_0, custom_1...）
+  late List<String> _bossKeys = [];
+
+  // 每个 Boss 的行动控制器 Map
+  late Map<String, List<TextEditingController>> _actionControllers;
+
+  // Boss 内容（用于显示）
+  late Map<String, String> _bossContents = {};
+
+  // Boss hp 信息
   MonthlyBoss? _boss;
+
+  // 模板定义（用于获取 desc 和 hints）
+  final List<Map<String, String>> _bossTemplates = [
+    {'name': '读完一本书', 'desc': '本月读完一本书'},
+    {'name': '培养早起习惯', 'desc': '连续早起21天'},
+    {'name': '学会Python', 'desc': 'Python基础入门'},
+    {'name': '养成运动习惯', 'desc': '每周运动3次'},
+  ];
 
   @override
   void initState() {
     super.initState();
-    _bossContentController = TextEditingController();
-    _actionControllers = [TextEditingController()];
+    _actionControllers = {};
+    _bossContents = {};
     _loadData();
+  }
+
+  String _getBossDesc(String key) {
+    if (key.startsWith('custom_')) {
+      final idx = int.tryParse(key.substring(7)) ?? 0;
+      final customs = _storage.getCustomBosses();
+      if (idx < customs.length) return customs[idx];
+      return '自定义Boss';
+    }
+    final t = _bossTemplates.firstWhere(
+      (t) => t['name'] == key,
+      orElse: () => {'desc': key},
+    );
+    return t['desc']!;
   }
 
   Future<void> _loadData() async {
     _storage = await StorageService.getInstance();
-    final boss = _storage.getMonthlyBoss();
-    final actions = _storage.getDailyActions();
-    final now = DateTime.now();
 
+    // 加载 Boss HP 信息
+    final now = DateTime.now();
+    final boss = _storage.getMonthlyBoss();
     if (boss != null && boss.month == now.month && boss.year == now.year) {
       _boss = boss;
-      // 多任务：按 "；" 分隔显示
-      _bossContentController.text = boss.content;
-    } else {
-      _bossContentController.text = '';
     }
 
-    // 加载每日行动
-    if (actions.isNotEmpty) {
-      _actionControllers = actions.map((a) => TextEditingController(text: a)).toList();
-    } else {
-      // 从 dailyLevers 获取（兼容旧数据）
-      final levers = _storage.getDailyLevers();
-      if (levers.isNotEmpty) {
-        _actionControllers = levers
-            .map((l) => TextEditingController(text: l['plan'] ?? ''))
-            .toList();
+    // 加载 bossTasks（per-boss 每日行动）
+    final bossTasks = _storage.getBossTasks();
+
+    // 加载已选的 Boss 类型
+    final selectedTypes = _storage.getSelectedBossTypes();
+    final customBosses = _storage.getCustomBosses();
+
+    _bossKeys = [];
+    _bossKeys.addAll(selectedTypes);
+    for (var i = 0; i < customBosses.length; i++) {
+      if (customBosses[i].trim().isNotEmpty) {
+        _bossKeys.add('custom_$i');
+      }
+    }
+
+    // 如果没有任何 boss（兼容旧数据）
+    if (_bossKeys.isEmpty && boss != null) {
+      _bossKeys = ['default'];
+    }
+
+    // 初始化每个 boss 的控制器
+    _actionControllers = {};
+    for (final key in _bossKeys) {
+      final actions = bossTasks[key] ?? [];
+      if (actions.isEmpty) {
+        _actionControllers[key] = [TextEditingController()];
       } else {
-        _actionControllers = [TextEditingController()];
+        _actionControllers[key] = actions.map((a) => TextEditingController(text: a)).toList();
+      }
+    }
+
+    // 加载 boss 内容（从 monthlyBoss.content 解析，或从 customBosses）
+    _bossContents = {};
+    if (_boss != null) {
+      final parts = _boss!.content.split('；');
+      for (var i = 0; i < _bossKeys.length && i < parts.length; i++) {
+        _bossContents[_bossKeys[i]] = parts[i].trim();
       }
     }
 
@@ -64,64 +113,69 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
     });
   }
 
-  void _addAction() {
-    if (_actionControllers.length >= 5) {
+  void _addAction(String bossKey) {
+    if (_actionControllers[bossKey]!.length >= 5) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('最多5个行动'), behavior: SnackBarBehavior.floating),
+        const SnackBar(content: Text('每个Boss最多5个行动'), behavior: SnackBarBehavior.floating),
       );
       return;
     }
     setState(() {
-      _actionControllers.add(TextEditingController());
+      _actionControllers[bossKey]!.add(TextEditingController());
     });
   }
 
-  void _removeAction(int index) {
-    if (_actionControllers.length <= 1) return;
+  void _removeAction(String bossKey, int index) {
+    if (_actionControllers[bossKey]!.length <= 1) return;
     setState(() {
-      _actionControllers[index].dispose();
-      _actionControllers.removeAt(index);
+      _actionControllers[bossKey]![index].dispose();
+      _actionControllers[bossKey]!.removeAt(index);
     });
   }
 
   Future<void> _save() async {
     if (_isSaving) return;
-
-    final content = _bossContentController.text.trim();
-    if (content.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Boss内容不能为空'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    // 收集非空行动
-    final actions = _actionControllers
-        .map((c) => c.text.trim())
-        .where((a) => a.isNotEmpty)
-        .toList();
-
     setState(() => _isSaving = true);
 
     try {
-      final now = DateTime.now();
-      final updatedBoss = MonthlyBoss(
-        content: content,
-        month: now.month,
-        year: now.year,
-        totalDays: DateTime(now.year, now.month + 1, 0).day,
-        hp: _boss?.hp ?? 0,
-      );
+      // 收集每个 boss 的非空行动
+      final bossTasks = <String, List<String>>{};
+      final contentParts = <String>[];
 
-      await _storage.saveMonthlyBoss(updatedBoss);
-      // 保存每日行动
-      await _storage.saveDailyActions(actions);
+      for (final key in _bossKeys) {
+        final actions = _actionControllers[key]!
+            .map((c) => c.text.trim())
+            .where((a) => a.isNotEmpty)
+            .toList();
+        if (actions.isNotEmpty) {
+          bossTasks[key] = actions;
+          // 第一个行动作为 boss 的描述
+          contentParts.add(actions.first);
+        }
+      }
+
+      final now = DateTime.now();
+
+      // 保存 monthlyBoss
+      if (bossTasks.isNotEmpty) {
+        final updatedBoss = MonthlyBoss(
+          content: contentParts.join('；'),
+          month: now.month,
+          year: now.year,
+          totalDays: DateTime(now.year, now.month + 1, 0).day,
+          hp: _boss?.hp ?? 0,
+        );
+        await _storage.saveMonthlyBoss(updatedBoss);
+      }
+
+      // 保存 per-boss 行动
+      await _storage.saveBossTasks(bossTasks);
+
+      // 展平保存到 dailyActions 和 dailyLevers（兼容其他读取）
+      final allActions = bossTasks.values.expand((a) => a).toList();
+      await _storage.saveDailyActions(allActions);
       await _storage.saveDailyLevers(
-        actions.map((a) => {'obstacle': '', 'plan': a}).toList(),
+        allActions.map((a) => {'obstacle': '', 'plan': a}).toList(),
       );
 
       if (mounted) {
@@ -150,9 +204,10 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
 
   @override
   void dispose() {
-    _bossContentController.dispose();
-    for (final c in _actionControllers) {
-      c.dispose();
+    for (final controllers in _actionControllers.values) {
+      for (final c in controllers) {
+        c.dispose();
+      }
     }
     super.dispose();
   }
@@ -200,7 +255,7 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Boss HP 状态卡片
+                  // HP 状态
                   if (_boss != null) ...[
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -215,7 +270,6 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
                         border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
                       ),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
@@ -227,11 +281,7 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
                                 ),
                                 child: Text(
                                   '${_boss!.month}月${_boss!.year}年 Boss战',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.primary,
-                                  ),
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
                                 ),
                               ),
                               const Spacer(),
@@ -243,11 +293,7 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
                                 ),
                                 child: Text(
                                   'HP ${_boss!.hp}/${_boss!.totalDays}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
                                 ),
                               ),
                             ],
@@ -268,150 +314,175 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
                     const SizedBox(height: 24),
                   ],
 
-                  // Boss 内容编辑
-                  const Text(
-                    '本月Boss内容',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '多个任务用"；"分隔，例如：读完《原子习惯》；每天跑步30分钟',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary.withValues(alpha: 0.8)),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.cardBackground,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: _bossContentController.text.isNotEmpty
-                            ? AppColors.primary
-                            : AppColors.textLight.withValues(alpha: 0.2),
-                        width: _bossContentController.text.isNotEmpty ? 2 : 1,
-                      ),
-                    ),
-                    child: TextField(
-                      controller: _bossContentController,
-                      maxLines: 4,
-                      style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, height: 1.6),
-                      decoration: InputDecoration(
-                        hintText: '这个月最重要的挑战是什么？\n\n多个任务用"；"分隔',
-                        hintStyle: TextStyle(fontSize: 13, color: AppColors.textLight, height: 1.6),
-                        contentPadding: const EdgeInsets.all(16),
-                        border: InputBorder.none,
-                      ),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  // 每日行动编辑
-                  Row(
-                    children: [
-                      const Text(
-                        '每日行动',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                      ),
-                      const Spacer(),
-                      GestureDetector(
-                        onTap: _addAction,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.add, size: 14, color: AppColors.primary),
-                              SizedBox(width: 4),
-                              Text(
-                                '添加',
-                                style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500),
-                              ),
-                            ],
-                          ),
+                  // 每个 Boss 的编辑区块
+                  if (_bossKeys.isEmpty)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32),
+                        child: Text(
+                          '暂无Boss数据，请在onboarding中设置',
+                          style: TextStyle(color: AppColors.textSecondary),
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '每天坚持的关键行动',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary.withValues(alpha: 0.8)),
-                  ),
-                  const SizedBox(height: 14),
+                    )
+                  else
+                    ..._bossKeys.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final key = entry.value;
+                      final desc = _getBossDesc(key);
+                      final controllers = _actionControllers[key] ?? [];
+                      final circledNumbers = ['①', '②', '③', '④', '⑤'];
 
-                  ...List.generate(_actionControllers.length, (index) {
-                    final circledNumbers = ['①', '②', '③', '④', '⑤'];
-                    return Padding(
-                      padding: EdgeInsets.only(bottom: index < _actionControllers.length - 1 ? 12 : 0),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 30,
-                            height: 30,
-                            margin: const EdgeInsets.only(top: 8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFF8E53).withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(7),
-                            ),
-                            child: Center(
-                              child: Text(
-                                circledNumbers[index],
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFFFF8E53),
-                                ),
-                              ),
-                            ),
+                      return Container(
+                        margin: EdgeInsets.only(bottom: idx < _bossKeys.length - 1 ? 20 : 0),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.cardBackground,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppColors.textLight.withValues(alpha: 0.15),
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: TextField(
-                              controller: _actionControllers[index],
-                              maxLines: 2,
-                              style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-                              decoration: InputDecoration(
-                                hintText: '例如：每天跑步30分钟',
-                                hintStyle: TextStyle(fontSize: 13, color: AppColors.textLight.withValues(alpha: 0.6)),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.2)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Boss 标签
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    AppColors.primary.withValues(alpha: 0.15),
+                                    AppColors.primaryLight.withValues(alpha: 0.08),
+                                  ],
                                 ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.2)),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(color: Color(0xFFFF8E53), width: 1.5),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                isDense: true,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.shield_outlined, size: 16, color: AppColors.primary),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      desc,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
-                          if (_actionControllers.length > 1)
-                            GestureDetector(
-                              onTap: () => _removeAction(index),
-                              child: Padding(
-                                padding: const EdgeInsets.only(left: 8, top: 10),
-                                child: Icon(
-                                  Icons.close,
-                                  size: 20,
-                                  color: AppColors.textLight.withValues(alpha: 0.5),
+                            const SizedBox(height: 14),
+
+                            // 每日行动提示
+                            Row(
+                              children: [
+                                const Text(
+                                  '每日行动',
+                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                                 ),
-                              ),
+                                const Spacer(),
+                                GestureDetector(
+                                  onTap: () => _addAction(key),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFF8E53).withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.add, size: 12, color: Color(0xFFFF8E53)),
+                                        SizedBox(width: 2),
+                                        Text(
+                                          '添加',
+                                          style: TextStyle(fontSize: 11, color: Color(0xFFFF8E53), fontWeight: FontWeight.w500),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                        ],
-                      ),
-                    );
-                  }),
+                            const SizedBox(height: 10),
+
+                            // 行动输入框
+                            ...List.generate(controllers.length, (actionIdx) {
+                              return Padding(
+                                padding: EdgeInsets.only(bottom: actionIdx < controllers.length - 1 ? 10 : 0),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: 28,
+                                      height: 28,
+                                      margin: const EdgeInsets.only(top: 7),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFF8E53).withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          circledNumbers[actionIdx],
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFFFF8E53),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: controllers[actionIdx],
+                                        maxLines: 2,
+                                        style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                                        decoration: InputDecoration(
+                                          hintText: '这个行动要做什么？',
+                                          hintStyle: TextStyle(fontSize: 12, color: AppColors.textLight.withValues(alpha: 0.6)),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(10),
+                                            borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.2), width: 1.5),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(10),
+                                            borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.2), width: 1.5),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(10),
+                                            borderSide: const BorderSide(color: Color(0xFFFF8E53), width: 2),
+                                          ),
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                          isDense: true,
+                                        ),
+                                      ),
+                                    ),
+                                    if (controllers.length > 1)
+                                      GestureDetector(
+                                        onTap: () => _removeAction(key, actionIdx),
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(left: 6, top: 9),
+                                          child: Icon(
+                                            Icons.close,
+                                            size: 18,
+                                            color: AppColors.textLight.withValues(alpha: 0.5),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      );
+                    }),
 
                   const SizedBox(height: 32),
 
@@ -433,10 +504,7 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
                               height: 20,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
-                          : const Text(
-                              '保存',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                            ),
+                          : const Text('保存', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                     ),
                   ),
                   const SizedBox(height: 20),
