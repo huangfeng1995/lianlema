@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
 import '../models/models.dart';
 import '../utils/storage_service.dart';
+import '../utils/pet_service.dart';
+import '../models/pet_models.dart';
 import '../utils/xp_service.dart';
 import '../utils/date_utils.dart' as app_date;
 import '../utils/badge_icon.dart';
+
 import 'profile_screen.dart';
 import 'monthly_review_screen.dart';
+import 'monthly_boss_edit_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -42,6 +45,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String _temptingBundling = '';
   bool _streakBroken = false; // 检测streak是否昨天断裂
   bool _canUseRemedy = false; // 本月是否可以使用补救
+  bool _hasLongTermPlanning = false; // 是否有长期规划
+  PetContext? _context; // 宠物上下文
+  String _petName = StorageService.defaultPetName; // 宠物名字
 
   @override
   void initState() {
@@ -51,11 +57,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadData() async {
     _storage = await StorageService.getInstance();
+    // 初始化宠物服务，加载心情状态
+    await PetService.instance.loadState();
+    _context = await PetService.instance.buildContext();
+    _petName = _storage.getPetName();
 
     final stats = _storage.getUserStats();
-    final levers = _storage.getDailyLevers();
+    final leverMaps = _storage.getDailyLevers();
     final antiVision = _storage.getAntiVision();
     final vision = _storage.getVision();
+    final yearGoal = _storage.getYearGoal();
+    final constraints = _storage.getConstraints();
     final checkIns = _storage.getCheckIns();
     final monthlyBoss = _storage.getMonthlyBoss();
     final minimalMode = _storage.getMinimalMode();
@@ -84,8 +96,13 @@ class _HomeScreenState extends State<HomeScreen> {
         streak: streak,
         totalCheckIns: stats.totalCheckIns,
       );
-      _todayLevers = levers.asMap().entries.map((e) {
-        return DailyLever(id: '${e.key}', content: e.value, order: e.key);
+      _todayLevers = leverMaps.asMap().entries.map((e) {
+        return DailyLever(
+          id: '${e.key}',
+          obstacle: e.value['obstacle'] ?? '',
+          plan: e.value['plan'] ?? '',
+          order: e.key,
+        );
       }).toList();
       _antiVision = antiVision;
       _vision = vision;
@@ -94,6 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _isCheckedInToday = checkedIn;
       _streakBroken = streakBroken;
       _canUseRemedy = _storage.canUseStreakRemedy();
+      _hasLongTermPlanning = antiVision.isNotEmpty || vision.isNotEmpty || yearGoal.isNotEmpty || constraints.isNotEmpty;
       _minimalMode = minimalMode;
       _temptingBundling = temptingBundling;
       _isLoading = false;
@@ -197,6 +215,9 @@ class _HomeScreenState extends State<HomeScreen> {
       _isCheckedInToday = true;
       if (updatedBoss != null) _monthlyBoss = updatedBoss;
     });
+
+    // 刷新宠物心情（让UI更新）
+    setState(() {});
 
     if (bossJustDefeated) {
       _showVictoryDialog(
@@ -463,11 +484,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildHeader(),
+                  if (!_hasLongTermPlanning) _buildPlanningPrompt(),
                   _buildStreakCard(),
+                  _buildPetCard(),
                   _buildMonthlyBossCard(),
-                  _buildDailyCheckIn(),
-                  _buildVisionCard(),
-                  _buildAntiVisionCard(),
+                  if (_todayLevers.isNotEmpty) _buildDailyCheckIn(),
+                  if (_vision.isNotEmpty || _antiVision.isNotEmpty) ...[
+                    _buildVisionCard(),
+                    _buildAntiVisionCard(),
+                  ],
                   const SizedBox(height: 20),
                 ],
               ),
@@ -574,7 +599,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    DateFormat('MM月dd日 EEEE', 'zh_CN').format(now),
+                    '${now.month}月${now.day}日 ${_weekdayZh(now.weekday)}',
                     style: TextStyle(
                       fontSize: 13,
                       color: Colors.white.withValues(alpha: 0.85),
@@ -591,35 +616,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                  );
-                },
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.all(Radius.circular(12)),
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      color: Colors.white.withValues(alpha: 0.2),
-                      child: const Icon(
-                        Icons.apps,
-                        size: 28,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+              const SizedBox(width: 44),
             ],
           ),
           const SizedBox(height: 20),
@@ -708,85 +705,162 @@ class _HomeScreenState extends State<HomeScreen> {
     final total = boss.totalDays;
     final progress = total > 0 ? (hp / total).clamp(0.0, 1.0) : 0.0;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, -24, 20, 0),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.cardBackground,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppColors.primary.withValues(alpha: 0.3),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const MonthlyBossEditScreen()),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.3),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(child: Icon(Icons.whatshot, size: 28, color: AppColors.primary)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          '本月Boss战',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          'HP $hp/$total',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                        valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                        minHeight: 6,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      boss.content,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Center(child: Icon(Icons.whatshot, size: 28, color: AppColors.primary)),
+      ),
+    );
+  }
+
+  Widget _buildPlanningPrompt() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ProfileScreen()),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppColors.primary.withValues(alpha: 0.08),
+                AppColors.primaryLight.withValues(alpha: 0.04),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        '本月Boss战',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      Text(
-                        'HP $hp/$total',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-                      minHeight: 6,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    boss.content,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.2),
             ),
-          ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Icon(Icons.auto_awesome, size: 20, color: AppColors.primary),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '你的长期规划还空着',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '设置反愿景、愿景、年度目标，获得专属徽章',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, size: 20, color: AppColors.primary),
+            ],
+          ),
         ),
       ),
     );
@@ -794,7 +868,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildStreakCard() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, -24, 20, 0),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -893,6 +967,157 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPetCard() {
+    final mood = PetService.instance.moodState.mood;
+    final greeting = PetService.instance.generateGreeting();
+    final suggestion = PetService.instance.generateSuggestion(_context ?? PetContext());
+    final emoji = _getMoodEmoji(mood);
+
+    return GestureDetector(
+      onTap: () {
+        if (mounted) {
+          Navigator.of(context).pushNamed('/pet');
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.primary, AppColors.primaryLight],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(child: _buildMoodIcon(mood)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$_petName · ${_getMoodText(mood)} $emoji',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$greeting $suggestion',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildPetCmdBtn('查打卡', Icons.checklist_rounded, PetCommand.checkInRecord),
+                  const SizedBox(width: 6),
+                  _buildPetCmdBtn('提醒', Icons.notifications_outlined, PetCommand.setReminder),
+                  const SizedBox(width: 6),
+                  _buildPetCmdBtn('成长', Icons.lightbulb_outline, PetCommand.askGrowth),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMoodIcon(PetMood mood) {
+    switch (mood) {
+      case PetMood.happy: return const Icon(Icons.emoji_emotions, color: Colors.white, size: 26);
+      case PetMood.sleepy: return Icon(Icons.nightlight, color: Colors.white70, size: 26);
+      case PetMood.excited: return Icon(Icons.bolt, color: Colors.yellow, size: 26);
+      case PetMood.thinking: return const Icon(Icons.psychology, color: Colors.white, size: 26);
+      case PetMood.calm: return const Icon(Icons.local_fire_department, color: Colors.white, size: 26);
+      case PetMood.resting: return Icon(Icons.bedtime, color: Colors.white70, size: 26);
+    }
+  }
+
+  String _getMoodText(PetMood mood) {
+    switch (mood) {
+      case PetMood.happy: return '开心';
+      case PetMood.sleepy: return '困了';
+      case PetMood.excited: return '兴奋';
+      case PetMood.thinking: return '思考中';
+      case PetMood.calm: return '平静';
+      case PetMood.resting: return '休息中';
+    }
+  }
+
+  String _getMoodEmoji(PetMood mood) {
+    switch (mood) {
+      case PetMood.happy: return '😊';
+      case PetMood.sleepy: return '😴';
+      case PetMood.excited: return '🤩';
+      case PetMood.thinking: return '🤔';
+      case PetMood.calm: return '😌';
+      case PetMood.resting: return '💤';
+    }
+  }
+
+  Widget _buildPetCmdBtn(String label, IconData icon, PetCommand cmd) {
+    return GestureDetector(
+      onTap: () async {
+        final ctx = _context ?? await PetService.instance.buildContext();
+        final resp = await PetService.instance.handleCommand(cmd, ctx);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(resp), duration: const Duration(seconds: 2)));
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: AppColors.primary),
+            const SizedBox(width: 2),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.w500),
+            ),
           ],
         ),
       ),
@@ -1323,86 +1548,123 @@ class _HomeScreenState extends State<HomeScreen> {
     return '晚上好，完成今天的行动了吗';
   }
 
-  /// 渲染 IF-THEN 格式的杠杆文本
-  /// 格式：「如果[情境]，那么[行为]」或「如果...我就...」
+  static const _weekdayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+  String _weekdayZh(int weekday) => _weekdayNames[weekday - 1];
+
+  /// 渲染 WOOP 格式的杠杆文本
+  /// 先显示障碍（灰色小字），再显示 IF-THEN 计划（主要样式）
   Widget _buildLeverText(DailyLever lever) {
-    final content = lever.content;
+    final obstacle = lever.obstacle;
+    final plan = lever.plan;
     final isCompleted = lever.isCompleted;
     final textColor = isCompleted ? AppColors.primary : AppColors.textPrimary;
+    final decoration = isCompleted ? TextDecoration.lineThrough : null;
 
-    // 尝试匹配 IF-THEN 格式
-    final ifThenPattern = RegExp(r'^(如果[，,].*?[，,]|如果[^\n]{2,30}[,，]\s*)(.*)$', caseSensitive: false);
-    final match = ifThenPattern.firstMatch(content);
-
-    if (match != null) {
-      final ifPart = match.group(1) ?? '';
-      final thenPart = match.group(2) ?? '';
+    // 如果有障碍，先显示障碍
+    if (obstacle.isNotEmpty) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            ifPart,
-            style: TextStyle(
-              fontSize: 12,
-              color: textColor.withValues(alpha: 0.6),
-              fontWeight: FontWeight.w500,
-              decoration: isCompleted ? TextDecoration.lineThrough : null,
-            ),
+          // 内心障碍（灰色小字）
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.psychology_outlined,
+                size: 12,
+                color: textColor.withValues(alpha: 0.5),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  obstacle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: textColor.withValues(alpha: 0.5),
+                    fontStyle: FontStyle.italic,
+                    decoration: decoration,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 2),
-          Text(
-            '→ $thenPart',
-            style: TextStyle(
-              fontSize: 15,
-              color: textColor,
-              fontWeight: FontWeight.w500,
-              decoration: isCompleted ? TextDecoration.lineThrough : null,
+          if (plan.isNotEmpty) const SizedBox(height: 6),
+          // IF-THEN 计划（主要样式）
+          if (plan.isNotEmpty)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.arrow_forward,
+                  size: 14,
+                  color: textColor,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    plan,
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: textColor,
+                      fontWeight: FontWeight.w500,
+                      decoration: decoration,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
         ],
       );
     }
 
-    // 备选：匹配「如果...我就...」格式
-    final aiyoPattern = RegExp(r'^(如果[^\n]{2,40}?)\s*([,，]?我就|[,，]?那么)(.*)$', caseSensitive: false);
-    final aiyoMatch = aiyoPattern.firstMatch(content);
-    if (aiyoMatch != null) {
-      final ifPart = aiyoMatch.group(1) ?? '';
-      final thenPart = aiyoMatch.group(3) ?? '';
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            ifPart,
-            style: TextStyle(
-              fontSize: 12,
-              color: textColor.withValues(alpha: 0.6),
-              fontWeight: FontWeight.w500,
-              decoration: isCompleted ? TextDecoration.lineThrough : null,
+    // 没有障碍时，显示 IF-THEN 计划（兼容旧格式或无障碍的情况）
+    if (plan.isNotEmpty) {
+      // 尝试解析 IF-THEN 格式
+      final ifThenPattern = RegExp(r'^(如果[，,].*?[，,]|如果[^\n]{2,30}[,，]\s*)(.*)$', caseSensitive: false);
+      final match = ifThenPattern.firstMatch(plan);
+      if (match != null) {
+        final ifPart = match.group(1) ?? '';
+        final thenPart = match.group(2) ?? '';
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              ifPart,
+              style: TextStyle(
+                fontSize: 12,
+                color: textColor.withValues(alpha: 0.6),
+                fontWeight: FontWeight.w500,
+                decoration: decoration,
+              ),
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            '→ $thenPart',
-            style: TextStyle(
-              fontSize: 15,
-              color: textColor,
-              fontWeight: FontWeight.w500,
-              decoration: isCompleted ? TextDecoration.lineThrough : null,
+            const SizedBox(height: 2),
+            Text(
+              '→ $thenPart',
+              style: TextStyle(
+                fontSize: 15,
+                color: textColor,
+                fontWeight: FontWeight.w500,
+                decoration: decoration,
+              ),
             ),
-          ),
-        ],
+          ],
+        );
+      }
+      // 直接显示计划
+      return Text(
+        plan,
+        style: TextStyle(
+          fontSize: 15,
+          color: textColor,
+          fontWeight: FontWeight.w500,
+          decoration: decoration,
+        ),
       );
     }
 
-    // 默认：普通文本
-    return Text(
-      content,
-      style: TextStyle(
-        fontSize: 15,
-        color: textColor,
-        decoration: isCompleted ? TextDecoration.lineThrough : null,
-      ),
-    );
+    // 完全无内容时显示空
+    return const SizedBox.shrink();
   }
 }

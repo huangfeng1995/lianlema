@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
 /// 底部导航组件
-/// 4个Tab：首页（打卡图标）、目标（靶心图标）、报告（分析图标）、我的（用户图标）
+/// 3个Tab：首页（打卡图标）、宠物（火焰图标）、我的（用户图标）
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -39,22 +39,16 @@ class BottomNavBar extends StatelessWidget {
                 index: 0,
               ),
               _buildNavItem(
-                icon: Icons.track_changes_outlined,
-                activeIcon: Icons.track_changes_rounded,
-                label: '目标',
+                icon: Icons.pets,
+                activeIcon: Icons.pets,
+                label: '宠物',
                 index: 1,
               ),
               _buildNavItem(
-                icon: Icons.analytics_outlined,
-                activeIcon: Icons.analytics_rounded,
-                label: '报告',
-                index: 2,
-              ),
-              _buildNavItem(
                 icon: Icons.person_outline,
-                activeIcon: Icons.person_rounded,
+                activeIcon: Icons.person,
                 label: '我的',
-                index: 3,
+                index: 2,
               ),
             ],
           ),

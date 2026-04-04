@@ -75,14 +75,11 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(24),
               ),
-              child: const Center(
-                child: Text(
-                  '练',
-                  style: TextStyle(
-                    fontSize: 48,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+              child: Center(
+                child: Image.asset(
+                  'assets/images/icon/app_logo.png',
+                  width: 60,
+                  height: 60,
                 ),
               ),
             ),

@@ -282,12 +282,23 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
                       : const Color(0xFFFF9500).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
-                  isDefeated ? '🏆 Boss击败' : '🔥 Boss进行中',
-                  style: TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w600,
-                    color: isDefeated ? AppColors.success : const Color(0xFFFF9500),
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isDefeated ? Icons.emoji_events : Icons.local_fire_department,
+                      size: 14,
+                      color: isDefeated ? AppColors.success : const Color(0xFFFF9500),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      isDefeated ? 'Boss击败' : 'Boss进行中',
+                      style: TextStyle(
+                        fontSize: 11, fontWeight: FontWeight.w600,
+                        color: isDefeated ? AppColors.success : const Color(0xFFFF9500),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -295,13 +306,13 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              _buildStatChip('📅 出勤', '${report.checkInDays}天'),
+              _buildStatChip('出勤', '${report.checkInDays}天'),
               const SizedBox(width: 8),
-              _buildStatChip('⚡ 出勤率', '${(attendance * 100).toInt()}%'),
+              _buildStatChip('出勤率', '${(attendance * 100).toInt()}%'),
               const SizedBox(width: 8),
-              _buildStatChip('⭐ XP', '+${report.xpEarned}'),
+              _buildStatChip('XP', '+${report.xpEarned}'),
               const SizedBox(width: 8),
-              _buildStatChip('🔥 连续', '${report.longestStreak}天'),
+              _buildStatChip('连续', '${report.longestStreak}天'),
             ],
           ),
         ],
@@ -486,9 +497,10 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Center(
-                        child: Text(
-                          isDefeated ? '🏆' : '🔥',
-                          style: const TextStyle(fontSize: 24),
+                        child: Icon(
+                          isDefeated ? Icons.emoji_events : Icons.local_fire_department,
+                          size: 24,
+                          color: isDefeated ? AppColors.success : const Color(0xFFFF9500),
                         ),
                       ),
                     ),

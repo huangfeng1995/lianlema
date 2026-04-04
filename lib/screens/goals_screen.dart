@@ -25,7 +25,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
   List<Map<String, dynamic>> _focusReminders = [];
   String _yearGoal = '';
   String _annualIdentity = '';
-  List<String> _dailyLevers = [];
+  List<Map<String, String>> _dailyLevers = [];
   String _constraints = '';
   MonthlyBoss? _monthlyBoss;
 
@@ -44,7 +44,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
     _dailyLevers = _storage.getDailyLevers();
     // 确保至少有3个槽位（不在 build 中修改状态）
     while (_dailyLevers.length < 3) {
-      _dailyLevers.add('');
+      _dailyLevers.add({'obstacle': '', 'plan': ''});
     }
     _constraints = _storage.getConstraints();
     _monthlyBoss = _storage.getMonthlyBoss();
@@ -56,12 +56,20 @@ class _GoalsScreenState extends State<GoalsScreen> {
   Future<void> _saveChanges() async {
     setState(() => _isSaving = true);
     try {
+      // 保存长期规划（触发徽章检查）
+      await _storage.saveAntiVision(_antiVision);
+      await _storage.saveVision(_vision);
       await _storage.saveYearGoal(_yearGoal);
       await _storage.saveAnnualIdentity(_annualIdentity);
+      await _storage.saveConstraints(_constraints);
       await _storage.saveDailyLevers(_dailyLevers);
       if (_monthlyBoss != null) {
         await _storage.saveMonthlyBoss(_monthlyBoss!);
       }
+
+      // 检查规划徽章
+      await _storage.checkPlanningBadges();
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -154,31 +162,40 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
   Widget _buildAntiVisionCard() {
     return _buildCard(
-      icon: 'assets/images/icon/warning_icon.png',
+      icon: Icons.warning,
+      iconColor: const Color(0xFF888888),
       title: '反愿景',
-      subtitle: '锁定1年不可更改',
-      subtitleColor: AppColors.textLight,
+      subtitle: '可随时修改',
+      subtitleColor: AppColors.textSecondary,
       content: _antiVision,
-      isLocked: true,
+      isLocked: false,
+      canEdit: _isEditing,
+      onEditChanged: (v) => _antiVision = v,
       borderColor: AppColors.textLight.withValues(alpha: 0.3),
+      hintText: '描述你最不想成为的人、最不想过的生活',
     );
   }
 
   Widget _buildVisionCard() {
     return _buildCard(
-      icon: '✨',
+      icon: Icons.auto_awesome,
+      iconColor: AppColors.primary,
       title: '愿景',
-      subtitle: '锁定1年不可更改',
-      subtitleColor: AppColors.textLight,
+      subtitle: '可随时修改',
+      subtitleColor: AppColors.textSecondary,
       content: _vision,
-      isLocked: true,
-      borderColor: AppColors.textLight.withValues(alpha: 0.3),
+      isLocked: false,
+      canEdit: _isEditing,
+      onEditChanged: (v) => _vision = v,
+      borderColor: AppColors.primary.withValues(alpha: 0.3),
+      hintText: '描述你理想中的一年后的生活',
     );
   }
 
   Widget _buildYearGoalCard() {
     return _buildCard(
-      icon: 'assets/images/icon/target_icon.png',
+      icon: Icons.flag,
+      iconColor: AppColors.primary,
       title: '一年目标',
       subtitle: '每年可改1次',
       subtitleColor: AppColors.primary,
@@ -192,7 +209,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
   Widget _buildAnnualIdentityCard() {
     return _buildCard(
-      icon: '🌟',
+      icon: Icons.star,
+      iconColor: AppColors.primary,
       title: '年度身份',
       subtitle: '我是_____的行动派',
       subtitleColor: AppColors.primary,
@@ -396,7 +414,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Center(
-                  child: Text('🔨', style: TextStyle(fontSize: 18)),
+                  child: Icon(Icons.build, size: 18, color: AppColors.primary),
                 ),
               ),
               const SizedBox(width: 12),
@@ -426,7 +444,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
           ),
           const SizedBox(height: 12),
           ...List.generate(_dailyLevers.length, (index) {
-            final hasContent = _dailyLevers[index].isNotEmpty;
+            final hasContent = (_dailyLevers[index]['plan'] ?? '').isNotEmpty;
             final leverId = 'lever_$index';
             final hasReminder = _focusReminders.any((r) => r['leverId'] == leverId);
             final reminder = hasReminder ? _focusReminders.firstWhere((r) => r['leverId'] == leverId) : null;
@@ -467,14 +485,14 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                 isDense: true,
                                 contentPadding: EdgeInsets.zero,
                               ),
-                              controller: TextEditingController(text: _dailyLevers[index]),
-                              onChanged: (v) => _dailyLevers[index] = v,
+                              controller: TextEditingController(text: _dailyLevers[index]['plan'] ?? ''),
+                              onChanged: (v) => _dailyLevers[index]['plan'] = v,
                             )
                           : Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  hasContent ? _dailyLevers[index] : '未设置',
+                                  hasContent ? _dailyLevers[index]['plan']! : '未设置',
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: hasContent ? AppColors.textPrimary : AppColors.textLight,
@@ -519,18 +537,23 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
   Widget _buildConstraintsCard() {
     return _buildCard(
-      icon: '🚫',
+      icon: Icons.block,
+      iconColor: const Color(0xFF888888),
       title: '约束条件',
-      subtitle: '锁定1年不可更改',
-      subtitleColor: AppColors.textLight,
+      subtitle: '可随时修改',
+      subtitleColor: AppColors.textSecondary,
       content: _constraints,
-      isLocked: true,
+      isLocked: false,
+      canEdit: _isEditing,
+      onEditChanged: (v) => _constraints = v,
       borderColor: AppColors.textLight.withValues(alpha: 0.3),
+      hintText: '哪些原则是你绝对不能打破的？',
     );
   }
 
   Widget _buildCard({
-    required String icon,
+    required IconData icon,
+    required Color iconColor,
     required String title,
     required String subtitle,
     required Color subtitleColor,
@@ -559,11 +582,11 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color: iconColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Center(
-                  child: Text(icon, style: const TextStyle(fontSize: 18)),
+                  child: Icon(icon, size: 18, color: iconColor),
                 ),
               ),
               const SizedBox(width: 12),
@@ -647,7 +670,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
   /// 显示专注提醒设置
   void _showFocusReminderSheet(int index) {
-    if (index >= _dailyLevers.length || _dailyLevers[index].isEmpty) {
+    if (index >= _dailyLevers.length || (_dailyLevers[index]['plan'] ?? '').isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('请先填写杠杆内容'),
@@ -698,7 +721,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                _dailyLevers[index],
+                _dailyLevers[index]['plan'] ?? '',
                 style: const TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
@@ -829,7 +852,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
   }
 
   Future<void> _saveFocusReminder(int index, int hour, int minute, int duration) async {
-    final leverContent = _dailyLevers[index];
+    final leverContent = _dailyLevers[index]['plan'] ?? '';
     final leverId = 'lever_$index';
 
     // 保存到storage

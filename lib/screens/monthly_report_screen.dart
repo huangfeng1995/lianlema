@@ -177,9 +177,10 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
-                  child: Text(
-                    isBossDefeated ? '🏆' : '🔥',
-                    style: const TextStyle(fontSize: 22),
+                  child: Icon(
+                    isBossDefeated ? Icons.emoji_events : Icons.local_fire_department,
+                    size: 22,
+                    color: isBossDefeated ? AppColors.success : const Color(0xFFFF9500),
                   ),
                 ),
               ),
@@ -434,7 +435,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
               borderRadius: BorderRadius.circular(14),
             ),
             child: const Center(
-              child: Text('⬆️', style: TextStyle(fontSize: 24)),
+              child: Icon(Icons.arrow_upward, size: 24, color: AppColors.primary),
             ),
           ),
           const SizedBox(width: 14),

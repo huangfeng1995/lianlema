@@ -150,11 +150,11 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                 color: AppColors.cardBackground,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Column(
+              child: Column(
                 children: [
-                  Text('📝', style: TextStyle(fontSize: 36)),
-                  SizedBox(height: 8),
-                  Text(
+                  Icon(Icons.edit_note, size: 36, color: AppColors.primary.withValues(alpha: 0.5)),
+                  const SizedBox(height: 8),
+                  const Text(
                     '今日暂无打卡记录',
                     style: TextStyle(
                       fontSize: 14,
@@ -252,7 +252,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
         children: [
           Row(
             children: [
-              const Text('✨', style: TextStyle(fontSize: 20)),
+              const Icon(Icons.auto_awesome, size: 20, color: Colors.amber),
               const SizedBox(width: 8),
               const Text(
                 '今日一刻',

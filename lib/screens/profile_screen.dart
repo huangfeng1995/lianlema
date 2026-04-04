@@ -36,6 +36,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _vision = '';
   String _annualIdentity = '';
   List<CheckIn> _checkIns = [];
+  String _petName = StorageService.defaultPetName;
 
   @override
   void initState() {
@@ -52,6 +53,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final vision = _storage.getVision();
     final annualIdentity = _storage.getAnnualIdentity();
     final checkIns = _storage.getCheckIns();
+    final petName = _storage.getPetName();
 
     setState(() {
       _stats = stats;
@@ -60,6 +62,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _vision = vision;
       _annualIdentity = annualIdentity;
       _checkIns = checkIns;
+      _petName = petName;
       _isLoading = false;
     });
   }
@@ -109,6 +112,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildStatsCard(),
+                  const SizedBox(height: 16),
+                  _buildPetNameCard(),
                   const SizedBox(height: 24),
                   if (_annualIdentity.isNotEmpty) ...[
                     _buildAnnualIdentitySection(),
@@ -117,6 +122,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildCalendarSection(),
                   const SizedBox(height: 24),
                   _buildBadgesSection(),
+                  const SizedBox(height: 24),
+                  _buildLongTermPlanningSection(),
                   const SizedBox(height: 24),
                   _buildAntiVisionSection(),
                 ],
@@ -284,7 +291,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               borderRadius: BorderRadius.circular(14),
             ),
             child: const Center(
-              child: Text('🌟', style: TextStyle(fontSize: 24)),
+              child: Icon(Icons.star, size: 24, color: AppColors.primary),
             ),
           ),
           const SizedBox(width: 14),
@@ -592,7 +599,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           getBadgeIcon(badge.icon),
                           size: 36,
                           color: badge.isUnlocked
-                              ? AppColors.primary
+                              ? Color(0xFFFF6B00)
                               : AppColors.textLight.withValues(alpha: 0.35),
                         ),
                       ),
@@ -617,7 +624,172 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildLongTermPlanningSection() {
+    final hasAntiVision = _antiVision.isNotEmpty;
+    final hasVision = _vision.isNotEmpty;
+    final hasYearGoal = _annualIdentity.isNotEmpty;
+    final constraints = _storage.getConstraints();
+    final hasConstraints = constraints.isNotEmpty;
+
+    final completedCount = [hasAntiVision, hasVision, hasYearGoal, hasConstraints].where((b) => b).length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              '长期规划',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            if (completedCount > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '已完成 $completedCount/4',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            children: [
+              if (hasAntiVision) ...[
+                _buildPlanningItem(
+                  icon: Icons.map_outlined,
+                  iconColor: const Color(0xFF888888),
+                  title: '反愿景',
+                  desc: _antiVision,
+                  isSet: true,
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (hasVision) ...[
+                _buildPlanningItem(
+                  icon: Icons.visibility_outlined,
+                  iconColor: AppColors.primary,
+                  title: '愿景',
+                  desc: _vision,
+                  isSet: true,
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (hasYearGoal) ...[
+                _buildPlanningItem(
+                  icon: Icons.flag_outlined,
+                  iconColor: AppColors.primary,
+                  title: '年度目标',
+                  desc: _annualIdentity,
+                  isSet: true,
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (hasConstraints) ...[
+                _buildPlanningItem(
+                  icon: Icons.balance_outlined,
+                  iconColor: const Color(0xFF888888),
+                  title: '约束条件',
+                  desc: constraints,
+                  isSet: true,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPlanningItem({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String desc,
+    required bool isSet,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: isSet ? iconColor.withValues(alpha: 0.1) : AppColors.textLight.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Center(
+            child: Icon(
+              icon,
+              size: 20,
+              color: isSet ? iconColor : AppColors.textLight,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isSet ? AppColors.textPrimary : AppColors.textLight,
+                ),
+              ),
+              Text(
+                desc,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isSet ? AppColors.textSecondary : AppColors.textLight,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: isSet ? AppColors.success.withValues(alpha: 0.1) : AppColors.textLight.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            isSet ? '✓' : '未设置',
+            style: TextStyle(
+              fontSize: 12,
+              color: isSet ? AppColors.success : AppColors.textLight,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildAntiVisionSection() {
+    // 都没写就隐藏
+    if (_antiVision.isEmpty && _vision.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -663,7 +835,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Text(
-                  '锁定中 · 1年不可更改',
+                  '可随时修改',
                   style: TextStyle(
                     fontSize: 11,
                     color: AppColors.primary,
@@ -671,27 +843,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
-              const Text(
-                '我最不想成为的人',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
+              if (_antiVision.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  '我最不想成为的人',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _antiVision.isNotEmpty ? _antiVision : '暂无内容',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textPrimary,
-                  height: 1.6,
+                const SizedBox(height: 8),
+                Text(
+                  _antiVision,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                    height: 1.6,
+                  ),
                 ),
-              ),
-              if (_vision.isNotEmpty) ...[
+              ],
+              if (_antiVision.isNotEmpty && _vision.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 const Divider(),
                 const SizedBox(height: 12),
+              ],
+              if (_vision.isNotEmpty) ...[
                 const Text(
                   '我的愿景',
                   style: TextStyle(
@@ -799,6 +975,125 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Widget _buildPetNameCard() {
+    return GestureDetector(
+      onTap: _showEditPetNameDialog,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Center(
+                child: Icon(Icons.pets, size: 22, color: AppColors.primary),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '宠物名字',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _petName,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.edit_outlined,
+              size: 18,
+              color: AppColors.primary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditPetNameDialog() {
+    final controller = TextEditingController(text: _petName);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.pets, size: 24, color: AppColors.primary),
+            SizedBox(width: 8),
+            Text('修改宠物名字'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              autofocus: true,
+              maxLength: 10,
+              decoration: InputDecoration(
+                hintText: '输入新名字（最多10字）',
+                hintStyle: TextStyle(color: AppColors.textLight),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.primary),
+                ),
+              ),
+              style: const TextStyle(color: AppColors.textPrimary),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newName = controller.text.trim();
+              if (newName.isNotEmpty) {
+                await _storage.savePetName(newName);
+                setState(() {
+                  _petName = newName.length > 10 ? newName.substring(0, 10) : newName;
+                });
+                if (mounted) Navigator.pop(context);
+              }
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showBadgeDetail(AppBadge badge) {
     showModalBottomSheet(
       context: context,
@@ -826,7 +1121,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   getBadgeIcon(badge.icon),
                   size: 56,
                   color: badge.isUnlocked
-                      ? AppColors.primary
+                      ? Color(0xFFFF6B00)
                       : AppColors.textLight.withValues(alpha: 0.35),
                 ),
               ),

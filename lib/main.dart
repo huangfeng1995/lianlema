@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 import 'screens/main_screen.dart';
+import 'screens/pet_screen.dart';
 import 'utils/notification_service.dart';
 import 'utils/storage_service.dart';
 
@@ -77,6 +78,7 @@ class _LianlemaAppState extends State<LianlemaApp> {
       home: SplashScreen(initialPage: widget.initialPage),
       routes: {
         '/main': (context) => MainScreen(initialPage: widget.initialPage),
+        '/pet': (context) => const PetScreen(),
       },
     );
   }

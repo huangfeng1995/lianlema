@@ -25,7 +25,7 @@ class ReportService {
 
     final completedContents = levers.asMap().entries
         .where((e) => completedIds.contains('${e.key}'))
-        .map((e) => e.value)
+        .map((e) => e.value['plan'] ?? '')
         .toList();
 
     final checkInDates = checkIns.map((c) => c.date).toList();

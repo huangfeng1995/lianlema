@@ -102,7 +102,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Center(
-                      child: Text('📝', style: TextStyle(fontSize: 22)),
+                      child: Icon(Icons.edit_note, size: 22, color: AppColors.primary),
                     ),
                   ),
                   const SizedBox(width: 14),

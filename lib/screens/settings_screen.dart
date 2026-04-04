@@ -83,7 +83,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 24),
             _buildSectionHeader('显示'),
             _buildSwitchItem(
-              icon: '☀️',
+              icon: Icons.wb_sunny,
               title: '极简模式',
               subtitle: '隐藏打卡动画和特效',
               value: _minimalMode,
@@ -95,7 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
             _buildSwitchItem(
-              icon: '🌙',
+              icon: Icons.nightlight_round,
               title: '暗色模式',
               subtitle: '深色主题',
               value: _darkMode,
@@ -107,7 +107,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 24),
             _buildSectionHeader('通知'),
             _buildSwitchItem(
-              icon: '🔔',
+              icon: Icons.notifications,
               title: '通知开关',
               subtitle: '接收打卡提醒和成就通知',
               value: _notificationsEnabled,
@@ -127,7 +127,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 24),
             _buildSectionHeader('数据'),
             _buildDangerItem(
-              icon: '🗑️',
+              icon: Icons.delete_forever,
               title: '清空所有数据',
               subtitle: '重新开始',
               onTap: _showResetDataDialog,
@@ -135,7 +135,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 24),
             _buildSectionHeader('关于'),
             _buildInfoItem(
-              icon: '📋',
+              icon: Icons.description,
               title: '版本号',
               trailing: Text(
                 _appVersion,
@@ -147,13 +147,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 12),
             _buildInfoItem(
-              icon: '📖',
+              icon: Icons.menu_book,
               title: '使用条款',
               onTap: () => _showComingSoon('使用条款'),
             ),
             const SizedBox(height: 12),
             _buildInfoItem(
-              icon: '🔒',
+              icon: Icons.lock,
               title: '隐私政策',
               onTap: () => _showComingSoon('隐私政策'),
             ),
@@ -192,7 +192,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             borderRadius: BorderRadius.circular(10),
           ),
           child: const Center(
-            child: Text('⏰', style: TextStyle(fontSize: 18)),
+            child: Icon(Icons.access_time, size: 18, color: AppColors.primary),
           ),
         ),
         title: const Text(
@@ -220,7 +220,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildSwitchItem({
-    required String icon,
+    required IconData icon,
     required String title,
     required String subtitle,
     required bool value,
@@ -237,7 +237,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             borderRadius: BorderRadius.circular(10),
           ),
           child: Center(
-            child: Text(icon, style: const TextStyle(fontSize: 18)),
+            child: Icon(icon, size: 18, color: AppColors.primary),
           ),
         ),
         title: Text(
@@ -265,7 +265,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildInfoItem({
-    required String icon,
+    required IconData icon,
     required String title,
     Widget? trailing,
     VoidCallback? onTap,
@@ -281,7 +281,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             borderRadius: BorderRadius.circular(10),
           ),
           child: Center(
-            child: Text(icon, style: const TextStyle(fontSize: 18)),
+            child: Icon(icon, size: 18, color: AppColors.primary),
           ),
         ),
         title: Text(
@@ -461,7 +461,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildDangerItem({
-    required String icon,
+    required IconData icon,
     required String title,
     required String subtitle,
     required VoidCallback onTap,
@@ -484,7 +484,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
-                child: Text(icon, style: const TextStyle(fontSize: 20)),
+                child: Icon(icon, size: 20, color: Colors.red),
               ),
             ),
             const SizedBox(width: 12),
@@ -529,7 +529,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
-            Text('🗑️', style: TextStyle(fontSize: 24)),
+            Icon(Icons.delete_forever, size: 24, color: Colors.red),
             SizedBox(width: 8),
             Text('清空所有数据'),
           ],

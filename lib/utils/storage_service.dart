@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
+import '../models/pet_models.dart';
 
 class StorageService {
   static StorageService? _instance;
@@ -22,7 +23,37 @@ class StorageService {
   }
 
   Future<void> _init() async {
-    _prefs = await SharedPreferences.getInstance();
+    const maxRetries = 3;
+    Object? lastError;
+
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        _prefs = await SharedPreferences.getInstance();
+        return;
+      } catch (e) {
+        lastError = e;
+        debugPrint('SharedPreferences init attempt $attempt failed: $e');
+        if (attempt < maxRetries) {
+          // 重试前等待一小段时间
+          await Future.delayed(Duration(milliseconds: 100 * attempt));
+        }
+      }
+    }
+
+    // 所有重试都失败了，尝试使用 mock values 作为最后的手段
+    debugPrint('SharedPreferences all retries failed, using mock values: $lastError');
+    SharedPreferences.setMockInitialValues({});
+    try {
+      _prefs = await SharedPreferences.getInstance();
+    } catch (e) {
+      debugPrint('SharedPreferences mock also failed: $e');
+      rethrow;
+    }
+  }
+
+  void debugPrint(String msg) {
+    // ignore: avoid_print
+    print('[StorageService] $msg');
   }
 
   // 存储键
@@ -46,6 +77,68 @@ class StorageService {
   static const String _keyReminderMinute = 'reminder_minute';
   static const String _keyNotificationsEnabled = 'notifications_enabled';
   static const String _keyFocusReminders = 'focus_reminders'; // 专注时段提醒
+  static const String _keyPetMoodState = 'pet_mood_state'; // 宠物心情状态
+  static const String _keyPetMemories = 'pet_memories'; // 宠物记忆
+  static const String _keyPetPreferences = 'pet_preferences'; // 宠物偏好
+  static const String _keyPetName = 'pet_name'; // 宠物名字
+
+  // ====== 宠物名字 ======
+  static const String defaultPetName = '炭炭';
+
+  Future<void> savePetName(String name) async {
+    // 限制最大10个字符
+    final trimmed = name.length > 10 ? name.substring(0, 10) : name;
+    await _prefs.setString(_keyPetName, trimmed);
+  }
+
+  String getPetName() {
+    return _prefs.getString(_keyPetName) ?? defaultPetName;
+  }
+
+  // ====== 宠物记忆（反思机制） ======
+  Future<void> savePetMemories(List<PetMemory> memories) async {
+    final list = memories.map((m) => m.toJson()).toList();
+    await _prefs.setString(_keyPetMemories, jsonEncode(list));
+  }
+
+  List<PetMemory> getPetMemories() {
+    final str = _prefs.getString(_keyPetMemories);
+    if (str == null) return [];
+    final list = jsonDecode(str) as List;
+    return list.map((e) => PetMemory.fromJson(e)).toList();
+  }
+
+  Future<void> addPetMemory(PetMemory memory) async {
+    final memories = getPetMemories();
+    memories.add(memory);
+    // 保留最近50条记忆
+    if (memories.length > 50) {
+      memories.removeRange(0, memories.length - 50);
+    }
+    await savePetMemories(memories);
+  }
+
+  // ====== 宠物偏好 ======
+  Future<void> savePetPreferences(PetPreferences prefs) async {
+    await _prefs.setString(_keyPetPreferences, jsonEncode(prefs.toJson()));
+  }
+
+  PetPreferences getPetPreferences() {
+    final str = _prefs.getString(_keyPetPreferences);
+    if (str == null) return PetPreferences.defaultPrefs();
+    return PetPreferences.fromJson(jsonDecode(str));
+  }
+
+  // ====== 宠物心情 ======
+  Future<void> savePetMoodState(PetMoodState state) async {
+    await _prefs.setString(_keyPetMoodState, jsonEncode(state.toJson()));
+  }
+
+  PetMoodState getPetMoodState() {
+    final str = _prefs.getString(_keyPetMoodState);
+    if (str == null) return PetMoodState.initial();
+    return PetMoodState.fromJson(jsonDecode(str));
+  }
 
   // ====== Onboarding ======
   bool get isOnboardingComplete => _prefs.getBool(_keyOnboardingComplete) ?? false;
@@ -114,14 +207,22 @@ class StorageService {
   }
 
   // ====== 每日杠杆 ======
-  Future<void> saveDailyLevers(List<String> levers) async {
+  // 存储格式：List<Map<String, String>> 每个元素包含 obstacle（内心障碍）和 plan（IF-THEN 计划）
+  Future<void> saveDailyLevers(List<Map<String, String>> levers) async {
     await _prefs.setString(_keyDailyLevers, jsonEncode(levers));
   }
 
-  List<String> getDailyLevers() {
+  List<Map<String, String>> getDailyLevers() {
     final str = _prefs.getString(_keyDailyLevers);
     if (str == null) return [];
-    return List<String>.from(jsonDecode(str));
+    final List decoded = jsonDecode(str);
+    return decoded.map((e) {
+      if (e is String) {
+        // 兼容旧数据：只有计划文本，没有障碍字段
+        return {'obstacle': '', 'plan': e};
+      }
+      return Map<String, String>.from(e as Map);
+    }).toList();
   }
 
   // ====== 约束条件 ======
@@ -387,6 +488,42 @@ class StorageService {
       icon: 'assets/images/badge/badge_10_sprout.png',
       isUnlocked: false,
     ),
+    // v0.2.3 规划徽章
+    AppBadge(
+      id: '11',
+      name: '规划者',
+      description: '你已经想清楚要逃避什么',
+      icon: 'assets/images/badge/badge_11_planner.png',
+      isUnlocked: false,
+    ),
+    AppBadge(
+      id: '12',
+      name: '愿景家',
+      description: '你有画面了，知道要活成谁',
+      icon: 'assets/images/badge/badge_12_visionary.png',
+      isUnlocked: false,
+    ),
+    AppBadge(
+      id: '13',
+      name: '年度目标',
+      description: '主线任务已确认',
+      icon: 'assets/images/badge/badge_13_target.png',
+      isUnlocked: false,
+    ),
+    AppBadge(
+      id: '14',
+      name: '底线',
+      description: '你的底线，你来定',
+      icon: 'assets/images/badge/badge_14_baseline.png',
+      isUnlocked: false,
+    ),
+    AppBadge(
+      id: '15',
+      name: '完整规划',
+      description: '这是一个完整的自己',
+      icon: 'assets/images/badge/badge_15_complete.png',
+      isUnlocked: false,
+    ),
   ];
 
   // ====== 月度Boss ======
@@ -406,7 +543,7 @@ class StorageService {
     required String vision,
     required String yearGoal,
     required String monthlyBoss,
-    required List<String> dailyLevers,
+    required List<Map<String, String>> dailyLevers,
     required String constraints,
     String temptingBundling = '',
   }) async {
@@ -420,18 +557,120 @@ class StorageService {
       hp: 0,
     );
 
-    await Future.wait<void>([
-      saveAntiVision(antiVision),
-      saveVision(vision),
-      saveYearGoal(yearGoal),
-      saveMonthlyBoss(boss),
-      saveDailyLevers(dailyLevers),
-      saveConstraints(constraints),
-      saveTemptingBundling(temptingBundling),
-      setOnboardingComplete(true),
-      saveBadges(_defaultBadges),
-      saveLastReviewMonth('${now.year}-${now.month.toString().padLeft(2, '0')}'),
-    ]);
+    // 顺序写入，避免并发导致 SharedPreferences 失败
+    await saveAntiVision(antiVision);
+    await saveVision(vision);
+    await saveYearGoal(yearGoal);
+    await saveMonthlyBoss(boss);
+    await saveDailyLevers(dailyLevers);
+    await saveConstraints(constraints);
+    await saveTemptingBundling(temptingBundling);
+    await setOnboardingComplete(true);
+    await saveBadges(_defaultBadges);
+    await saveLastReviewMonth('${now.year}-${now.month.toString().padLeft(2, '0')}');
+  }
+
+  // ====== 规划徽章检查 ======
+  /// 检查并解锁规划徽章
+  /// 当用户设置反愿景/愿景/年度目标/约束条件时调用
+  Future<List<AppBadge>> checkPlanningBadges() async {
+    final badges = getBadges();
+    final antiVision = getAntiVision();
+    final vision = getVision();
+    final yearGoal = getYearGoal();
+    final constraints = getConstraints();
+
+    bool updated = false;
+    final now = DateTime.now();
+
+    // 检查各单项徽章
+    final antiVisionBadge = badges.firstWhere((b) => b.id == '11', orElse: () => badges.first);
+    if (antiVision.isNotEmpty && !antiVisionBadge.isUnlocked) {
+      final idx = badges.indexWhere((b) => b.id == '11');
+      if (idx >= 0) {
+        badges[idx] = AppBadge(
+          id: '11',
+          name: antiVisionBadge.name,
+          description: antiVisionBadge.description,
+          icon: antiVisionBadge.icon,
+          isUnlocked: true,
+          unlockedAt: now,
+        );
+        updated = true;
+      }
+    }
+
+    final visionBadge = badges.firstWhere((b) => b.id == '12', orElse: () => badges.first);
+    if (vision.isNotEmpty && !visionBadge.isUnlocked) {
+      final idx = badges.indexWhere((b) => b.id == '12');
+      if (idx >= 0) {
+        badges[idx] = AppBadge(
+          id: '12',
+          name: visionBadge.name,
+          description: visionBadge.description,
+          icon: visionBadge.icon,
+          isUnlocked: true,
+          unlockedAt: now,
+        );
+        updated = true;
+      }
+    }
+
+    final yearGoalBadge = badges.firstWhere((b) => b.id == '13', orElse: () => badges.first);
+    if (yearGoal.isNotEmpty && !yearGoalBadge.isUnlocked) {
+      final idx = badges.indexWhere((b) => b.id == '13');
+      if (idx >= 0) {
+        badges[idx] = AppBadge(
+          id: '13',
+          name: yearGoalBadge.name,
+          description: yearGoalBadge.description,
+          icon: yearGoalBadge.icon,
+          isUnlocked: true,
+          unlockedAt: now,
+        );
+        updated = true;
+      }
+    }
+
+    final constraintsBadge = badges.firstWhere((b) => b.id == '14', orElse: () => badges.first);
+    if (constraints.isNotEmpty && !constraintsBadge.isUnlocked) {
+      final idx = badges.indexWhere((b) => b.id == '14');
+      if (idx >= 0) {
+        badges[idx] = AppBadge(
+          id: '14',
+          name: constraintsBadge.name,
+          description: constraintsBadge.description,
+          icon: constraintsBadge.icon,
+          isUnlocked: true,
+          unlockedAt: now,
+        );
+        updated = true;
+      }
+    }
+
+    // 检查完整规划徽章（全部4项都完成）
+    final completeBadge = badges.firstWhere((b) => b.id == '15', orElse: () => badges.first);
+    final allFourCompleted = antiVision.isNotEmpty && vision.isNotEmpty && yearGoal.isNotEmpty && constraints.isNotEmpty;
+    if (allFourCompleted && !completeBadge.isUnlocked) {
+      final idx = badges.indexWhere((b) => b.id == '15');
+      if (idx >= 0) {
+        badges[idx] = AppBadge(
+          id: '15',
+          name: completeBadge.name,
+          description: completeBadge.description,
+          icon: completeBadge.icon,
+          isUnlocked: true,
+          unlockedAt: now,
+        );
+        updated = true;
+      }
+    }
+
+    if (updated) {
+      await saveBadges(badges);
+    }
+
+    return badges;
   }
 
   // ====== 重置应用 ======

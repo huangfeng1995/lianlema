@@ -1,24 +1,20 @@
 class AntiVision {
   final String content;
   final DateTime createdAt;
-  final bool isLocked;
 
   AntiVision({
     required this.content,
     required this.createdAt,
-    this.isLocked = true,
   });
 
   Map<String, dynamic> toJson() => {
     'content': content,
     'createdAt': createdAt.toIso8601String(),
-    'isLocked': isLocked,
   };
 
   factory AntiVision.fromJson(Map<String, dynamic> json) => AntiVision(
     content: json['content'],
     createdAt: DateTime.parse(json['createdAt']),
-    isLocked: json['isLocked'] ?? true,
   );
 }
 
@@ -95,28 +91,32 @@ class MonthlyBoss {
 
 class DailyLever {
   final String id;
-  final String content;
+  final String obstacle; // 内心障碍（WOOP的O）
+  final String plan; // IF-THEN 计划（WOOP的P）
   final int order;
   bool isCompleted;
 
   DailyLever({
     required this.id,
-    required this.content,
+    required this.obstacle,
+    required this.plan,
     required this.order,
     this.isCompleted = false,
   });
 
   Map<String, dynamic> toJson() => {
     'id': id,
-    'content': content,
+    'obstacle': obstacle,
+    'plan': plan,
     'order': order,
     'isCompleted': isCompleted,
   };
 
   factory DailyLever.fromJson(Map<String, dynamic> json) => DailyLever(
-    id: json['id'],
-    content: json['content'],
-    order: json['order'],
+    id: json['id'] ?? '',
+    obstacle: json['obstacle'] ?? '',
+    plan: json['plan'] ?? '',
+    order: json['order'] ?? 0,
     isCompleted: json['isCompleted'] ?? false,
   );
 }
