@@ -64,6 +64,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final stats = _storage.getUserStats();
     final leverMaps = _storage.getDailyLevers();
+    // 优先用 onboarding 保存的每日行动（per-boss 格式），否则用模板
+    final dailyActions = _storage.getDailyActions();
+    final effectiveLevers = dailyActions.isNotEmpty
+        ? dailyActions.asMap().entries.map((e) => {'obstacle': '', 'plan': e.value}).toList()
+        : leverMaps;
     final antiVision = _storage.getAntiVision();
     final vision = _storage.getVision();
     final yearGoal = _storage.getYearGoal();
@@ -96,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
         streak: streak,
         totalCheckIns: stats.totalCheckIns,
       );
-      _todayLevers = leverMaps.asMap().entries.map((e) {
+      _todayLevers = effectiveLevers.asMap().entries.map((e) {
         return DailyLever(
           id: '${e.key}',
           obstacle: e.value['obstacle'] ?? '',

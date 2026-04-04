@@ -39,10 +39,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   // 月度Boss模板
   final List<Map<String, String>> _bossTemplates = [
-    {'name': '读书Boss', 'desc': '这个月读完一本书'},
-    {'name': '运动Boss', 'desc': '每天运动30分钟'},
-    {'name': '早起Boss', 'desc': '连续30天早睡早起'},
-    {'name': '写作Boss', 'desc': '每天写作500字'},
+    {'name': '读书Boss', 'desc': '这个月读完一本书', 'dailyActionHints': '["每天阅读10页", "写读书笔记"]'},
+    {'name': '运动Boss', 'desc': '每天运动30分钟', 'dailyActionHints': '["晨跑30分钟", "睡前拉伸"]'},
+    {'name': '早起Boss', 'desc': '连续30天早睡早起', 'dailyActionHints': '["23点前睡觉", "6点起床"]'},
+    {'name': '写作Boss', 'desc': '每天写作500字', 'dailyActionHints': '["清晨写作", "记录灵感"]'},
   ];
   Set<String> _selectedBossTypes = {};
   List<String> _customBosses = [''];
@@ -50,7 +50,47 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   // 提醒时间
   String _reminderChoice = '不提醒';
 
-  static const int _totalPages = 1;
+  // 每个Boss对应的每日行动 Map<bossKey, List<action>>
+  Map<String, List<String>> _dailyActionsPerBoss = {};
+
+  static const int _totalPages = 2;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  // 获取所有选中的Boss（包括模板+自定义）的key列表
+  List<String> _getAllBossKeys() {
+    final keys = <String>[];
+    keys.addAll(_selectedBossTypes);
+    for (var i = 0; i < _customBosses.length; i++) {
+      if (_customBosses[i].trim().isNotEmpty) {
+        keys.add('custom_$i');
+      }
+    }
+    return keys;
+  }
+
+  // 获取Boss的显示名
+  String _getBossDisplayName(String key) {
+    if (key.startsWith('custom_')) {
+      final idx = int.tryParse(key.substring(7)) ?? 0;
+      return _customBosses[idx].trim();
+    }
+    final template = _bossTemplates.firstWhere(
+      (t) => t['name'] == key,
+      orElse: () => {'desc': key},
+    );
+    return template['desc'] ?? key;
+  }
+
+  void _ensureBossActions(String key) {
+    if (!_dailyActionsPerBoss.containsKey(key)) {
+      _dailyActionsPerBoss[key] = ['', ''];
+    }
+  }
 
   void _nextPage() {
     if (_currentPage < _totalPages - 1) {
@@ -104,9 +144,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         vision: _vision.isEmpty ? '成为更好的自己' : _vision,
         yearGoal: _yearGoal.isEmpty ? '持续成长' : _yearGoal,
         monthlyBoss: bossContent,
-        dailyLevers: validLevers.isEmpty ? [{'obstacle': '', 'plan': '早起'}, {'obstacle': '', 'plan': '读书'}] : validLevers,
+        dailyLevers: validLevers.isEmpty 
+            ? (bossContent.isNotEmpty && bossContent != '本月Boss' 
+                ? [{'obstacle': '', 'plan': '开始行动'}] 
+                : [{'obstacle': '', 'plan': '早起'}, {'obstacle': '', 'plan': '读书'}])
+            : validLevers,
         constraints: _constraints.isEmpty ? '每天进步一点点' : _constraints,
         temptingBundling: '',
+        dailyActions: _dailyActionsPerBoss.values.expand((actions) => actions.where((a) => a.trim().isNotEmpty)).toList(),
       );
 
       if (_enableReminder) {
@@ -129,12 +174,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -149,6 +188,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 onPageChanged: (index) => setState(() => _currentPage = index),
                 children: [
                   _buildMonthlyBossPage(),
+                  _buildDailyActionPage(),
                 ],
               ),
             ),
@@ -223,7 +263,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                 )
               : Text(
-                  _currentPage == _totalPages - 1 ? '开始行动' : '下一步',
+                  _currentPage == _totalPages - 1 ? '完成' : '下一步',
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
         ),
@@ -233,19 +273,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   bool _canProceed() {
     switch (_currentPage) {
-      case 0: // 反愿景 - 可跳过
-        return true;
-      case 1: // 愿景 - 可跳过
-        return true;
-      case 2: // 年度目标 - 可跳过
-        return true;
-      case 3: // 月度Boss - 至少选一个
+      case 0: // 月度Boss - 至少选一个
         return _selectedBossTypes.isNotEmpty || _customBosses.any((b) => b.trim().isNotEmpty);
-      case 4: // 每日杠杆 - 至少填一个
-        final hasTemplate = _selectedTemplates.isNotEmpty;
-        final hasCustom = _customLevers.any((l) => l.trim().isNotEmpty);
-        return hasTemplate || hasCustom;
-      case 5: // 约束条件 - 可跳过
+      case 1: // 每日行动 - 每个Boss至少填一个
+        for (final key in _getAllBossKeys()) {
+          _ensureBossActions(key);
+          final actions = _dailyActionsPerBoss[key] ?? [];
+          if (!actions.any((a) => a.trim().isNotEmpty)) return false;
+        }
         return true;
       default:
         return true;
@@ -439,6 +474,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   if (isSelected) {
                     _selectedBossTypes.remove(template['name']);
                   } else {
+                    if (_selectedBossTypes.length >= 3) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('聚焦1-3个核心目标效果最好～'),
+                          duration: Duration(seconds: 2),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                      return;
+                    }
                     _selectedBossTypes.add(template['name']!);
                   }
                 }),
@@ -557,9 +602,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                     const Spacer(),
                     GestureDetector(
-                      onTap: () => setState(() {
-                        _customBosses.add('');
-                      }),
+                      onTap: () {
+                        if (_customBosses.length >= 3) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('最多设置3个Boss，请先完成当前'),
+                              duration: Duration(seconds: 2),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          return;
+                        }
+                        setState(() {
+                          _customBosses.add('');
+                        });
+                      },
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
@@ -696,6 +753,295 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 24),
         ],
       ),
+    );
+  }
+
+  // ====== Page 1: 每日行动 ======
+  Widget _buildDailyActionPage() {
+    final bossKeys = _getAllBossKeys();
+    // 保证每个boss都有初始化的行动列表
+    for (final key in bossKeys) {
+      _ensureBossActions(key);
+    }
+    final selectedHintMap = <String, List<String>>{};
+    for (final key in bossKeys) {
+      if (!key.startsWith('custom_')) {
+        final template = _bossTemplates.firstWhere(
+          (t) => t['name'] == key,
+          orElse: () => {'name': '', 'desc': '', 'dailyActionHints': '[]'},
+        );
+        final hintsStr = template['dailyActionHints'] ?? '[]';
+        if (hintsStr.isNotEmpty && hintsStr != '[]') {
+          try {
+            final parsed = hintsStr.substring(1, hintsStr.length - 1).split(',').map((s) => s.trim().replaceAll('"', '')).toList();
+            selectedHintMap[key] = parsed;
+          } catch (_) {
+            selectedHintMap[key] = [];
+          }
+        }
+      }
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 标题区
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFF6B5B), Color(0xFFFF8E53)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFF6B5B).withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.bolt, size: 26, color: Colors.white),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '每日行动',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      '每个Boss每天做什么？',
+                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // 多个Boss时每个Boss一个行动区块（不用Tab）
+          if (bossKeys.length > 1)
+            ...bossKeys.map((key) => Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: _buildBossActionSection(key, selectedHintMap[key] ?? []),
+            ))
+          else if (bossKeys.isNotEmpty)
+            _buildBossActionSection(bossKeys.first, selectedHintMap[bossKeys.first] ?? [])
+          else
+            const Center(
+              child: Text(
+                '请先在上一页选择你的Boss',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              ),
+            ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  // 每个Boss的行动输入区域
+  Widget _buildBossActionSection(String bossKey, List<String> hints) {
+    final actions = _dailyActionsPerBoss[bossKey] ?? ['', ''];
+    final circledNumbers = ['①', '②', '③', '④', '⑤'];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Boss标签
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppColors.primary.withValues(alpha: 0.15),
+                AppColors.primaryLight.withValues(alpha: 0.08),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.shield_outlined, size: 16, color: AppColors.primary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  _getBossDisplayName(bossKey),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // 建议提示
+        if (hints.isNotEmpty) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF8E53).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.lightbulb_outline, size: 13, color: Color(0xFFFF8E53)),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    '建议：${hints.join('、')}',
+                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // 提示文案
+        Text(
+          '每天坚持的关键行动：',
+          style: TextStyle(
+            fontSize: 12,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // 行动输入框
+        ...List.generate(actions.length, (index) {
+          return Padding(
+            padding: EdgeInsets.only(bottom: index < actions.length - 1 ? 10 : 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  margin: const EdgeInsets.only(top: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF8E53).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Center(
+                    child: Text(
+                      circledNumbers[index],
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFFF8E53),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    maxLines: 2,
+                    minLines: 1,
+                    decoration: InputDecoration(
+                      hintText: '例如：每天跑步30分钟',
+                      hintStyle: TextStyle(
+                        color: AppColors.textLight.withValues(alpha: 0.6),
+                        fontSize: 13,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.2)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.2)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: Color(0xFFFF8E53), width: 1.5),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      isDense: true,
+                    ),
+                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    onChanged: (v) => setState(() {
+                      _dailyActionsPerBoss[bossKey]![index] = v;
+                    }),
+                  ),
+                ),
+                if (actions.length > 1)
+                  GestureDetector(
+                    onTap: () => setState(() {
+                      _dailyActionsPerBoss[bossKey]!.removeAt(index);
+                    }),
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 6, top: 8),
+                      child: Icon(
+                        Icons.close,
+                        size: 18,
+                        color: AppColors.textLight.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }),
+        const SizedBox(height: 12),
+
+        // 添加按钮
+        if (actions.length < 5)
+          GestureDetector(
+            onTap: () => setState(() {
+              _dailyActionsPerBoss[bossKey]!.add('');
+            }),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF8E53).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: const Color(0xFFFF8E53).withValues(alpha: 0.25),
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add, size: 14, color: Color(0xFFFF8E53)),
+                  SizedBox(width: 4),
+                  Text(
+                    '添加行动',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFFFF8E53),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 

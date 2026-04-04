@@ -64,6 +64,7 @@ class StorageService {
   static const String _keyYearGoal = 'year_goal';
   static const String _keyMonthlyBoss = 'monthly_boss';
   static const String _keyDailyLevers = 'daily_levers';
+  static const String _keyDailyActions = 'daily_actions';
   static const String _keyConstraints = 'constraints';
   static const String _keyCheckIns = 'check_ins';
   static const String _keyBadges = 'badges';
@@ -223,6 +224,18 @@ class StorageService {
       }
       return Map<String, String>.from(e as Map);
     }).toList();
+  }
+
+  // ====== 每日行动 ======
+  Future<void> saveDailyActions(List<String> actions) async {
+    await _prefs.setString(_keyDailyActions, jsonEncode(actions));
+  }
+
+  List<String> getDailyActions() {
+    final str = _prefs.getString(_keyDailyActions);
+    if (str == null) return [];
+    final List decoded = jsonDecode(str);
+    return decoded.cast<String>();
   }
 
   // ====== 约束条件 ======
@@ -546,6 +559,7 @@ class StorageService {
     required List<Map<String, String>> dailyLevers,
     required String constraints,
     String temptingBundling = '',
+    List<String> dailyActions = const [],
   }) async {
     // 保存月度 Boss
     final now = DateTime.now();
@@ -563,6 +577,7 @@ class StorageService {
     await saveYearGoal(yearGoal);
     await saveMonthlyBoss(boss);
     await saveDailyLevers(dailyLevers);
+    await saveDailyActions(dailyActions);
     await saveConstraints(constraints);
     await saveTemptingBundling(temptingBundling);
     await setOnboardingComplete(true);
