@@ -463,6 +463,65 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _showAddLeverDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('添加今日行动', style: TextStyle(color: AppColors.textPrimary)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 2,
+          style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+          decoration: InputDecoration(
+            hintText: _monthlyBoss != null
+                ? '例如：从Boss「${_monthlyBoss!.content.split('；').first}」分解出一个行动'
+                : '写下今天要做的关键行动',
+            hintStyle: TextStyle(color: AppColors.textLight, fontSize: 13),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            contentPadding: const EdgeInsets.all(12),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              final text = controller.text.trim();
+              if (text.isNotEmpty) {
+                final newLever = DailyLever(
+                  id: '${DateTime.now().millisecondsSinceEpoch}',
+                  obstacle: '',
+                  plan: text,
+                  isCompleted: false,
+                  order: _todayLevers.length,
+                );
+                setState(() {
+                  _todayLevers.add(newLever);
+                });
+                final storage = await StorageService.getInstance();
+                // 保存到 storage
+                final leverMaps = _todayLevers.map((l) => {'obstacle': l.obstacle, 'plan': l.plan}).toList();
+                await storage.saveDailyLevers(leverMaps);
+              }
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('添加', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -489,10 +548,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   _buildPetCard(),
                   _buildMonthlyBossCard(),
                   if (_todayLevers.isNotEmpty) _buildDailyCheckIn(),
-                  if (_vision.isNotEmpty || _antiVision.isNotEmpty) ...[
-                    _buildVisionCard(),
-                    _buildAntiVisionCard(),
-                  ],
                   const SizedBox(height: 20),
                 ],
               ),
@@ -778,15 +833,24 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
-                      boss.content,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
+                    // 多任务分行显示
+                    ...boss.content.split('；').map((task) => Padding(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('• ', style: TextStyle(fontSize: 12, color: AppColors.primary)),
+                          Expanded(
+                            child: Text(
+                              task.trim(),
+                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    )),
                   ],
                 ),
               ),
@@ -1141,14 +1205,40 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: AppColors.textPrimary,
                 ),
               ),
-              if (_todayLevers.isNotEmpty)
-                Text(
-                  '${_todayLevers.where((l) => l.isCompleted).length}/${_todayLevers.length}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textSecondary,
+              Row(
+                children: [
+                  if (_todayLevers.isNotEmpty)
+                    Text(
+                      '${_todayLevers.where((l) => l.isCompleted).length}/${_todayLevers.length}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  GestureDetector(
+                    onTap: _showAddLeverDialog,
+                    child: Container(
+                      margin: const EdgeInsets.only(left: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add, size: 14, color: AppColors.primary),
+                          SizedBox(width: 2),
+                          Text(
+                            '添加',
+                            style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 12),
