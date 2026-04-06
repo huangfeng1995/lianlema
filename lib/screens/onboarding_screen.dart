@@ -98,11 +98,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
-  void _nextPage() {
+  void _nextPage() async {
     if (_currentPage < _totalPages - 1) {
-      // 如果即将前往月度挑战页，提前加载宠物拆解建议
+      // 如果即将前往月度挑战页，加载宠物拆解建议（按钮显示 loading）
       if (_currentPage == 0) {
-        _loadPetSuggestions();
+        setState(() => _isSaving = true);
+        await _loadPetSuggestions();
+        setState(() => _isSaving = false);
       }
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),

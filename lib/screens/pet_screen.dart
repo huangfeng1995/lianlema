@@ -211,7 +211,7 @@ class _PetScreenState extends State<PetScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _buildStatItem(Icons.local_fire_department, Color(0xFFFF4500), '${_context!.streak}天', '连续打卡'),
+        _buildStatItem(Icons.whatshot, Color(0xFFFF4500), '${_context!.streak}天', '连续打卡'),
         _buildStatItem(Icons.star, Color(0xFFFFD700), '等级${(_context!.totalCheckIns ~/ 10) + 1}', '当前等级'),
         _buildStatItem(Icons.whatshot, AppColors.primary, '${_context!.currentBossHp}/${_context!.currentBossTotal}', '挑战进度'),
       ],
@@ -250,7 +250,7 @@ class _PetScreenState extends State<PetScreen> {
       case PetMood.thinking:
         return Icon(Icons.psychology, color: Colors.white, size: size);
       case PetMood.calm:
-        return Icon(Icons.local_fire_department, color: Colors.white, size: size);
+        return Icon(Icons.whatshot, color: Colors.white, size: size);
       case PetMood.resting:
         return Icon(Icons.bedtime, color: Colors.white70, size: size);
     }
@@ -312,7 +312,7 @@ class _PetScreenState extends State<PetScreen> {
                 shape: BoxShape.circle,
               ),
               child: const Center(
-                child: Icon(Icons.local_fire_department, size: 18, color: AppColors.primary),
+                child: Icon(Icons.whatshot, size: 18, color: AppColors.primary),
               ),
             ),
             const SizedBox(width: 8),

@@ -794,8 +794,41 @@ $goalsText
 ''';
 
     try {
-      final response = await _callMiniMax(prompt, PetContext());
-      return _parseDecompositionResponse(response);
+      // 拆解需要更多 tokens，直接调 API 不走 _callMiniMax（后者受 prefs.responseLength 限制）
+      const endpoint = '${MiniMaxConfig.baseUrl}/messages';
+      final body = {
+        'model': 'abab6.5s-chat',
+        'max_tokens': 600,
+        'temperature': 0.7,
+        'system': '你是炭炭，用户的宠物伙伴。回复简洁有温度。',
+        'messages': [
+          {'role': 'user', 'content': prompt},
+        ],
+      };
+
+      final response = await http.post(
+        Uri.parse(endpoint),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': MiniMaxConfig.apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final contentList = data['content'] as List?;
+        if (contentList != null) {
+          for (final item in contentList) {
+            if (item['type'] == 'text' && (item['text'] as String?)?.isNotEmpty == true) {
+              return _parseDecompositionResponse((item['text'] as String).trim());
+            }
+          }
+        }
+      }
+      debugPrint('PetService decomposeGoals API error: ${response.statusCode}');
+      return DecompositionResult(monthlyChallenges: [], dailyActionsPerChallenge: {});
     } catch (e) {
       debugPrint('PetService decomposeGoals error: $e');
       return DecompositionResult(monthlyChallenges: [], dailyActionsPerChallenge: {});

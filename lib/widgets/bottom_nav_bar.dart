@@ -39,8 +39,8 @@ class BottomNavBar extends StatelessWidget {
                 index: 0,
               ),
               _buildNavItem(
-                icon: Icons.local_fire_department_outlined,
-                activeIcon: Icons.local_fire_department,
+                icon: Icons.pets_outlined,
+                activeIcon: Icons.pets,
                 label: '宠物',
                 index: 1,
               ),
