@@ -221,7 +221,7 @@ class _YearlyReportScreenState extends State<YearlyReportScreen> {
                   children: [
                     _buildHeaderStat('打卡天数', '${report.totalCheckInDays}天'),
                     const SizedBox(width: 24),
-                    _buildHeaderStat('击败Boss', '${report.bossesDefeated}个'),
+                    _buildHeaderStat('完成挑战', '${report.bossesDefeated}个'),
                     const SizedBox(width: 24),
                     _buildHeaderStat('累计XP', '${report.totalXP}'),
                   ],
@@ -328,7 +328,7 @@ class _YearlyReportScreenState extends State<YearlyReportScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildStatCard(
-                  label: '击败Boss',
+                  label: '完成挑战',
                   value: '${report.bossesDefeated}个',
                   icon: Icons.emoji_events,
                   color: const Color(0xFFFFD700),

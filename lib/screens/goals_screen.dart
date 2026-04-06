@@ -267,7 +267,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      '本月Boss战',
+                      '本月挑战',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
@@ -297,7 +297,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  bossContent.isNotEmpty ? bossContent : '设置你的本月Boss目标',
+                  bossContent.isNotEmpty ? bossContent : '设置你的本月挑战目标',
                   style: const TextStyle(
                     fontSize: 14,
                     color: AppColors.textPrimary,
@@ -357,7 +357,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.cardBackground,
-        title: const Text('设置本月Boss目标'),
+        title: const Text('设置本月挑战'),
         content: TextField(
           controller: controller,
           maxLines: 3,

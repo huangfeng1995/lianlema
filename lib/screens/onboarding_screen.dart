@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../utils/storage_service.dart';
+import '../utils/pet_service.dart';
 import 'home_screen.dart';
 import 'main_screen.dart';
 
 /// Onboarding Screen - 简化版引导流程
 ///
 /// 步骤：
-/// 0: 月度Boss — 本月最重要的挑战
-///
-/// 其他内容（愿景、年度目标、每日杠杆、约束）移至"我的"页面填写
+/// 0: 年度目标 — 今年最想做成的一件事
+/// 1: 月度挑战 — 本月最重要的挑战
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -25,7 +25,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   // 步骤数据
   String _antiVision = '';
   String _vision = '';
-  String _yearGoal = '';
+  List<String> _yearGoals = ['']; // 年度目标（可多条）
   String _monthlyBoss = '';
   List<Map<String, String>> _dailyLevers = [];
   String _constraints = '';
@@ -37,12 +37,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final Set<String> _selectedTemplates = {};
   final List<String> _customLevers = ['', ''];
 
-  // 月度Boss模板
+  // 月度挑战模板（3个）
   final List<Map<String, String>> _bossTemplates = [
-    {'name': '读书Boss', 'desc': '这个月读完一本书', 'dailyActionHints': '["每天阅读10页", "写读书笔记"]'},
-    {'name': '运动Boss', 'desc': '每天运动30分钟', 'dailyActionHints': '["晨跑30分钟", "睡前拉伸"]'},
-    {'name': '早起Boss', 'desc': '连续30天早睡早起', 'dailyActionHints': '["23点前睡觉", "6点起床"]'},
-    {'name': '写作Boss', 'desc': '每天写作500字', 'dailyActionHints': '["清晨写作", "记录灵感"]'},
+    {'name': '读完一本书', 'desc': '这个月读完一本书', 'dailyActionHints': '["每天阅读10页", "写读书笔记"]'},
+    {'name': '运动习惯', 'desc': '每周运动3次', 'dailyActionHints': '["晨跑30分钟", "睡前拉伸"]'},
+    {'name': '早起习惯', 'desc': '连续30天早睡早起', 'dailyActionHints': '["23点前睡觉", "6点起床"]'},
   ];
   Set<String> _selectedBossTypes = {};
   List<String> _customBosses = [''];
@@ -52,6 +51,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   // 每个Boss对应的每日行动 Map<bossKey, List<action>>
   Map<String, List<String>> _dailyActionsPerBoss = {};
+
+  // ====== 宠物智能拆解状态 ======
+  List<String> _petSuggestedChallenges = []; // 宠物建议的月度挑战
+  Map<String, List<String>> _petDailyActionsPerChallenge = {}; // challenge → 每日行动
+  bool _isLoadingPetSuggestions = false;
 
   static const int _totalPages = 2;
 
@@ -94,12 +98,44 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   void _nextPage() {
     if (_currentPage < _totalPages - 1) {
+      // 如果即将前往月度挑战页，提前加载宠物拆解建议
+      if (_currentPage == 0) {
+        _loadPetSuggestions();
+      }
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
     } else {
       _completeOnboarding();
+    }
+  }
+
+  /// 加载宠物的智能拆解建议（年度目标 → 月度挑战 → 每日行动）
+  Future<void> _loadPetSuggestions() async {
+    final goals = _yearGoals.where((g) => g.trim().isNotEmpty).toList();
+    if (goals.isEmpty) return;
+    if (_isLoadingPetSuggestions) return;
+
+    setState(() {
+      _isLoadingPetSuggestions = true;
+      _petSuggestedChallenges = [];
+      _petDailyActionsPerChallenge = {};
+    });
+
+    try {
+      final result = await PetService.instance.decomposeGoals(goals);
+      if (mounted) {
+        setState(() {
+          _petSuggestedChallenges = result.monthlyChallenges;
+          _petDailyActionsPerChallenge = result.dailyActionsPerChallenge;
+          _isLoadingPetSuggestions = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingPetSuggestions = false);
+      }
     }
   }
 
@@ -125,13 +161,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         validLevers.add({'obstacle': '', 'plan': '读书'});
       }
 
-      // 构建月度Boss（支持多选）
+      // 构建月度挑战（支持多选）
+      // 注意：用户可能选择了「为你推荐」的选项，这些不在 _bossTemplates 里
       String bossContent = '';
       final parts = <String>[];
       if (_selectedBossTypes.isNotEmpty) {
         for (final name in _selectedBossTypes) {
-          final template = _bossTemplates.firstWhere((t) => t['name'] == name);
-          parts.add(template['desc']!);
+          // 尝试在模板里找，找不到就用推荐词本身
+          final templateMatch = _bossTemplates.where((t) => t['name'] == name).toList();
+          if (templateMatch.isNotEmpty) {
+            parts.add(templateMatch.first['desc']!);
+          } else {
+            // 推荐词或自定义 → 直接使用
+            parts.add(name);
+          }
         }
       }
       for (final b in _customBosses) {
@@ -139,19 +182,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       }
       bossContent = parts.join('；');
 
+      // 构建每日行动（优先使用宠物智能拆解的结果）
+      List<String> dailyActionsFromPet = [];
+      for (final key in _selectedBossTypes) {
+        if (_petDailyActionsPerChallenge.containsKey(key)) {
+          dailyActionsFromPet.addAll(_petDailyActionsPerChallenge[key]!);
+        }
+      }
+
       await storage.saveOnboardingData(
         antiVision: _antiVision.isEmpty ? '还在探索中' : _antiVision,
         vision: _vision.isEmpty ? '成为更好的自己' : _vision,
-        yearGoal: _yearGoal.isEmpty ? '持续成长' : _yearGoal,
+        yearGoal: _yearGoals.any((g) => g.isNotEmpty) ? _yearGoals.where((g) => g.isNotEmpty).join('；') : '持续成长',
         monthlyBoss: bossContent,
         dailyLevers: validLevers.isEmpty 
-            ? (bossContent.isNotEmpty && bossContent != '本月Boss' 
+            ? (bossContent.isNotEmpty && bossContent != '本月挑战' 
                 ? [{'obstacle': '', 'plan': '开始行动'}] 
                 : [{'obstacle': '', 'plan': '早起'}, {'obstacle': '', 'plan': '读书'}])
             : validLevers,
         constraints: _constraints.isEmpty ? '每天进步一点点' : _constraints,
         temptingBundling: '',
-        dailyActions: _dailyActionsPerBoss.values.expand((actions) => actions.where((a) => a.trim().isNotEmpty)).toList(),
+        dailyActions: dailyActionsFromPet.isNotEmpty ? dailyActionsFromPet : [],
       );
 
       if (_enableReminder) {
@@ -184,11 +235,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Expanded(
               child: PageView(
                 controller: _pageController,
-                physics: const ClampingScrollPhysics(),
+                physics: const NeverScrollableScrollPhysics(),
                 onPageChanged: (index) => setState(() => _currentPage = index),
                 children: [
+                  _buildYearGoalPage(),
                   _buildMonthlyBossPage(),
-                  _buildDailyActionPage(),
                 ],
               ),
             ),
@@ -255,7 +306,30 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       child: SizedBox(
         width: double.infinity,
         child: ElevatedButton(
-          onPressed: (canProceed && !_isSaving) ? _nextPage : null,
+          onPressed: _isSaving
+              ? null
+              : () {
+                  if (!canProceed) {
+                    if (_currentPage == 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('先写下你的年度目标吧 ✍️'),
+                          duration: Duration(seconds: 2),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                    return;
+                  }
+                  _nextPage();
+                },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: canProceed ? AppColors.primary : AppColors.textLight.withValues(alpha: 0.3),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            elevation: 0,
+          ),
           child: _isSaving
               ? const SizedBox(
                   width: 20,
@@ -273,15 +347,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   bool _canProceed() {
     switch (_currentPage) {
-      case 0: // 月度Boss - 至少选一个
+      case 0: // 年度目标 - 必须填写
+        return _yearGoals.any((g) => g.trim().isNotEmpty);
+      case 1: // 月度挑战 - 至少选一个
         return _selectedBossTypes.isNotEmpty || _customBosses.any((b) => b.trim().isNotEmpty);
-      case 1: // 每日行动 - 每个Boss至少填一个
-        for (final key in _getAllBossKeys()) {
-          _ensureBossActions(key);
-          final actions = _dailyActionsPerBoss[key] ?? [];
-          if (!actions.any((a) => a.trim().isNotEmpty)) return false;
-        }
-        return true;
       default:
         return true;
     }
@@ -365,210 +434,390 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  // ====== Page 2: 年度目标 ======
+  // ====== Page 0: 年度目标 ======
   Widget _buildYearGoalPage() {
-    return _buildStepPage(
-      stepLabel: '第三步',
-      title: '今年最重要的1件事',
-      subtitle: '这一年结束后，你希望在哪方面有突破？\n用「我已经成为了...的人」来描述',
-      icon: Icons.flag_outlined,
-      iconColor: const Color(0xFFFF6B5B),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 40, 24, 0),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.cardBackground,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: _yearGoal.isNotEmpty
-                    ? AppColors.primary
-                    : AppColors.textLight.withValues(alpha: 0.3),
-              ),
-            ),
-            child: TextField(
-              maxLines: 3,
-              decoration: const InputDecoration(
-                hintText: '例如：读完24本书的人\n能够用英语日常对话的人\n跑完半程马拉松的人...',
-                hintStyle: TextStyle(color: AppColors.textLight, fontSize: 14),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.all(16),
-              ),
-              style: const TextStyle(fontSize: 15, color: AppColors.textPrimary, height: 1.6),
-              onChanged: (v) => setState(() => _yearGoal = v),
+          // 标题区
+          const Text(
+            '年度目标',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              letterSpacing: 1,
             ),
           ),
-          const SizedBox(height: 16),
-          _buildInsightCard(
-            '💡 小技巧',
-            '聚焦一件事比同时做十件更有效。选择让你激动的那一个。',
+          const SizedBox(height: 8),
+          Text(
+            '这一年结束后，你在哪方面想有突破？',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary.withValues(alpha: 0.7),
+              height: 1.5,
+            ),
           ),
+          const SizedBox(height: 32),
+
+          // 多条目标输入（风格与月度挑战自定义输入完全一致）
+          ...List.generate(_yearGoals.length, (index) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: index < _yearGoals.length - 1 ? 10 : 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    margin: const EdgeInsets.only(top: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF6B35).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${index + 1}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFFF6B35),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      maxLines: 2,
+                      decoration: InputDecoration(
+                        hintText: '例如：读完24本书，跑完半程马拉松...',
+                        hintStyle: TextStyle(
+                          color: AppColors.textLight.withValues(alpha: 0.6),
+                          fontSize: 13,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                            color: AppColors.textLight.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                            color: AppColors.textLight.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFFF6B35),
+                            width: 1.5,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        isDense: true,
+                      ),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textPrimary,
+                      ),
+                      onChanged: (v) => setState(() => _yearGoals[index] = v),
+                    ),
+                  ),
+                  if (_yearGoals.length > 1)
+                    GestureDetector(
+                      onTap: () => setState(() => _yearGoals.removeAt(index)),
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 6, top: 10),
+                        child: Icon(
+                          Icons.close,
+                          size: 18,
+                          color: AppColors.textLight.withValues(alpha: 0.4),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          }),
+
+          // 添加按钮
           const SizedBox(height: 12),
-          _buildSkipHint(),
+          GestureDetector(
+            onTap: () {
+              if (_yearGoals.length >= 11) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('年度目标不宜过多，聚焦最重要的事效果更好'),
+                    duration: Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                return;
+              }
+              if (_yearGoals.length >= 3) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('目标较多，聚焦最重要的事效果更好哦（${_yearGoals.length}/3）'),
+                    duration: const Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+              setState(() => _yearGoals.add(''));
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF6B35).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add, size: 14, color: Color(0xFFFF6B35)),
+                  SizedBox(width: 2),
+                  Text(
+                    '添加',
+                    style: TextStyle(fontSize: 12, color: Color(0xFFFF6B35), fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 28),
+
+          // 引导提示语（去掉标题，与月度挑战的提示语风格一致）
+          Text(
+            '你最想突破的领域是什么？这一年你想成为什么样的自己？',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary.withValues(alpha: 0.55),
+              fontStyle: FontStyle.italic,
+              height: 1.6,
+            ),
+          ),
+
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
 
-  // ====== Page 3: 月度Boss ======
+  // ====== Page 1: 月度挑战 ======
   Widget _buildMonthlyBossPage() {
+    // 宠物智能拆解的建议挑战
+    final suggestions = _petSuggestedChallenges;
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+      padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 图标 + 标题
-          Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.primary, AppColors.primaryLight],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: const Icon(Icons.shield_outlined, size: 26, color: Colors.white),
-              ),
-              const SizedBox(width: 14),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '本月Boss战',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      '选择一个或自定义你的挑战',
-                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          // 标题
+          const Text(
+            '本月挑战',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '基于你的年度目标，建议当月挑战如下',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary.withValues(alpha: 0.7),
+            ),
           ),
           const SizedBox(height: 24),
 
-          // Boss选项 - 游戏卡片风格（无勾选框）
-          ..._bossTemplates.map((template) {
-            final isSelected = _selectedBossTypes.contains(template['name']);
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: GestureDetector(
-                onTap: () => setState(() {
-                  if (isSelected) {
-                    _selectedBossTypes.remove(template['name']);
-                  } else {
-                    if (_selectedBossTypes.length >= 3) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('聚焦1-3个核心目标效果最好～'),
-                          duration: Duration(seconds: 2),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                      return;
-                    }
-                    _selectedBossTypes.add(template['name']!);
-                  }
-                }),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: isSelected
-                        ? LinearGradient(
-                            colors: [
-                              AppColors.primary.withValues(alpha: 0.15),
-                              AppColors.primaryLight.withValues(alpha: 0.08),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          )
-                        : null,
-                    color: isSelected ? null : AppColors.cardBackground,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isSelected
-                          ? AppColors.primary
-                          : AppColors.textLight.withValues(alpha: 0.2),
-                      width: isSelected ? 2 : 1,
+          // 年度目标上下文
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF6B35).withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFFFF6B35).withValues(alpha: 0.15),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.format_quote,
+                  size: 18,
+                  color: const Color(0xFFFF6B35).withValues(alpha: 0.5),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '年度目标：${_yearGoals.where((g) => g.isNotEmpty).join('；')}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textPrimary.withValues(alpha: 0.75),
+                      fontStyle: FontStyle.italic,
+                      height: 1.5,
                     ),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.2),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ]
-                        : null,
                   ),
-                  child: Row(
-                    children: [
-                      // Boss状态图标
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.primary
-                              : AppColors.textLight.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Center(
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // 加载中：宠物正在思考拆解方案
+          if (_isLoadingPetSuggestions) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              decoration: BoxDecoration(
+                color: AppColors.cardBackground,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.textLight.withValues(alpha: 0.1)),
+              ),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: const Color(0xFFFF6B35).withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Text(
+                    '宠物正在帮你拆解目标...',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // 建议挑战（宠物智能拆解）
+          if (suggestions.isNotEmpty) ...[
+            Text(
+              '为你推荐',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary.withValues(alpha: 0.6),
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...suggestions.map((s) {
+              final isSelected = _selectedBossTypes.contains(s);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: GestureDetector(
+                  onTap: () => setState(() {
+                    if (isSelected) {
+                      _selectedBossTypes.remove(s);
+                    } else {
+                      _selectedBossTypes.add(s);
+                    }
+                  }),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      gradient: isSelected
+                          ? LinearGradient(
+                              colors: [
+                                const Color(0xFFFF6B35).withValues(alpha: 0.12),
+                                const Color(0xFFE85D2D).withValues(alpha: 0.06),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
+                          : null,
+                      color: isSelected ? null : AppColors.cardBackground,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(0xFFFF6B35)
+                            : AppColors.textLight.withValues(alpha: 0.15),
+                        width: isSelected ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? const Color(0xFFFF6B35)
+                                : AppColors.textLight.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                           child: Icon(
-                            Icons.sports_mma,
-                            size: 20,
-                            color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.4),
+                            Icons.check,
+                            size: 16,
+                            color: isSelected
+                                ? Colors.white
+                                : AppColors.textLight.withValues(alpha: 0.3),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              template['name']!,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                              ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Text(
+                            s,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: isSelected
+                                  ? const Color(0xFFE85D2D)
+                                  : AppColors.textPrimary.withValues(alpha: 0.8),
                             ),
-                            const SizedBox(height: 3),
-                            Text(
-                              template['desc']!,
-                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 20),
+          ],
+
+          // 或分隔线
+          Row(
+            children: [
+              Expanded(
+                child: Container(height: 1, color: AppColors.textLight.withValues(alpha: 0.1)),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  '或自定义',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary.withValues(alpha: 0.45),
                   ),
                 ),
               ),
-            );
-          }),
+              Expanded(
+                child: Container(height: 1, color: AppColors.textLight.withValues(alpha: 0.1)),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
 
-          // 自定义Boss - 动态多输入框
+          // 自定义挑战输入
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -576,9 +825,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: _customBosses.any((b) => b.isNotEmpty)
-                    ? AppColors.primary
-                    : AppColors.textLight.withValues(alpha: 0.2),
-                width: _customBosses.any((b) => b.isNotEmpty) ? 2 : 1,
+                    ? AppColors.primary.withValues(alpha: 0.4)
+                    : AppColors.textLight.withValues(alpha: 0.15),
+                width: _customBosses.any((b) => b.isNotEmpty) ? 1.5 : 1,
               ),
             ),
             child: Column(
@@ -586,33 +835,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.edit_note,
                       size: 18,
-                      color: AppColors.textSecondary,
+                      color: AppColors.textSecondary.withValues(alpha: 0.6),
                     ),
-                    const SizedBox(width: 6),
-                    const Text(
-                      '自定义本月Boss战',
+                    const SizedBox(width: 8),
+                    Text(
+                      '自定义本月挑战',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                        color: AppColors.textPrimary.withValues(alpha: 0.75),
                       ),
                     ),
                     const Spacer(),
                     GestureDetector(
                       onTap: () {
-                        if (_customBosses.length >= 3) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('最多设置3个Boss，请先完成当前'),
-                              duration: Duration(seconds: 2),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                          return;
-                        }
                         setState(() {
                           _customBosses.add('');
                         });
@@ -620,17 +859,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
+                          color: const Color(0xFFFF6B35).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.add, size: 14, color: AppColors.primary),
+                            Icon(Icons.add, size: 14, color: Color(0xFFFF6B35)),
                             SizedBox(width: 2),
                             Text(
                               '添加',
-                              style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500),
+                              style: TextStyle(fontSize: 12, color: Color(0xFFFF6B35), fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
@@ -638,18 +877,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                // 提示文案
-                Text(
-                  '好Boss的标准：具体可衡量、一个月内能完成、有挑战但不至于不可能',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                    height: 1.4,
-                  ),
-                ),
                 const SizedBox(height: 14),
-                // 动态输入框列表
                 ...List.generate(_customBosses.length, (index) {
                   return Padding(
                     padding: EdgeInsets.only(bottom: index < _customBosses.length - 1 ? 10 : 0),
@@ -659,9 +887,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         Container(
                           width: 28,
                           height: 28,
-                          margin: const EdgeInsets.only(top: 6),
+                          margin: const EdgeInsets.only(top: 8),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
+                            color: const Color(0xFFFF6B35).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Center(
@@ -670,7 +898,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.primary,
+                                color: Color(0xFFFF6B35),
                               ),
                             ),
                           ),
@@ -697,7 +925,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10),
                                 borderSide: const BorderSide(
-                                  color: AppColors.primary,
+                                  color: Color(0xFFFF6B35),
                                   width: 1.5,
                                 ),
                               ),
@@ -716,11 +944,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               _customBosses.removeAt(index);
                             }),
                             child: Padding(
-                              padding: const EdgeInsets.only(left: 6, top: 8),
+                              padding: const EdgeInsets.only(left: 6, top: 10),
                               child: Icon(
                                 Icons.close,
                                 size: 18,
-                                color: AppColors.textLight.withValues(alpha: 0.5),
+                                color: AppColors.textLight.withValues(alpha: 0.4),
                               ),
                             ),
                           ),
@@ -728,25 +956,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                   );
                 }),
-                // 已选Boss提示
-                if (_selectedBossTypes.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      '已选 ${_selectedBossTypes.length} 个Boss + ${_customBosses.where((b) => b.isNotEmpty).length} 个自定义',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+
+                // 心理学提示
+                const SizedBox(height: 16),
+                Text(
+                  '好目标的标准：具体可衡量、一个月内能完成、有挑战但不至于不可能',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary.withValues(alpha: 0.5),
+                    fontStyle: FontStyle.italic,
+                    height: 1.5,
                   ),
-                ],
+                ),
               ],
             ),
           ),
@@ -756,7 +977,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  // ====== Page 1: 每日行动 ======
   Widget _buildDailyActionPage() {
     final bossKeys = _getAllBossKeys();
     // 保证每个boss都有初始化的行动列表
@@ -765,7 +985,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
     final selectedHintMap = <String, List<String>>{};
     for (final key in bossKeys) {
-      if (!key.startsWith('custom_')) {
+      // 优先使用宠物智能拆解的每日行动
+      if (_petDailyActionsPerChallenge.containsKey(key)) {
+        selectedHintMap[key] = _petDailyActionsPerChallenge[key] ?? [];
+      } else if (!key.startsWith('custom_')) {
+        // 回退到模板的每日行动
         final template = _bossTemplates.firstWhere(
           (t) => t['name'] == key,
           orElse: () => {'name': '', 'desc': '', 'dailyActionHints': '[]'},
@@ -846,7 +1070,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           else
             const Center(
               child: Text(
-                '请先在上一页选择你的Boss',
+                '请先在上一页选择你的挑战',
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
               ),
             ),

@@ -12,6 +12,29 @@ import 'profile_screen.dart';
 import 'monthly_review_screen.dart';
 import 'monthly_boss_edit_screen.dart';
 
+/// 蛋形Painter（绘制椭圆形的蛋轮廓）
+class _EggPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.3)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    // 蛋形是椭圆形，略高
+    final rect = Rect.fromCenter(
+      center: center,
+      width: size.width * 0.75,
+      height: size.height * 0.85,
+    );
+    canvas.drawOval(rect, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -64,11 +87,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final stats = _storage.getUserStats();
     final leverMaps = _storage.getDailyLevers();
-    // 优先用 onboarding 保存的每日行动（per-boss 格式），否则用模板
+    // 优先用 onboarding 保存的每日杠杆，不足的再由 auto-generated 补充
     final dailyActions = _storage.getDailyActions();
-    final effectiveLevers = dailyActions.isNotEmpty
-        ? dailyActions.asMap().entries.map((e) => {'obstacle': '', 'plan': e.value}).toList()
-        : leverMaps;
+    // 合并：用户真实填的优先，auto-generated 的作为补充
+    final merged = <Map<String, String>>[];
+    merged.addAll(leverMaps);
+    if (dailyActions.isNotEmpty) {
+      for (final a in dailyActions) {
+        if (!merged.any((m) => m['plan'] == a)) {
+          merged.add({'obstacle': '', 'plan': a});
+        }
+      }
+    }
+    final effectiveLevers = merged;
     final antiVision = _storage.getAntiVision();
     final vision = _storage.getVision();
     final yearGoal = _storage.getYearGoal();
@@ -294,7 +325,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Icon(Icons.emoji_events, size: 16, color: Color(0xFFFFD700)),
                     const SizedBox(width: 6),
                     const Text(
-                      '月度Boss已击败！',
+                      '月度挑战已完成！',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
@@ -344,7 +375,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.check_circle, size: 28, color: AppColors.primary),
+                  const Icon(Icons.pets, size: 28, color: AppColors.primary),
                   const SizedBox(width: 8),
                   const Text(
                     '打卡成功！',
@@ -761,9 +792,14 @@ class _HomeScreenState extends State<HomeScreen> {
     if (boss == null || boss.month != now.month || boss.year != now.year) {
       return const SizedBox.shrink();
     }
-    final hp = boss.hp;
-    final total = boss.totalDays;
-    final progress = total > 0 ? (hp / total).clamp(0.0, 1.0) : 0.0;
+
+    // 计算本月有多少天
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    // 获取本月所有打卡日期的 day 值
+    final checkedDays = _checkIns
+        .where((c) => c.date.year == now.year && c.date.month == now.month)
+        .map((c) => c.date.day)
+        .toSet();
 
     return GestureDetector(
       onTap: () {
@@ -790,79 +826,106 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Center(child: Icon(Icons.whatshot, size: 28, color: AppColors.primary)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Center(child: Icon(Icons.shield, size: 26, color: AppColors.primary)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          '本月Boss战',
+                          '本月挑战',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary,
                           ),
                         ),
+                        const SizedBox(height: 2),
                         Text(
-                          'HP $hp/$total',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
-                          ),
+                          boss.content.split('；').first,
+                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                        valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-                        minHeight: 6,
+                  ),
+                  Text(
+                    '已打卡 ${checkedDays.length}/$daysInMonth 天',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+              // 任务列表
+              ...boss.content.split('；').skip(1).map((task) => Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('• ', style: TextStyle(fontSize: 12, color: AppColors.primary)),
+                    Expanded(
+                      child: Text(
+                        task.trim(),
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    // 多任务分行显示
-                    ...boss.content.split('；').map((task) => Padding(
-                      padding: const EdgeInsets.only(bottom: 2),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('• ', style: TextStyle(fontSize: 12, color: AppColors.primary)),
-                          Expanded(
-                            child: Text(
-                              task.trim(),
-                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )),
                   ],
                 ),
-              ),
+              )),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  /// 构建日历方格打卡图
+  Widget _buildCalendarGrid(int daysInMonth, Set<int> checkedDays, int today) {
+    return Wrap(
+      spacing: 5,
+      runSpacing: 5,
+      children: List.generate(daysInMonth, (index) {
+        final day = index + 1;
+        final isChecked = checkedDays.contains(day);
+        final isToday = day == today;
+
+        return Container(
+          width: 14,
+          height: 14,
+          decoration: BoxDecoration(
+            color: isChecked
+                ? AppColors.primary
+                : (isToday
+                    ? AppColors.primary.withValues(alpha: 0.15)
+                    : AppColors.primary.withValues(alpha: 0.05)),
+            borderRadius: BorderRadius.circular(3),
+            border: isToday && !isChecked
+                ? Border.all(color: AppColors.primary, width: 1.5)
+                : null,
+          ),
+          child: isChecked
+              ? const Icon(Icons.check, size: 9, color: Colors.white)
+              : null,
+        );
+      }),
     );
   }
 
@@ -1046,7 +1109,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final mood = PetService.instance.moodState.mood;
     final greeting = PetService.instance.generateGreeting();
     final suggestion = PetService.instance.generateSuggestion(_context ?? PetContext());
-    final emoji = _getMoodEmoji(mood);
+    // 检查蛋阶段：领养后7天内显示🥚
+    // 未领养或领养7天内都显示蛋
+    final bool isEggPhase = _storage.getPetAdoptDate() == null || _storage.isInEggPhase();
 
     return GestureDetector(
       onTap: () {
@@ -1071,9 +1136,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           child: Row(
             children: [
+              // ===== 宠物完整视觉形象（左侧）=====
               Container(
-                width: 50,
-                height: 50,
+                width: 60,
+                height: 60,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [AppColors.primary, AppColors.primaryLight],
@@ -1081,16 +1147,34 @@ class _HomeScreenState extends State<HomeScreen> {
                     end: Alignment.bottomRight,
                   ),
                   shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                child: Center(child: _buildMoodIcon(mood)),
+                child: isEggPhase
+                    // 蛋阶段：显示🥚图标（用Container画一个蛋形）
+                    ? CustomPaint(
+                        painter: _EggPainter(),
+                        child: const Center(
+                          child: Icon(Icons.egg, color: Colors.white, size: 28),
+                        ),
+                      )
+                    // 成年宠物：显示心情图标
+                    : Center(child: _buildMoodIcon(mood, size: 26)),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '$_petName · ${_getMoodText(mood)} $emoji',
+                      isEggPhase
+                          ? '$_petName · 还在蛋里...'
+                          : '$_petName · ${_getMoodText(mood)}',
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -1101,7 +1185,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '$greeting $suggestion',
+                      isEggPhase ? '再等${7 - DateTime.now().difference(_storage.getPetAdoptDate() ?? DateTime.now()).inDays}天就孵化了 🥚'
+                          : '$greeting $suggestion',
                       style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -1130,14 +1215,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildMoodIcon(PetMood mood) {
+  Widget _buildMoodIcon(PetMood mood, {double size = 26}) {
     switch (mood) {
-      case PetMood.happy: return const Icon(Icons.emoji_emotions, color: Colors.white, size: 26);
-      case PetMood.sleepy: return Icon(Icons.nightlight, color: Colors.white70, size: 26);
-      case PetMood.excited: return Icon(Icons.bolt, color: Colors.yellow, size: 26);
-      case PetMood.thinking: return const Icon(Icons.psychology, color: Colors.white, size: 26);
-      case PetMood.calm: return const Icon(Icons.local_fire_department, color: Colors.white, size: 26);
-      case PetMood.resting: return Icon(Icons.bedtime, color: Colors.white70, size: 26);
+      case PetMood.happy: return Icon(Icons.emoji_emotions, color: Colors.white, size: size);
+      case PetMood.sleepy: return Icon(Icons.nightlight, color: Colors.white70, size: size);
+      case PetMood.excited: return Icon(Icons.bolt, color: Colors.yellow, size: size);
+      case PetMood.thinking: return Icon(Icons.psychology, color: Colors.white, size: size);
+      case PetMood.calm: return Icon(Icons.local_fire_department, color: Colors.white, size: size);
+      case PetMood.resting: return Icon(Icons.bedtime, color: Colors.white70, size: size);
     }
   }
 
@@ -1278,19 +1363,28 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
-                        width: 24,
-                        height: 24,
+                        width: 26,
+                        height: 26,
                         decoration: BoxDecoration(
                           color: lever.isCompleted ? AppColors.primary : Colors.transparent,
                           border: Border.all(
-                            color: lever.isCompleted ? AppColors.primary : AppColors.textLight,
-                            width: 2,
+                            color: lever.isCompleted ? AppColors.primary : AppColors.textLight.withValues(alpha: 0.4),
+                            width: 1.5,
                           ),
                           borderRadius: BorderRadius.circular(8),
+                          boxShadow: lever.isCompleted
+                              ? [
+                                  BoxShadow(
+                                    color: AppColors.primary.withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                    spreadRadius: 1,
+                                  ),
+                                ]
+                              : null,
                         ),
                         child: lever.isCompleted
-                            ? const Icon(Icons.check, size: 16, color: Colors.white)
-                            : null,
+                            ? const Icon(Icons.check, size: 17, color: Colors.white)
+                            : Icon(Icons.check, size: 17, color: AppColors.textLight.withValues(alpha: 0.3)),
                       ),
                       const SizedBox(width: 14),
                       Expanded(

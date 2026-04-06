@@ -80,8 +80,11 @@ class StorageService {
   static const String _keyFocusReminders = 'focus_reminders'; // 专注时段提醒
   static const String _keyPetMoodState = 'pet_mood_state'; // 宠物心情状态
   static const String _keyPetMemories = 'pet_memories'; // 宠物记忆
+  static const String _keyPetSoul = 'pet_soul'; // 宠物人格
   static const String _keyPetPreferences = 'pet_preferences'; // 宠物偏好
   static const String _keyPetName = 'pet_name'; // 宠物名字
+  static const String _keyPushWeights = 'push_weights'; // 推送类型权重
+  static const String _keyPetAdoptDate = 'pet_adopt_date'; // 宠物领养日期
 
   // ====== 宠物名字 ======
   static const String defaultPetName = '炭炭';
@@ -96,9 +99,30 @@ class StorageService {
     return _prefs.getString(_keyPetName) ?? defaultPetName;
   }
 
+  // ====== 宠物领养日期 ======
+  Future<void> savePetAdoptDate(DateTime date) async {
+    await _prefs.setString(_keyPetAdoptDate, date.toIso8601String());
+  }
+
+  DateTime? getPetAdoptDate() {
+    final str = _prefs.getString(_keyPetAdoptDate);
+    if (str == null) return null;
+    return DateTime.tryParse(str);
+  }
+
+  /// 判断宠物是否处于蛋阶段（领养后7天内）
+  bool isInEggPhase() {
+    final adoptDate = getPetAdoptDate();
+    if (adoptDate == null) return false;
+    final daysSinceAdopt = DateTime.now().difference(adoptDate).inDays;
+    return daysSinceAdopt < 7;
+  }
+
   // ====== 宠物记忆（反思机制） ======
   Future<void> savePetMemories(List<PetMemory> memories) async {
-    final list = memories.map((m) => m.toJson()).toList();
+    // 过滤掉已过期的记忆
+    final valid = memories.where((m) => !m.isExpired).toList();
+    final list = valid.map((m) => m.toJson()).toList();
     await _prefs.setString(_keyPetMemories, jsonEncode(list));
   }
 
@@ -112,11 +136,40 @@ class StorageService {
   Future<void> addPetMemory(PetMemory memory) async {
     final memories = getPetMemories();
     memories.add(memory);
-    // 保留最近50条记忆
-    if (memories.length > 50) {
-      memories.removeRange(0, memories.length - 50);
+    // 非永久记忆最多保留100条（防止无限增长）
+    final nonPermanent = memories.where((m) => !m.isPermanent).toList();
+    if (nonPermanent.length > 100) {
+      // 移除最旧的非永久记忆
+      final toRemove = nonPermanent.length - 100;
+      final toRemoveIds = nonPermanent.take(toRemove).map((m) => m.id).toSet();
+      memories.removeWhere((m) => !m.isPermanent && toRemoveIds.contains(m.id));
     }
     await savePetMemories(memories);
+  }
+
+  // ====== 宠物人格 ======
+  Future<void> savePetSoul(PetSoul soul) async {
+    await _prefs.setString(_keyPetSoul, jsonEncode(soul.toJson()));
+  }
+
+  PetSoul getPetSoul() {
+    final str = _prefs.getString(_keyPetSoul);
+    if (str == null) return PetSoul.defaultSoul();
+    return PetSoul.fromJson(jsonDecode(str));
+  }
+
+  // ===== 推送权重 ======
+  /// 获取各推送类型的当前权重
+  Map<int, double> getPushWeights() {
+    final str = _prefs.getString(_keyPushWeights);
+    if (str == null) return {};
+    final decoded = jsonDecode(str) as Map<String, dynamic>;
+    return decoded.map((k, v) => MapEntry(int.parse(k), (v as num).toDouble()));
+  }
+
+  Future<void> savePushWeights(Map<int, double> weights) async {
+    final str = jsonEncode(weights.map((k, v) => MapEntry(k.toString(), v)));
+    await _prefs.setString(_keyPushWeights, str);
   }
 
   // ====== 宠物偏好 ======
@@ -468,8 +521,8 @@ class StorageService {
     ),
     AppBadge(
       id: '6',
-      name: '完成第1个Boss',
-      description: '击败本月Boss，身份又近一步',
+      name: '完成第1个挑战',
+      description: '击败本月挑战，身份又近一步',
       icon: 'assets/images/badge/badge_06_target.png',
       isUnlocked: false,
     ),
@@ -550,8 +603,48 @@ class StorageService {
     return MonthlyBoss.fromJson(jsonDecode(str));
   }
 
+  // Per-boss 存储（v2 扩展）
+  List<String> getSelectedBossTypes() => [];
+  List<String> getCustomBosses() => [];
+  Map<String, List<String>> getBossTasks() => {};
+  Future<void> saveBossTasks(Map<String, List<String>> tasks) async {}
+
   // ====== 保存所有 onboarding 数据 ======
-  Future<void> saveOnboardingData({
+  
+  /// 根据 Boss 内容自动生成每日行动
+  List<String> _generateDailyActionsFromBoss(String bossContent) {
+    final actions = <String>[];
+    final lower = bossContent.toLowerCase();
+
+    if (lower.contains('读书') || lower.contains('阅读') || lower.contains('书')) {
+      actions.addAll(['每天阅读', '记录读书心得']);
+    }
+    if (lower.contains('运动') || lower.contains('跑步') || lower.contains('健身') || lower.contains('锻炼')) {
+      actions.addAll(['每天运动30分钟', '运动后拉伸']);
+    }
+    if (lower.contains('早起') || lower.contains('早睡')) {
+      actions.addAll(['按时起床', '保证睡眠时间']);
+    }
+    if (lower.contains('写作') || lower.contains('写') || lower.contains('日记')) {
+      actions.addAll(['每天写作', '记录想法']);
+    }
+    if (lower.contains('英语') || lower.contains('外语') || lower.contains('语言')) {
+      actions.addAll(['每天学习英语', '练习口语或听力']);
+    }
+    if (lower.contains('冥想') || lower.contains('正念')) {
+      actions.addAll(['每天冥想10分钟', '保持专注']);
+    }
+    if (lower.contains('饮食') || lower.contains('减肥') || lower.contains('健康')) {
+      actions.addAll(['健康饮食', '记录饮食情况']);
+    }
+    // 默认行动
+    if (actions.isEmpty) {
+      actions.addAll(['制定今日计划', '回顾完成情况']);
+    }
+    return actions.take(3).toList();
+  }
+
+Future<void> saveOnboardingData({
     required String antiVision,
     required String vision,
     required String yearGoal,
@@ -577,12 +670,20 @@ class StorageService {
     await saveYearGoal(yearGoal);
     await saveMonthlyBoss(boss);
     await saveDailyLevers(dailyLevers);
+    // 自动生成每日行动（基于 Boss 类型）
+    if (dailyActions.isEmpty && monthlyBoss.isNotEmpty) {
+      dailyActions = _generateDailyActionsFromBoss(monthlyBoss);
+    }
     await saveDailyActions(dailyActions);
     await saveConstraints(constraints);
     await saveTemptingBundling(temptingBundling);
     await setOnboardingComplete(true);
     await saveBadges(_defaultBadges);
     await saveLastReviewMonth('${now.year}-${now.month.toString().padLeft(2, '0')}');
+    // 首次领养宠物，记录领养日期
+    if (getPetAdoptDate() == null) {
+      await savePetAdoptDate(now);
+    }
   }
 
   // ====== 规划徽章检查 ======

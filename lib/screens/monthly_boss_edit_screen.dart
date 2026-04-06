@@ -49,7 +49,7 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
       final idx = int.tryParse(key.substring(7)) ?? 0;
       final customs = _storage.getCustomBosses();
       if (idx < customs.length) return customs[idx];
-      return '自定义Boss';
+      return '自定义挑战';
     }
     final t = _bossTemplates.firstWhere(
       (t) => t['name'] == key,
@@ -116,7 +116,7 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
   void _addAction(String bossKey) {
     if (_actionControllers[bossKey]!.length >= 5) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('每个Boss最多5个行动'), behavior: SnackBarBehavior.floating),
+        const SnackBar(content: Text('每个挑战最多5个行动'), behavior: SnackBarBehavior.floating),
       );
       return;
     }
@@ -219,7 +219,7 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         title: const Text(
-          '编辑月度Boss',
+          '编辑月度挑战',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -280,7 +280,7 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
-                                  '${_boss!.month}月${_boss!.year}年 Boss战',
+                                  '${_boss!.month}月${_boss!.year}年 挑战',
                                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
                                 ),
                               ),
@@ -320,7 +320,7 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
                       child: Padding(
                         padding: EdgeInsets.all(32),
                         child: Text(
-                          '暂无Boss数据，请在onboarding中设置',
+                          '暂无挑战数据，请在设置中添加',
                           style: TextStyle(color: AppColors.textSecondary),
                         ),
                       ),

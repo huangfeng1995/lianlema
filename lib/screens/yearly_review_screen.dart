@@ -287,7 +287,7 @@ class _YearlyReviewScreenState extends State<YearlyReviewScreen> {
           const SizedBox(height: 16),
           _buildStatCard(Icons.local_fire_department, AppColors.streak, '最长连续', '$_longestStreak 天'),
           const SizedBox(height: 16),
-          _buildStatCard(Icons.shield, AppColors.primary, '击败Boss', '$_totalBossesDefeated 个'),
+          _buildStatCard(Icons.shield, AppColors.primary, '完成挑战', '$_totalBossesDefeated 个'),
           const SizedBox(height: 16),
           _buildStatCard(Icons.star, const Color(0xFFFFD700), '当前等级', 'Lv.$_level · ${XpService.levelTitle(_level)}'),
           const SizedBox(height: 32),
@@ -392,7 +392,7 @@ class _YearlyReviewScreenState extends State<YearlyReviewScreen> {
               maxLines: 6,
               maxLength: 500,
               decoration: const InputDecoration(
-                hintText: '例如：那天晚上坚持写完日记，虽然很累...\n\n完成连续7天打卡的那一刻...\n\n第一次击败月度Boss时的激动...',
+                hintText: '例如：那天晚上坚持写完日记，虽然很累...\n\n完成连续7天打卡的那一刻...\n\n第一次完成月度挑战时的激动...',
                 hintStyle: TextStyle(color: AppColors.textLight),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.all(16),

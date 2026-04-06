@@ -58,6 +58,52 @@ class PetMoodState {
   );
 }
 
+/// 宠物固定人格（写死后不变）
+class PetSoul {
+  final String name;
+  final String personality;
+  final String speakingStyle;
+  final String tone;
+  final bool useEmoji;
+  final String defaultGreeting;
+
+  const PetSoul({
+    required this.name,
+    required this.personality,
+    required this.speakingStyle,
+    required this.tone,
+    required this.useEmoji,
+    required this.defaultGreeting,
+  });
+
+  factory PetSoul.fromJson(Map<String, dynamic> json) => PetSoul(
+    name: json['name'] ?? '炭炭',
+    personality: json['personality'] ?? '温暖、有洞察、不说教、不讲大道理。',
+    speakingStyle: json['speakingStyle'] ?? '像朋友一样简短、有温度。',
+    tone: json['tone'] ?? 'casual',
+    useEmoji: json['useEmoji'] ?? true,
+    defaultGreeting: json['defaultGreeting'] ?? '嗨，我是你的AI伙伴炭炭。',
+  );
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'personality': personality,
+    'speakingStyle': speakingStyle,
+    'tone': tone,
+    'useEmoji': useEmoji,
+    'defaultGreeting': defaultGreeting,
+  };
+
+  factory PetSoul.defaultSoul() => const PetSoul(
+    name: '炭炭',
+    personality: '温暖、有洞察、不说教、不讲大道理。遇到挫折会陪着你，不会责备你。',
+    speakingStyle: '像朋友一样简短、有温度。偶尔轻松活泼，但不过度。',
+    tone: 'casual',
+    useEmoji: true,
+    defaultGreeting: '嗨，我是你AI伙伴炭炭。有什么想聊的？',
+  );
+}
+
 /// 宠物建议类型
 enum PetAdviceType {
   /// 主动建议（出谋划策）
@@ -242,6 +288,14 @@ class PetMemory {
     petResponse: json['petResponse'] ?? '',
     correctionNote: json['correctionNote'],
   );
+
+  bool get isPermanent => type == 'milestone' || type == 'identity' || type == 'lesson';
+
+  bool get isExpired {
+    if (isPermanent) return false;
+    // 30天后自然淘汰
+    return DateTime.now().difference(createdAt).inDays > 30;
+  }
 }
 
 /// 宠物偏好设置（基于用户反馈动态调整）

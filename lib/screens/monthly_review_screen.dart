@@ -292,7 +292,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      isDefeated ? 'Boss击败' : 'Boss进行中',
+                      isDefeated ? '挑战完成' : '挑战进行中',
                       style: TextStyle(
                         fontSize: 11, fontWeight: FontWeight.w600,
                         color: isDefeated ? AppColors.success : const Color(0xFFFF9500),
@@ -432,7 +432,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
         boss.year == reviewYear &&
         boss.month == reviewMonth;
 
-    final bossContent = isBossForReviewMonth ? boss.content : (report?.bossDefeated == false ? '本月Boss' : '—');
+    final bossContent = isBossForReviewMonth ? boss.content : (report?.bossDefeated == false ? '本月挑战' : '—');
     final bossHp = isBossForReviewMonth ? boss.hp : (report?.checkInDays ?? 0);
     final bossTotal = isBossForReviewMonth ? boss.totalDays : (report?.bossTotalHp ?? 0);
     final isDefeated = bossHp >= bossTotal && bossTotal > 0;
@@ -510,7 +510,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            '月度Boss',
+                            '月度挑战',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -597,7 +597,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        isDefeated ? '恭喜！你击败了上个月的Boss' : '这个月还差一点，继续加油',
+                        isDefeated ? '恭喜！你完成了上个月的挑战' : '这个月还差一点，继续加油',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
@@ -723,7 +723,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
               maxLines: 7,
               maxLength: 300,
               decoration: const InputDecoration(
-                hintText: '例如：\n虽然没完全击败Boss，但坚持了20天\n第一次完成了全部杠杆\n在很累的时候还是选择行动',
+                hintText: '例如：\n虽然没完全完成挑战，但坚持了20天\n第一次完成了全部杠杆\n在很累的时候还是选择行动',
                 hintStyle: TextStyle(color: AppColors.textLight),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.all(18),
@@ -925,7 +925,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
           ),
           const SizedBox(height: 16),
           const Text(
-            '新月度Boss\n你想击败什么？',
+            '新月度挑战\n你想完成什么？',
             style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.bold,
@@ -979,7 +979,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    '每月打卡满天数 = 击败Boss\n没击败会累积到下个月，持续追击！',
+                    '每月打卡满天数 = 完成挑战\n没完成会累积到下个月，持续追击！',
                     style: TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,

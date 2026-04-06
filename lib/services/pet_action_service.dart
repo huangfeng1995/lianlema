@@ -1,0 +1,213 @@
+import '../utils/storage_service.dart';
+import '../models/pet_models.dart';
+
+/// 宠物可执行的动作类型
+enum PetActionType {
+  /// 记录打卡
+  recordCheckIn,
+  /// 创建每日杠杆
+  createDailyLever,
+  /// 修改每日杠杆
+  updateDailyLever,
+  /// 保存里程碑记忆
+  saveMilestone,
+  /// 保存教训记忆
+  saveLesson,
+  /// 更新挑战内容
+  updateBossContent,
+}
+
+/// 宠物执行动作的结果
+class PetActionResult {
+  final bool success;
+  final String message;
+  final String? summary; // 用于显示给用户
+
+  PetActionResult({required this.success, required this.message, this.summary});
+}
+
+/// 宠物动作服务 — 把「说」变成「做」
+class PetActionService {
+  /// 根据用户消息判断是否需要执行动作
+  /// 返回 null 表示不需要动作，返回结果表示执行了动作
+  Future<PetActionResult?> handleUserRequest(
+    String message,
+    PetContext ctx,
+  ) async {
+    final m = message.toLowerCase();
+    final storage = await StorageService.getInstance();
+
+    // 记录打卡
+    if (_match(m, ['记录打卡', '帮我打卡', '打卡', '补打卡', '今天完成了'])) {
+      return await _recordCheckIn(storage, ctx);
+    }
+
+    // 创建每日杠杆
+    if (_match(m, ['创建每日杠杆', '帮我创建', '添加每日', '新增杠杆', '帮我加一个'])) {
+      return await _createDailyLever(storage, message, ctx);
+    }
+
+    // 修改每日杠杆
+    if (_match(m, ['修改杠杆', '改一下', '更新杠杆', '调整杠杆'])) {
+      return await _updateDailyLever(storage, message, ctx);
+    }
+
+    // 保存里程碑
+    if (_match(m, ['完成了', '做到了', '终于', '突破', '达成了'])) {
+      return await _saveMilestone(storage, message, ctx);
+    }
+
+    // 保存教训
+    if (_match(m, ['失败了', '放弃了', '没做到', '搞砸了', '没坚持'])) {
+      return await _saveLesson(storage, message, ctx);
+    }
+
+    return null;
+  }
+
+  /// 判断今日是否需要提醒打卡（快结束了还没打卡）
+  bool shouldRemindCheckIn(PetContext ctx) {
+    if (ctx.checkedInToday) return false;
+    return true; // 只要今天没打卡就提醒
+  }
+
+  /// 判断是否很久没做任务
+  bool shouldRemindLongIdle(PetContext ctx) {
+    // 超过3天没打卡
+    return ctx.streak > 0 && ctx.totalCheckIns > 3 && !ctx.checkedInToday;
+  }
+
+  /// 判断是否快到里程碑
+  bool shouldRemindMilestone(PetContext ctx) {
+    const milestones = [7, 30, 100];
+    for (final m in milestones) {
+      if ((ctx.streak - m).abs() <= 2 && ctx.streak < m) return true;
+    }
+    return false;
+  }
+
+  // ===== 具体动作实现 =====
+
+  Future<PetActionResult> _recordCheckIn(
+    StorageService storage,
+    PetContext ctx,
+  ) async {
+    try {
+      await storage.recordDailyCheckIn(DateTime.now(), ['']);
+      return PetActionResult(
+        success: true,
+        message: '好的，今天打卡记录好了！✨ 你已经坚持了 ${ctx.streak + 1} 天！',
+        summary: '已记录今日打卡',
+      );
+    } catch (e) {
+      return PetActionResult(
+        success: false,
+        message: '记录失败了，${e.toString()}',
+      );
+    }
+  }
+
+  Future<PetActionResult> _createDailyLever(
+    StorageService storage,
+    String message,
+    PetContext ctx,
+  ) async {
+    try {
+      // 从消息中提取杠杆内容（去掉上面的关键词）
+      final content = message
+          .replaceAll(RegExp('创建每日杠杆|帮我创建|添加每日|新增杠杆|帮我加一个'), '')
+          .trim();
+
+      if (content.isEmpty) {
+        return PetActionResult(
+          success: false,
+          message: '你想创建什么每日杠杆？告诉我具体内容～',
+        );
+      }
+
+      final levers = storage.getDailyLevers();
+      levers.add({'plan': content, 'obstacle': ''});
+      await storage.saveDailyLevers(levers);
+
+      return PetActionResult(
+        success: true,
+        message: '好，每日杠杆已添加：$content',
+        summary: '已添加：$content',
+      );
+    } catch (e) {
+      return PetActionResult(
+        success: false,
+        message: '添加失败了，${e.toString()}',
+      );
+    }
+  }
+
+  Future<PetActionResult> _updateDailyLever(
+    StorageService storage,
+    String message,
+    PetContext ctx,
+  ) async {
+    return PetActionResult(
+      success: false,
+      message: '想调整哪个每日杠杆？告诉我是哪个，我来帮你改～',
+    );
+  }
+
+  Future<PetActionResult> _saveMilestone(
+    StorageService storage,
+    String message,
+    PetContext ctx,
+  ) async {
+    try {
+      final memory = PetMemory.permanent(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        type: PetMemoryType.milestone,
+        content: message,
+        summary: '用户达成了：${message.substring(0, message.length.clamp(0, 20))}...',
+      );
+      await storage.addPetMemory(memory);
+
+      return PetActionResult(
+        success: true,
+        message: '太棒了！这个我记住了 💎 炭炭为你骄傲！',
+        summary: '已记录里程碑',
+      );
+    } catch (e) {
+      return PetActionResult(
+        success: false,
+        message: '记录失败了，${e.toString()}',
+      );
+    }
+  }
+
+  Future<PetActionResult> _saveLesson(
+    StorageService storage,
+    String message,
+    PetContext ctx,
+  ) async {
+    try {
+      final memory = PetMemory.permanent(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        type: PetMemoryType.lesson,
+        content: message,
+        summary: '教训：${message.substring(0, message.length.clamp(0, 20))}...',
+      );
+      await storage.addPetMemory(memory);
+
+      return PetActionResult(
+        success: true,
+        message: '收到了，我们一起记下来。失败也是进步的一部分 🤝',
+        summary: '已记录教训',
+      );
+    } catch (e) {
+      return PetActionResult(
+        success: false,
+        message: '记录失败了，${e.toString()}',
+      );
+    }
+  }
+
+  bool _match(String m, List<String> keywords) {
+    return keywords.any((k) => m.contains(k.toLowerCase()));
+  }
+}

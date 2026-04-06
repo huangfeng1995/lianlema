@@ -1,106 +1,116 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import '../utils/storage_service.dart';
-import 'main_screen.dart';
-import 'onboarding_screen.dart';
+import 'landing_screen.dart';
 
+/// Splash Screen - 简洁品牌展示
 class SplashScreen extends StatefulWidget {
   final String? initialPage;
-
   const SplashScreen({super.key, this.initialPage});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 700),
       vsync: this,
     );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
-    _controller.forward();
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOut,
+    );
+    _fadeController.forward();
     _initApp();
   }
 
   Future<void> _initApp() async {
-    try {
-      final storage = await StorageService.getInstance();
-      await Future.delayed(const Duration(seconds: 2));
-      if (mounted) {
-        if (storage.isOnboardingComplete) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const MainScreen()),
-          );
-        } else {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-          );
-        }
-      }
-    } catch (e) {
-      // 出错了也跳转
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-        );
-      }
+    await Future.delayed(const Duration(milliseconds: 1800));
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LandingScreen()),
+      );
     }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _fadeController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Center(
-                child: Image.asset(
-                  'assets/images/icon/app_logo.png',
-                  width: 60,
-                  height: 60,
+      backgroundColor: const Color(0xFFF4EEE6),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Spacer(flex: 2),
+                // 猫掌图标
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF6B35), Color(0xFFE85D2D)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFF6B35).withValues(alpha: 0.25),
+                        blurRadius: 20,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image(
+                      image: const AssetImage('assets/images/icon/paw_icon.png'),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
-              ),
+                const Spacer(flex: 2),
+                // 文字放底部
+                Text(
+                  '相信行动的力量',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary.withValues(alpha: 0.75),
+                    letterSpacing: 4,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // 装饰线
+                Container(
+                  width: 40,
+                  height: 1.5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF6B35).withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(1),
+                  ),
+                ),
+                const Spacer(flex: 1),
+              ],
             ),
-            const SizedBox(height: 24),
-            const Text(
-              '练了吗',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              '从今天开始发生改变',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

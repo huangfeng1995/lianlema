@@ -33,8 +33,8 @@ class BottomNavBar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildNavItem(
-                icon: Icons.check_circle_outline_rounded,
-                activeIcon: Icons.check_circle_rounded,
+                icon: Icons.pets_outlined,
+                activeIcon: Icons.pets,
                 label: '首页',
                 index: 0,
               ),

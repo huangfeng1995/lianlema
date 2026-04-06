@@ -5,6 +5,17 @@ import '../models/models.dart';
 import '../models/pet_models.dart';
 import 'storage_service.dart';
 
+/// 宠物拆解结果：年度目标 → 月度挑战 → 每日行动
+class DecompositionResult {
+  final List<String> monthlyChallenges;
+  final Map<String, List<String>> dailyActionsPerChallenge;
+
+  DecompositionResult({
+    required this.monthlyChallenges,
+    required this.dailyActionsPerChallenge,
+  });
+}
+
 /// 宠物上下文信息（供 LLM 使用）
 class PetContext {
   final String antiVision;
@@ -65,6 +76,7 @@ class PetService {
 
   PetService._();
 
+  PetSoul _soul = PetSoul.defaultSoul();
   PetMoodState _moodState = PetMoodState.initial();
   PetPreferences _prefs = PetPreferences.defaultPrefs();
   final List<Map<String, String>> _conversationHistory = [];
@@ -73,6 +85,7 @@ class PetService {
   /// 加载宠物所有状态（从持久化存储）
   Future<void> loadState() async {
     final storage = await StorageService.getInstance();
+    _soul = storage.getPetSoul();
     _moodState = storage.getPetMoodState();
     _prefs = storage.getPetPreferences();
     _memories = storage.getPetMemories();
@@ -714,6 +727,116 @@ class PetService {
     _memories.clear();
     await _savePreferences();
     await _saveMemories();
+  }
+
+  /// 宠物智能拆解：年度目标 → 月度挑战 → 每日行动（调用 LLM）
+  Future<DecompositionResult> decomposeGoals(List<String> yearGoals) async {
+    if (yearGoals.isEmpty || yearGoals.every((g) => g.trim().isEmpty)) {
+      return DecompositionResult(monthlyChallenges: [], dailyActionsPerChallenge: {});
+    }
+
+    final goalsText = yearGoals.where((g) => g.isNotEmpty).join('\n');
+
+    final prompt = '''
+【宠物拆解框架 v1.0】
+
+你是「${_soul.name}」，用户的宠物伙伴。你的任务是帮助用户把年度目标拆解为月度挑战和每日行动。
+
+【年度目标】
+$goalsText
+
+【拆解框架】
+
+第一步：判断每个目标的类型
+- 成就型：完成某件具体的事（考研、跑马拉松、出版书籍）
+- 习惯型：养成持续的行为（早起、冥想、运动习惯）
+- 技能型：学会某项能力（编程、英语、弹吉他）
+
+第二步：应用拆解策略
+
+★ 成就型目标
+  → 问自己："完成这件事需要哪些前提条件？"
+  → 拆解为递进式里程碑
+  → 每月聚焦一个关键里程碑
+
+★ 习惯型目标
+  → 从"最小可行习惯"开始（2分钟原则）
+  → 例如：不是"每天跑步30分钟"，而是"穿上跑鞋出门"
+  → 逐渐递增难度
+
+★ 技能型目标
+  → 分解为sub-skills
+  → 每月专注一个sub-skill的突破
+  → 强调"刻意练习"而非简单重复
+
+第三步：每月挑战标准
+- 必须是"这个月能做到的"
+- 能推动年度目标前进
+- 描述要具体
+
+第四步：每日行动标准
+- 2-3条即可
+- 从"最小阻力"开始（2分钟可完成）
+- 用"每天..."开头
+
+【输出格式】
+请按以下JSON格式输出（只输出JSON）：
+{
+  "monthlyChallenges": ["挑战1", "挑战2"],
+  "dailyActionsPerChallenge": {
+    "挑战1": ["行动1", "行动2"]
+  }
+}
+
+【注意】
+- 挑战数量：2-4个
+- 语言简洁有力
+''';
+
+    try {
+      final response = await _callMiniMax(prompt, PetContext());
+      return _parseDecompositionResponse(response);
+    } catch (e) {
+      debugPrint('PetService decomposeGoals error: $e');
+      return DecompositionResult(monthlyChallenges: [], dailyActionsPerChallenge: {});
+    }
+  }
+
+  /// 解析LLM返回的拆解结果
+  DecompositionResult _parseDecompositionResponse(String response) {
+    try {
+      String jsonStr = response.trim();
+      final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(jsonStr);
+      if (jsonMatch != null) jsonStr = jsonMatch.group(0)!;
+
+      final Map<String, dynamic> json = jsonDecode(jsonStr);
+
+      final challenges = <String>[];
+      if (json['monthlyChallenges'] is List) {
+        for (final c in json['monthlyChallenges']) {
+          if (c is String && c.isNotEmpty) challenges.add(c);
+        }
+      }
+
+      final actionsMap = <String, List<String>>{};
+      if (json['dailyActionsPerChallenge'] is Map) {
+        final rawMap = json['dailyActionsPerChallenge'] as Map<String, dynamic>;
+        for (final entry in rawMap.entries) {
+          final actions = <String>[];
+          if (entry.value is List) {
+            for (final a in entry.value) {
+              if (a is String && a.isNotEmpty) actions.add(a);
+            }
+          }
+          if (actions.isNotEmpty) actionsMap[entry.key] = actions;
+        }
+      }
+
+      return DecompositionResult(monthlyChallenges: challenges, dailyActionsPerChallenge: actionsMap);
+    } catch (e) {
+      debugPrint('PetService _parseDecompositionResponse error: $e');
+      return DecompositionResult(monthlyChallenges: [], dailyActionsPerChallenge: {});
+    }
   }
 
   String _formatDate(DateTime d) =>

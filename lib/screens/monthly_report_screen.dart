@@ -190,7 +190,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      '本月Boss战',
+                      '本月挑战',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -240,7 +240,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              '还需要打卡${report.bossTotalHp - report.checkInDays}天即可击败Boss',
+              '还需要打卡${report.bossTotalHp - report.checkInDays}天即可完成挑战',
               style: const TextStyle(
                 fontSize: 12,
                 color: AppColors.textSecondary,
