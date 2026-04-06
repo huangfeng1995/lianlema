@@ -558,6 +558,106 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// 导航到宠物页面，带上障碍引导初始消息
+  void _navigateToPetWithObstacleGuidance(DailyLever lever) async {
+    final ctx = _context ?? await PetService.instance.buildContext();
+    final guidance = PetService.instance.generateObstacleExploration(lever.plan, ctx);
+    if (mounted) {
+      Navigator.of(context).pushNamed(
+        '/pet',
+        arguments: {'initialMessage': guidance},
+      );
+    }
+  }
+
+  /// 打开填写障碍的对话框（WOOP 格式：IF-THEN）
+  void _showObstacleDialog(DailyLever lever, int leverIndex) {
+    final obstacleController = TextEditingController();
+    final planController = TextEditingController(text: lever.plan);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        title: const Text('添加障碍预案'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '帮「${lever.plan}」找一个触发条件：',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('如果...（什么情况下容易放弃？）',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              TextField(
+                controller: obstacleController,
+                decoration: const InputDecoration(
+                  hintText: '例如：下班太累了',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 12),
+              const Text('我就...（你会怎么做？）',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              TextField(
+                controller: planController,
+                decoration: const InputDecoration(
+                  hintText: '例如：先做5分钟再说',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                maxLines: 2,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final obstacle = obstacleController.text.trim();
+              final plan = planController.text.trim();
+              if (obstacle.isNotEmpty) {
+                final ifThen = PetService.instance.formatIfThen(obstacle, plan);
+                final old = _todayLevers[leverIndex];
+                final updated = DailyLever(
+                  id: old.id,
+                  obstacle: obstacle,
+                  plan: ifThen,
+                  order: old.order,
+                  isCompleted: old.isCompleted,
+                );
+                setState(() {
+                  _todayLevers[leverIndex] = updated;
+                });
+                final storage = await StorageService.getInstance();
+                final leverMaps = _todayLevers
+                    .map((l) => {'obstacle': l.obstacle, 'plan': l.plan})
+                    .toList();
+                await storage.saveDailyLevers(leverMaps);
+              }
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -1358,38 +1458,68 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-                  child: Row(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 26,
-                        height: 26,
-                        decoration: BoxDecoration(
-                          color: lever.isCompleted ? AppColors.primary : Colors.transparent,
-                          border: Border.all(
-                            color: lever.isCompleted ? AppColors.primary : AppColors.textLight.withValues(alpha: 0.4),
-                            width: 1.5,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: 26,
+                            height: 26,
+                            decoration: BoxDecoration(
+                              color: lever.isCompleted ? AppColors.primary : Colors.transparent,
+                              border: Border.all(
+                                color: lever.isCompleted ? AppColors.primary : AppColors.textLight.withValues(alpha: 0.4),
+                                width: 1.5,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: lever.isCompleted
+                                  ? [
+                                      BoxShadow(
+                                        color: AppColors.primary.withValues(alpha: 0.3),
+                                        blurRadius: 8,
+                                        spreadRadius: 1,
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: lever.isCompleted
+                                ? const Icon(Icons.check, size: 17, color: Colors.white)
+                                : Icon(Icons.check, size: 17, color: AppColors.textLight.withValues(alpha: 0.3)),
                           ),
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: lever.isCompleted
-                              ? [
-                                  BoxShadow(
-                                    color: AppColors.primary.withValues(alpha: 0.3),
-                                    blurRadius: 8,
-                                    spreadRadius: 1,
-                                  ),
-                                ]
-                              : null,
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: _buildLeverText(lever),
+                          ),
+                        ],
+                      ),
+                      // 障碍引导入口（obstacle 为空时显示）
+                      if (lever.obstacle.isEmpty) ...[
+                        const SizedBox(height: 8),
+                        GestureDetector(
+                          onTap: () => _showObstacleDialog(lever, index),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.psychology_outlined,
+                                size: 12,
+                                color: const Color(0xFFFF6B35).withValues(alpha: 0.6),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '添加障碍预案',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: const Color(0xFFFF6B35).withValues(alpha: 0.6),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        child: lever.isCompleted
-                            ? const Icon(Icons.check, size: 17, color: Colors.white)
-                            : Icon(Icons.check, size: 17, color: AppColors.textLight.withValues(alpha: 0.3)),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: _buildLeverText(lever),
-                      ),
+                      ],
                     ],
                   ),
                 ),

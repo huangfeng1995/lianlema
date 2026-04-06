@@ -78,7 +78,10 @@ class _LianlemaAppState extends State<LianlemaApp> {
       home: SplashScreen(initialPage: widget.initialPage),
       routes: {
         '/main': (context) => MainScreen(initialPage: widget.initialPage),
-        '/pet': (context) => const PetScreen(),
+        '/pet': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          return PetScreen(initialMessage: args?['initialMessage'] as String?);
+        },
       },
     );
   }

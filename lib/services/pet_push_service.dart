@@ -15,6 +15,8 @@ enum PushType {
   weeklySummary,
   /// 挑战进度
   challengeProgress,
+  /// 障碍引导（Day2 或 streak 断了后，WOOP 探索）
+  obstacleGuidance,
 }
 
 /// 一条推送
@@ -51,7 +53,7 @@ class PetPushService {
   Random _random = Random();
 
   /// 生成今日推送队列（基于用户上下文）
-  List<PetPush> generateDailyPushes(PetContext ctx) {
+  Future<List<PetPush>> generateDailyPushes(PetContext ctx) async {
     final pushes = <PetPush>[];
 
     // 1. 里程碑逼近（最高优先级）
@@ -114,6 +116,25 @@ class PetPushService {
       ));
     }
 
+    // 6. 障碍引导（Day2 或 streak 断了）
+    // 条件：用户已有 lever 且 obstacle 尚未填写
+    final levers = await _getLeversWithoutObstacle();
+    if (levers.isNotEmpty) {
+      final shouldTrigger = _shouldTriggerObstacleGuidance(ctx);
+      if (shouldTrigger) {
+        final petService = PetService.instance;
+        final body = petService.generateObstacleExploration(levers.first, ctx);
+        pushes.add(PetPush(
+          id: 'o${DateTime.now().millisecondsSinceEpoch}',
+          type: PushType.obstacleGuidance,
+          title: '聊聊障碍 🧭',
+          body: body.length > 60 ? '${body.substring(0, 60)}...' : body,
+          createdAt: DateTime.now(),
+          weight: 0.7,
+        ));
+      }
+    }
+
     // 按权重排序后取前4条
     pushes.sort((a, b) => b.weight.compareTo(a.weight));
     return pushes.take(_maxDailyPushes).toList();
@@ -171,5 +192,32 @@ class PetPushService {
     final now = DateTime.now();
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
     return daysInMonth - now.day <= 3;
+  }
+
+  /// 获取尚未填写 obstacle 的 lever plan 列表
+  Future<List<String>> _getLeversWithoutObstacle() async {
+    final storage = await StorageService.getInstance();
+    final levers = storage.getDailyLevers();
+    return levers
+        .where((l) => l['obstacle']?.isEmpty == true && (l['plan']?.isNotEmpty == true))
+        .map((l) => l['plan'] ?? '')
+        .toList();
+  }
+
+  /// 判断是否应该触发障碍引导
+  /// 触发时机：
+  /// 1. Day 2：用户刚完成第一次打卡，尚未打卡第二天
+  /// 2. Streak 断了：昨天没打卡且 streak > 0
+  bool _shouldTriggerObstacleGuidance(PetContext ctx) {
+    // Day 2 触发：已完成首次打卡（totalCheckIns >= 1），今天还没打卡
+    final isDay2 = ctx.totalCheckIns >= 1 && !ctx.checkedInToday;
+
+    // Streak 断了：之前有 streak，昨天/前天没打卡
+    final idleDays = ctx.lastActiveTime != null
+        ? DateTime.now().difference(ctx.lastActiveTime!).inDays
+        : 0;
+    final isStreakBroken = ctx.streak > 0 && !ctx.checkedInToday && idleDays >= 1;
+
+    return isDay2 || isStreakBroken;
   }
 }

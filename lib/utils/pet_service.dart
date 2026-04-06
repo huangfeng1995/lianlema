@@ -841,4 +841,68 @@ $goalsText
 
   String _formatDate(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  /// ====== WOOP障碍引导（心理咨询师风格）======
+  /// 生成障碍探索引导语（心理咨询师风格，非说教）
+  /// 触发时机：Day 2 或 streak 断了之后
+  ///
+  /// 风格原则：
+  /// - 不评判、不催促、不给建议
+  /// - 用开放式问题引导用户自己觉察
+  /// - 同理心优先："这很常见"
+  String generateObstacleExploration(String leverPlan, PetContext context) {
+    final useEmoji = _prefs.useEmoji;
+    final streak = context.streak;
+    final plans = leverPlan.isNotEmpty ? leverPlan : '完成今天的行动';
+
+    // 刚注册第二天：引导觉察障碍
+    if (context.totalCheckIns >= 1 && context.totalCheckIns <= 3 && streak <= 1) {
+      if (useEmoji) {
+        return '昨天尝试了「$plans」，感觉怎么样？\n\n有时候心里会有一些小声音拦住我们——比如"今天好累""明天再说"\n\n你有没有感觉到什么？不用急着回答，慢慢说，我在听 🙌';
+      } else {
+        return '昨天尝试了「$plans」，感觉怎么样？\n\n有时候心里会有小声音拦住我们。你有没有感觉到什么？慢慢说，我在听。';
+      }
+    }
+
+    // Streak 断了：同理 + 引导觉察
+    if (streak > 0 && !context.checkedInToday) {
+      final idleDays = context.lastActiveTime != null
+          ? DateTime.now().difference(context.lastActiveTime!).inDays
+          : 1;
+      if (idleDays >= 1) {
+        if (useEmoji) {
+          return '我注意到昨天没有打卡。\n\n其实停下来很常见，不是你一个人会这样 💪\n\n我想问问你：当你想要行动的时候，心里最先冒出来的那个"但是"是什么？\n\n说出来本身就很有力量。';
+        } else {
+          return '我注意到昨天没有打卡。停下来很常见。\n\n我想问问你：当你想要行动的时候，心里最先冒出来的"但是"是什么？说出来本身就很有力量。';
+        }
+      }
+    }
+
+    // 默认：日常引导
+    if (useEmoji) {
+      return '今天「$plans」打算什么时候做？\n\n在这之前，你觉得自己可能会遇到什么阻碍吗？可以是任何事，我陪着你 🧭';
+    } else {
+      return '今天「$plans」打算什么时候做？\n\n在这之前，你觉得自己可能会遇到什么阻碍？可以是任何事，我陪着你。';
+    }
+  }
+
+  /// 将 obstacle + plan 格式化为 IF-THEN 结构
+  /// 格式：如果 [障碍X]，我就 [行动Y]
+  /// 如果 obstacle 为空，返回格式化后的 plan 文本
+  String formatIfThen(String obstacle, String plan) {
+    if (obstacle.isEmpty && plan.isEmpty) return '';
+    if (obstacle.isEmpty) return plan;
+    if (plan.isEmpty) return obstacle;
+
+    // 统一格式：如果 X，我就 Y
+    // 去掉 obstacle 中可能已经含有的"如果"
+    final cleanObstacle = obstacle.startsWith('如果') || obstacle.startsWith('如果')
+        ? obstacle
+        : obstacle;
+
+    // 去掉 plan 中可能含有的"我就"
+    final cleanPlan = plan.startsWith('我就') ? plan.substring(2).trim() : plan;
+
+    return '如果$cleanObstacle，我就$cleanPlan';
+  }
 }

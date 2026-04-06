@@ -6,7 +6,10 @@ import '../utils/pet_service.dart';
 import '../services/pet_push_service.dart';
 
 class PetScreen extends StatefulWidget {
-  const PetScreen({super.key});
+  /// 可选：打开时自动发送的消息（如障碍引导）
+  final String? initialMessage;
+
+  const PetScreen({super.key, this.initialMessage});
 
   @override
   State<PetScreen> createState() => _PetScreenState();
@@ -42,6 +45,14 @@ class _PetScreenState extends State<PetScreen> {
       _prefs = prefs;
       _petName = _storage.getPetName();
     });
+
+    // 如果有初始消息（障碍引导），自动发送
+    if (widget.initialMessage != null && widget.initialMessage!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        _inputController.text = widget.initialMessage!;
+        await _sendMessage();
+      });
+    }
   }
 
   @override
