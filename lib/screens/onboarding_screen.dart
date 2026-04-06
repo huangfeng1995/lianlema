@@ -56,6 +56,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   List<String> _petSuggestedChallenges = []; // 宠物建议的月度挑战
   Map<String, List<String>> _petDailyActionsPerChallenge = {}; // challenge → 每日行动
   bool _isLoadingPetSuggestions = false;
+  // 用户编辑后的宠物建议（key=原始建议, value=编辑后的文本）
+  Map<String, String> _editedPetSuggestions = {};
 
   static const int _totalPages = 2;
 
@@ -139,6 +141,56 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
+  /// 处理宠物建议的点击：选中时弹出编辑框，取消选中时移除
+  void _handleSuggestionTap(String suggestion, bool wasSelected) {
+    if (wasSelected) {
+      // 取消选中
+      setState(() {
+        _selectedBossTypes.remove(suggestion);
+        _editedPetSuggestions.remove(suggestion);
+      });
+    } else {
+      // 选中 → 弹出编辑对话框
+      final controller = TextEditingController(
+        text: _editedPetSuggestions[suggestion] ?? suggestion,
+      );
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('编辑挑战'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: '输入月度挑战...',
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 2,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () {
+                final editedText = controller.text.trim();
+                if (editedText.isNotEmpty) {
+                  setState(() {
+                    _editedPetSuggestions[suggestion] = editedText;
+                    _selectedBossTypes.add(suggestion);
+                  });
+                }
+                Navigator.pop(ctx);
+              },
+              child: const Text('确定'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   Future<void> _completeOnboarding() async {
     if (_isSaving) return;
     setState(() => _isSaving = true);
@@ -161,19 +213,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         validLevers.add({'obstacle': '', 'plan': '读书'});
       }
 
-      // 构建月度挑战（支持多选）
+      // 构建月度挑战（支持多选 + 用户编辑）
       // 注意：用户可能选择了「为你推荐」的选项，这些不在 _bossTemplates 里
       String bossContent = '';
       final parts = <String>[];
       if (_selectedBossTypes.isNotEmpty) {
         for (final name in _selectedBossTypes) {
-          // 尝试在模板里找，找不到就用推荐词本身
-          final templateMatch = _bossTemplates.where((t) => t['name'] == name).toList();
+          // 如果用户编辑过宠物建议，用编辑后的文本
+          final displayText = _editedPetSuggestions[name] ?? name;
+          // 尝试在模板里找，找不到就用编辑/原始文本
+          final templateMatch = _bossTemplates.where((t) => t['name'] == displayText || t['name'] == name).toList();
           if (templateMatch.isNotEmpty) {
             parts.add(templateMatch.first['desc']!);
           } else {
-            // 推荐词或自定义 → 直接使用
-            parts.add(name);
+            // 推荐词或自定义 → 使用编辑后的文本（如果有）
+            parts.add(displayText);
           }
         }
       }
@@ -182,7 +236,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       }
       bossContent = parts.join('；');
 
-      // 构建每日行动（优先使用宠物智能拆解的结果）
+      // 构建每日行动（优先使用宠物智能拆解的结果，按原始key查找）
       List<String> dailyActionsFromPet = [];
       for (final key in _selectedBossTypes) {
         if (_petDailyActionsPerChallenge.containsKey(key)) {
@@ -720,16 +774,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const SizedBox(height: 10),
             ...suggestions.map((s) {
               final isSelected = _selectedBossTypes.contains(s);
+              final editedText = _editedPetSuggestions[s];
+              final displayText = editedText ?? s;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: GestureDetector(
-                  onTap: () => setState(() {
-                    if (isSelected) {
-                      _selectedBossTypes.remove(s);
-                    } else {
-                      _selectedBossTypes.add(s);
-                    }
-                  }),
+                  onTap: () => _handleSuggestionTap(s, isSelected),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -765,7 +815,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
-                            Icons.check,
+                            isSelected ? Icons.edit : Icons.check,
                             size: 16,
                             color: isSelected
                                 ? Colors.white
@@ -775,7 +825,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         const SizedBox(width: 14),
                         Expanded(
                           child: Text(
-                            s,
+                            displayText,
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
@@ -785,6 +835,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             ),
                           ),
                         ),
+                        if (isSelected)
+                          Icon(
+                            Icons.chevron_right,
+                            size: 18,
+                            color: const Color(0xFFFF6B35).withValues(alpha: 0.6),
+                          ),
                       ],
                     ),
                   ),
