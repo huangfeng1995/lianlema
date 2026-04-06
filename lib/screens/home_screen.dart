@@ -1432,6 +1432,40 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: 12),
+          // IF-THEN 解释（obstacle 非空时隐藏，用卡片本身说明）
+          if (_todayLevers.isEmpty || _todayLevers.every((l) => l.obstacle.isEmpty))
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF6B35).withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: const Color(0xFFFF6B35).withValues(alpha: 0.12),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.psychology_outlined,
+                    size: 14,
+                    color: const Color(0xFFFF6B35).withValues(alpha: 0.7),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '💡 点击下方「添加障碍预案」，设置「如果...我就...」的触发计划，让行动在障碍出现时自动执行。',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: const Color(0xFFFF6B35).withValues(alpha: 0.8),
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           if (_todayLevers.isEmpty) _buildEmptyLeversCard(),
           ...List.generate(_todayLevers.length, (index) {
             final lever = _todayLevers[index];

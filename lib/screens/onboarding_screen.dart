@@ -116,6 +116,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   /// 加载宠物的智能拆解建议（年度目标 → 月度挑战 → 每日行动）
+  /// 最多等待12秒，超时则返回空结果让用户手动填写
   Future<void> _loadPetSuggestions() async {
     final goals = _yearGoals.where((g) => g.trim().isNotEmpty).toList();
     if (goals.isEmpty) return;
@@ -128,7 +129,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
 
     try {
-      final result = await PetService.instance.decomposeGoals(goals);
+      final result = await PetService.instance
+          .decomposeGoals(goals)
+          .timeout(const Duration(seconds: 12));
       if (mounted) {
         setState(() {
           _petSuggestedChallenges = result.monthlyChallenges;
@@ -749,11 +752,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                   ),
                   const SizedBox(width: 14),
-                  Text(
-                    '宠物正在帮你拆解目标...',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary.withValues(alpha: 0.7),
+                  Expanded(
+                    child: Text(
+                      '宠物正在帮你拆解目标...',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => setState(() => _isLoadingPetSuggestions = false),
+                    child: Text(
+                      '跳过',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: const Color(0xFFFF6B35).withValues(alpha: 0.7),
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
@@ -861,7 +877,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Text(
-                  '或自定义',
+                  '自定义',
                   style: TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary.withValues(alpha: 0.45),

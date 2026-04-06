@@ -52,7 +52,22 @@ class _PetScreenState extends State<PetScreen> {
         _inputController.text = widget.initialMessage!;
         await _sendMessage();
       });
+    } else if (ctx.vision.isEmpty) {
+      // 首次进入且无愿景 → 宠物主动引导设置愿景
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await _sendVisionGuidance();
+      });
     }
+  }
+
+  /// 宠物主动引导用户思考长期愿景
+  Future<void> _sendVisionGuidance() async {
+    final guidance = '嗨，我是炭炭 ✨\n\n我注意到你还没有设置长期愿景。我想帮你想清楚一件事：\n\n1年后，你想要成为什么样的人？\n\n不用急着回答，慢慢想。可以是任何方向——\n比如你想做成什么事、你想变成什么状态、你想过上什么样的生活。\n\n想到了就告诉我，我们一起把它写下来。';
+    setState(() {
+      _messages.add(ChatMessage(text: guidance, isUser: false));
+      _isLoading = false;
+    });
+    _scrollToBottom();
   }
 
   @override
