@@ -604,10 +604,42 @@ class StorageService {
   }
 
   // Per-boss 存储（v2 扩展）
-  List<String> getSelectedBossTypes() => [];
-  List<String> getCustomBosses() => [];
-  Map<String, List<String>> getBossTasks() => {};
-  Future<void> saveBossTasks(Map<String, List<String>> tasks) async {}
+  static const String _keySelectedBossTypes = 'selected_boss_types';
+  static const String _keyCustomBosses = 'custom_bosses';
+  static const String _keyBossTasks = 'boss_tasks';
+
+  List<String> getSelectedBossTypes() {
+    final str = _prefs.getString(_keySelectedBossTypes);
+    if (str == null) return [];
+    final List decoded = jsonDecode(str);
+    return decoded.cast<String>();
+  }
+
+  Future<void> saveSelectedBossTypes(List<String> types) async {
+    await _prefs.setString(_keySelectedBossTypes, jsonEncode(types));
+  }
+
+  List<String> getCustomBosses() {
+    final str = _prefs.getString(_keyCustomBosses);
+    if (str == null) return [];
+    final List decoded = jsonDecode(str);
+    return decoded.cast<String>();
+  }
+
+  Future<void> saveCustomBosses(List<String> bosses) async {
+    await _prefs.setString(_keyCustomBosses, jsonEncode(bosses));
+  }
+
+  Map<String, List<String>> getBossTasks() {
+    final str = _prefs.getString(_keyBossTasks);
+    if (str == null) return {};
+    final decoded = jsonDecode(str) as Map<String, dynamic>;
+    return decoded.map((k, v) => MapEntry(k, (v as List).cast<String>()));
+  }
+
+  Future<void> saveBossTasks(Map<String, List<String>> tasks) async {
+    await _prefs.setString(_keyBossTasks, jsonEncode(tasks));
+  }
 
   // ====== 保存所有 onboarding 数据 ======
   

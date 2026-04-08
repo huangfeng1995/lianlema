@@ -1,4 +1,5 @@
 import '../utils/storage_service.dart';
+import '../models/models.dart';
 import '../models/pet_models.dart';
 
 /// 宠物可执行的动作类型
@@ -17,22 +18,13 @@ enum PetActionType {
   updateBossContent,
 }
 
-/// 宠物执行动作的结果
-class PetActionResult {
-  final bool success;
-  final String message;
-  final String? summary; // 用于显示给用户
-
-  PetActionResult({required this.success, required this.message, this.summary});
-}
-
 /// 宠物动作服务 — 把「说」变成「做」
 class PetActionService {
   /// 根据用户消息判断是否需要执行动作
   /// 返回 null 表示不需要动作，返回结果表示执行了动作
   Future<PetActionResult?> handleUserRequest(
     String message,
-    PetContext ctx,
+    Map<String, dynamic> ctx,
   ) async {
     final m = message.toLowerCase();
     final storage = await StorageService.getInstance();
@@ -66,22 +58,26 @@ class PetActionService {
   }
 
   /// 判断今日是否需要提醒打卡（快结束了还没打卡）
-  bool shouldRemindCheckIn(PetContext ctx) {
-    if (ctx.checkedInToday) return false;
+  bool shouldRemindCheckIn(Map<String, dynamic> ctx) {
+    if (ctx['checkedInToday'] == true) return false;
     return true; // 只要今天没打卡就提醒
   }
 
   /// 判断是否很久没做任务
-  bool shouldRemindLongIdle(PetContext ctx) {
+  bool shouldRemindLongIdle(Map<String, dynamic> ctx) {
     // 超过3天没打卡
-    return ctx.streak > 0 && ctx.totalCheckIns > 3 && !ctx.checkedInToday;
+    final streak = (ctx['streak'] as int?) ?? 0;
+    final totalCheckIns = (ctx['totalCheckIns'] as int?) ?? 0;
+    final checkedInToday = ctx['checkedInToday'] == true;
+    return streak > 0 && totalCheckIns > 3 && !checkedInToday;
   }
 
   /// 判断是否快到里程碑
-  bool shouldRemindMilestone(PetContext ctx) {
+  bool shouldRemindMilestone(Map<String, dynamic> ctx) {
     const milestones = [7, 30, 100];
+    final streak = (ctx['streak'] as int?) ?? 0;
     for (final m in milestones) {
-      if ((ctx.streak - m).abs() <= 2 && ctx.streak < m) return true;
+      if ((streak - m).abs() <= 2 && streak < m) return true;
     }
     return false;
   }
@@ -90,13 +86,19 @@ class PetActionService {
 
   Future<PetActionResult> _recordCheckIn(
     StorageService storage,
-    PetContext ctx,
+    Map<String, dynamic> ctx,
   ) async {
     try {
-      await storage.recordDailyCheckIn(DateTime.now(), ['']);
+      final checkIns = storage.getCheckIns();
+      final streak = (ctx['streak'] as int?) ?? 0;
+      checkIns.add(CheckIn(
+        date: DateTime.now(),
+        leverIds: const [],
+      ));
+      await storage.saveCheckIns(checkIns);
       return PetActionResult(
         success: true,
-        message: '好的，今天打卡记录好了！✨ 你已经坚持了 ${ctx.streak + 1} 天！',
+        message: '好的，今天打卡记录好了！✨ 你已经坚持了 ${streak + 1} 天！',
         summary: '已记录今日打卡',
       );
     } catch (e) {
@@ -110,7 +112,7 @@ class PetActionService {
   Future<PetActionResult> _createDailyLever(
     StorageService storage,
     String message,
-    PetContext ctx,
+    Map<String, dynamic> ctx,
   ) async {
     try {
       // 从消息中提取杠杆内容（去掉上面的关键词）
@@ -145,7 +147,7 @@ class PetActionService {
   Future<PetActionResult> _updateDailyLever(
     StorageService storage,
     String message,
-    PetContext ctx,
+    Map<String, dynamic> ctx,
   ) async {
     return PetActionResult(
       success: false,
@@ -156,14 +158,15 @@ class PetActionService {
   Future<PetActionResult> _saveMilestone(
     StorageService storage,
     String message,
-    PetContext ctx,
+    Map<String, dynamic> ctx,
   ) async {
     try {
-      final memory = PetMemory.permanent(
+      final memory = PetMemory(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        type: PetMemoryType.milestone,
+        createdAt: DateTime.now(),
+        type: 'milestone',
         content: message,
-        summary: '用户达成了：${message.substring(0, message.length.clamp(0, 20))}...',
+        petResponse: '',
       );
       await storage.addPetMemory(memory);
 
@@ -183,14 +186,15 @@ class PetActionService {
   Future<PetActionResult> _saveLesson(
     StorageService storage,
     String message,
-    PetContext ctx,
+    Map<String, dynamic> ctx,
   ) async {
     try {
-      final memory = PetMemory.permanent(
+      final memory = PetMemory(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        type: PetMemoryType.lesson,
+        createdAt: DateTime.now(),
+        type: 'lesson',
         content: message,
-        summary: '教训：${message.substring(0, message.length.clamp(0, 20))}...',
+        petResponse: '',
       );
       await storage.addPetMemory(memory);
 
@@ -210,4 +214,13 @@ class PetActionService {
   bool _match(String m, List<String> keywords) {
     return keywords.any((k) => m.contains(k.toLowerCase()));
   }
+}
+
+/// 宠物执行动作的结果
+class PetActionResult {
+  final bool success;
+  final String message;
+  final String? summary; // 用于显示给用户
+
+  PetActionResult({required this.success, required this.message, this.summary});
 }
