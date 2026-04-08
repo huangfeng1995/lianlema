@@ -90,6 +90,9 @@ class StorageService {
   static const String _keyPetOwnedItems = 'pet_owned_items'; // 已拥有物品
   static const String _keyEquippedCostume = 'equipped_costume'; // 当前穿戴外观
   static const String _keyEquippedDecorations = 'equipped_decorations'; // 当前家居装饰
+  static const String _keyPetType = 'pet_type'; // 宠物类型 id
+  static const String _keyPetAppearanceLevel = 'pet_appearance_level'; // 外观等级 1-5
+  static const String _keyPetMoodValue = 'pet_mood_value'; // 心情数值 0-100
 
   // ====== 宠物名字 ======
   static const String defaultPetName = '炭炭';
@@ -208,6 +211,43 @@ class StorageService {
 
   Future<void> saveEquippedDecorations(List<String> decorationIds) async {
     await _prefs.setString(_keyEquippedDecorations, jsonEncode(decorationIds));
+  }
+
+  // ====== 宠物类型 ======
+  Future<void> savePetType(String type) async {
+    await _prefs.setString(_keyPetType, type);
+  }
+
+  String getPetType() {
+    return _prefs.getString(_keyPetType) ?? 'fox';
+  }
+
+  // ====== 外观等级 ======
+  Future<void> savePetAppearanceLevel(int level) async {
+    await _prefs.setInt(_keyPetAppearanceLevel, level);
+  }
+
+  int getPetAppearanceLevel() {
+    return _prefs.getInt(_keyPetAppearanceLevel) ?? 1;
+  }
+
+  // ====== 心情数值 ======
+  int getPetMoodValue() {
+    return _prefs.getInt(_keyPetMoodValue) ?? 50; // 默认50
+  }
+
+  Future<void> savePetMoodValue(int value) async {
+    await _prefs.setInt(_keyPetMoodValue, value.clamp(0, 100));
+  }
+
+  /// 消耗宠物币（余额不足时抛出异常）
+  Future<void> spendPetCoins(int amount, PetCoinReason reason) async {
+    if (amount <= 0) return;
+    final current = getPetCoins();
+    if (current < amount) {
+      throw Exception('宠物币余额不足：需要 $amount，当前 $current');
+    }
+    await addPetCoins(-amount, reason);
   }
 
   /// 判断宠物是否处于蛋阶段（领养后7天内）
@@ -812,9 +852,22 @@ Future<void> saveOnboardingData({
     await setOnboardingComplete(true);
     await saveBadges(_defaultBadges);
     await saveLastReviewMonth('${now.year}-${now.month.toString().padLeft(2, '0')}');
-    // 首次领养宠物，记录领养日期
+    // 首次领养宠物，记录领养日期，随机分配宠物类型
     if (getPetAdoptDate() == null) {
       await savePetAdoptDate(now);
+      final assignedPet = assignRandomPet();
+      await savePetType(assignedPet.type);
+      final soul = getPetSoul();
+      await savePetSoul(PetSoul(
+        name: soul.name,
+        personality: soul.personality,
+        speakingStyle: soul.speakingStyle,
+        tone: soul.tone,
+        useEmoji: soul.useEmoji,
+        defaultGreeting: assignedPet.greeting,
+        type: assignedPet.type,
+        petEmoji: assignedPet.emoji,
+      ));
     }
   }
 
@@ -919,6 +972,19 @@ Future<void> saveOnboardingData({
     }
 
     return badges;
+  }
+
+  // ====== 根据打卡天数更新外观等级 ======
+  Future<void> updateAppearanceLevelFromStreak(int streakDays) async {
+    int level = 1;
+    if (streakDays >= 100) level = 5;
+    else if (streakDays >= 60) level = 4;
+    else if (streakDays >= 30) level = 3;
+    else if (streakDays >= 14) level = 2;
+    // 只有升级才更新，不降级
+    if (level > getPetAppearanceLevel()) {
+      await savePetAppearanceLevel(level);
+    }
   }
 
   // ====== 重置应用 ======

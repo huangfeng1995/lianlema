@@ -18,6 +18,9 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
   String? _equippedCostume;
   List<String> _equippedDecorations = [];
   List<PetOwnedItem> _ownedItems = [];
+  String _petEmoji = '🦊';
+  int _appearanceLevel = 1;
+  int _moodValue = 50;
 
   @override
   void initState() {
@@ -27,12 +30,25 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
 
   Future<void> _loadData() async {
     _storage = await StorageService.getInstance();
+    final adoptDate = _storage.getPetAdoptDate();
+    final petType = _storage.getPetType();
+    final petConfig = getPetTypeConfig(petType);
+    final soul = _storage.getPetSoul();
     setState(() {
       _petName = _storage.getPetName();
       _coins = _storage.getPetCoins();
       _equippedCostume = _storage.getEquippedCostume();
       _equippedDecorations = _storage.getEquippedDecorations();
       _ownedItems = _storage.getPetOwnedItems();
+      // 未领养时显示默认炭炭
+      if (adoptDate == null) {
+        _petEmoji = '🦊';
+        _appearanceLevel = 1;
+      } else {
+        _petEmoji = petConfig?.emoji ?? soul.petEmoji;
+        _appearanceLevel = _storage.getPetAppearanceLevel();
+      }
+      _moodValue = _storage.getPetMoodValue();
       _initialized = true;
     });
   }
@@ -133,7 +149,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                const Icon(Icons.whatshot, color: Colors.white, size: 48),
+                Text(_petEmoji, style: const TextStyle(fontSize: 56)),
                 if (costume != null)
                   Positioned(
                     bottom: 8,
@@ -145,35 +161,22 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
           ),
           const SizedBox(height: 12),
 
-          // 宠物名字 + 等级
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                _petName,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'Lv${_getLevel()}',
+          // 宠物名字 + 外观等级
+          GestureDetector(
+            onTap: _showAppearanceLevelInfo,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '$_petName Lv$_appearanceLevel',
                   style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -184,75 +187,174 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     );
   }
 
+  void _showAppearanceLevelInfo() {
+    final levelInfo = PetAppearanceLevel.getLevel(_appearanceLevel);
+    final nextLevel = PetAppearanceLevel.levels.length > _appearanceLevel
+        ? PetAppearanceLevel.levels[_appearanceLevel]
+        : null;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Text(levelInfo?.emoji ?? '🌱', style: const TextStyle(fontSize: 24)),
+            const SizedBox(width: 8),
+            Text('Lv$_appearanceLevel ${levelInfo?.name ?? ''}'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              nextLevel != null
+                  ? '再连续 ${nextLevel.requiredDays} 天即可升至 ${nextLevel.emoji}Lv${nextLevel.level} ${nextLevel.name}'
+                  : '已达最高等级！✨',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            ...PetAppearanceLevel.levels.map((lv) {
+              final isUnlocked = lv.level <= _appearanceLevel;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  children: [
+                    Text(lv.emoji, style: TextStyle(fontSize: 14, color: isUnlocked ? null : Colors.grey)),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Lv${lv.level} ${lv.name}（${lv.requiredDays}天）',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isUnlocked ? AppColors.textPrimary : AppColors.textLight,
+                        fontWeight: isUnlocked ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    ),
+                    if (isUnlocked) const Text(' ✓', style: TextStyle(color: AppColors.primary, fontSize: 12)),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('知道了'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMoodBar() {
-    final moodLevel = _getMoodLevel();
-    final moodText = _getMoodText();
     final moodColor = _getMoodColor();
+    final moodText = _getMoodText();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Text(
-              '心情：',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-            ),
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: moodLevel,
-                  backgroundColor: AppColors.textLight.withValues(alpha: 0.2),
-                  valueColor: AlwaysStoppedAnimation<Color>(moodColor),
-                  minHeight: 8,
+        GestureDetector(
+          onTap: _showMoodDetail,
+          child: Row(
+            children: [
+              Text(
+                '心情：',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: _moodValue / 100,
+                    backgroundColor: AppColors.textLight.withValues(alpha: 0.2),
+                    valueColor: AlwaysStoppedAnimation<Color>(moodColor),
+                    minHeight: 8,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              moodText,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: moodColor,
+              const SizedBox(width: 8),
+              Text(
+                moodText,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: moodColor,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
   }
 
-  int _getLevel() {
-    final checkIns = _storage.getCheckIns();
-    return (checkIns.length ~/ 10) + 1;
-  }
-
-  double _getMoodLevel() {
-    // 基于打卡频率简单计算心情（这里用连续天数模拟）
-    final checkIns = _storage.getCheckIns();
-    if (checkIns.isEmpty) return 0.4;
-    final today = DateTime.now();
-    final recent = checkIns.where((c) => today.difference(c.date).inDays <= 3).length;
-    return (recent / 3).clamp(0.0, 1.0);
+  void _showMoodDetail() {
+    final moodText = _getMoodText();
+    final moodDesc = _getMoodDescription();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('$moodText $_petName', style: const TextStyle(fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text('$_moodValue / 100', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _getMoodColor())),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: _moodValue / 100,
+                backgroundColor: AppColors.textLight.withValues(alpha: 0.2),
+                valueColor: AlwaysStoppedAnimation<Color>(_getMoodColor()),
+                minHeight: 10,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(moodDesc, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            const SizedBox(height: 12),
+            const Text('💡 每天打卡心情+3，购买零食也能提升心情哦！', style: TextStyle(color: AppColors.textLight, fontSize: 12)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('好的'),
+          ),
+        ],
+      ),
+    );
   }
 
   String _getMoodText() {
-    final level = _getMoodLevel();
-    if (level >= 0.8) return '超开心 ✨';
-    if (level >= 0.6) return '开心';
-    if (level >= 0.4) return '平静';
-    if (level >= 0.2) return '有点丧';
+    if (_moodValue >= 80) return '超开心';
+    if (_moodValue >= 60) return '开心';
+    if (_moodValue >= 40) return '平静';
+    if (_moodValue >= 20) return '有点丧';
     return '很低落';
   }
 
   Color _getMoodColor() {
-    final level = _getMoodLevel();
-    if (level >= 0.8) return const Color(0xFFFF6B35);
-    if (level >= 0.6) return AppColors.primary;
-    if (level >= 0.4) return AppColors.textSecondary;
-    if (level >= 0.2) return const Color(0xFFFF9800);
+    if (_moodValue >= 80) return Colors.orange;
+    if (_moodValue >= 60) return Colors.yellow;
+    if (_moodValue >= 40) return Colors.grey;
+    if (_moodValue >= 20) return Colors.red;
     return Colors.red;
+  }
+
+  String _getMoodDescription() {
+    if (_moodValue >= 80) return '$_petName 现在超开心！继续保持，今天也要加油打卡哦～';
+    if (_moodValue >= 60) return '$_petName 心情不错，打卡后会更开心！';
+    if (_moodValue >= 40) return '$_petName 心情平静，一起保持这个状态吧。';
+    if (_moodValue >= 20) return '$_petName 有点丧，别担心，打卡会让自己好起来的。';
+    return '$_petName 心情很低落，今天打个卡振作一下吧！';
   }
 
   Widget _buildBottomActions() {
@@ -351,6 +453,12 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
   Future<void> _useSnack(PetOwnedItem owned) async {
     final item = PetShopConfig.getById(owned.itemId);
     if (item == null) return;
+
+    // 更新心情
+    if (item.effect > 0) {
+      final currentMood = _storage.getPetMoodValue();
+      await _storage.savePetMoodValue(currentMood + item.effect);
+    }
 
     // 移除已使用的零食
     await _storage.removePetOwnedItem(owned.itemId);

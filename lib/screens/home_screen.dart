@@ -185,6 +185,10 @@ class _HomeScreenState extends State<HomeScreen> {
     // 打卡奖励宠物币
     await _storage.addPetCoins(5, PetCoinReason.dailyCheckIn);
 
+    // 打卡后心情+3
+    final currentMood = _storage.getPetMoodValue();
+    await _storage.savePetMoodValue(currentMood + 3);
+
     // 更新月度 Boss HP
     final boss = _storage.getMonthlyBoss();
     MonthlyBoss? updatedBoss;
@@ -257,6 +261,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     await _storage.saveUserStats(finalStats);
     await _storage.saveBadges(updatedBadges);
+    await _storage.updateAppearanceLevelFromStreak(newStreak);
 
     // 微妙成功反馈（非极简模式）
     if (!_minimalMode) {

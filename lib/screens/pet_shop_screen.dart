@@ -15,6 +15,7 @@ class _PetShopScreenState extends State<PetShopScreen> {
   bool _storageInitialized = false;
   int _selectedCategory = 0; // 0=全部, 1=外观, 2=零食, 3=家居
   int _coins = 50;
+  int _moodValue = 50;
 
   final _categories = ['全部', '外观', '零食', '家居'];
 
@@ -29,6 +30,7 @@ class _PetShopScreenState extends State<PetShopScreen> {
     setState(() {
       _storageInitialized = true;
       _coins = _storage.getPetCoins();
+      _moodValue = _storage.getPetMoodValue();
     });
   }
 
@@ -48,6 +50,7 @@ class _PetShopScreenState extends State<PetShopScreen> {
   Future<void> _refreshCoins() async {
     setState(() {
       _coins = _storage.getPetCoins();
+      _moodValue = _storage.getPetMoodValue();
     });
   }
 
@@ -140,9 +143,10 @@ class _PetShopScreenState extends State<PetShopScreen> {
       equipped: false,
     ));
 
-    // 立即装备零食类
-    if (item.category == PetShopCategory.snack) {
-      // 零食直接使用，无需装备
+    // 购买零食时增加心情
+    if (item.category == PetShopCategory.snack && item.effect > 0) {
+      final currentMood = _storage.getPetMoodValue();
+      await _storage.savePetMoodValue(currentMood + item.effect);
     }
 
     await _refreshCoins();
@@ -231,6 +235,30 @@ class _PetShopScreenState extends State<PetShopScreen> {
               ],
             ),
           ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_getMoodEmoji(), style: const TextStyle(fontSize: 16)),
+                const SizedBox(width: 4),
+                Text(
+                  '$_moodValue',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
           const Spacer(),
           TextButton.icon(
             onPressed: _openBag,
@@ -240,6 +268,14 @@ class _PetShopScreenState extends State<PetShopScreen> {
         ],
       ),
     );
+  }
+
+  String _getMoodEmoji() {
+    if (_moodValue >= 80) return '😄';
+    if (_moodValue >= 60) return '🙂';
+    if (_moodValue >= 40) return '😐';
+    if (_moodValue >= 20) return '😟';
+    return '😢';
   }
 
   Widget _buildCategoryTabs() {

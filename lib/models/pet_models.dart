@@ -1,3 +1,5 @@
+import 'dart:math';
+
 /// 宠物心情状态枚举
 enum PetMood {
   /// 开心 — 打卡后或刚互动
@@ -66,6 +68,8 @@ class PetSoul {
   final String tone;
   final bool useEmoji;
   final String defaultGreeting;
+  final String type; // 'fox'|'wolf'|...|'blackcat'
+  final String petEmoji; // emoji 如 '🦊'
 
   const PetSoul({
     required this.name,
@@ -74,6 +78,8 @@ class PetSoul {
     required this.tone,
     required this.useEmoji,
     required this.defaultGreeting,
+    required this.type,
+    required this.petEmoji,
   });
 
   factory PetSoul.fromJson(Map<String, dynamic> json) => PetSoul(
@@ -83,6 +89,8 @@ class PetSoul {
     tone: json['tone'] ?? 'casual',
     useEmoji: json['useEmoji'] ?? true,
     defaultGreeting: json['defaultGreeting'] ?? '嗨，我是你的AI伙伴炭炭。',
+    type: json['type'] ?? 'fox',
+    petEmoji: json['petEmoji'] ?? '🦊',
   );
 
   Map<String, dynamic> toJson() => {
@@ -92,6 +100,8 @@ class PetSoul {
     'tone': tone,
     'useEmoji': useEmoji,
     'defaultGreeting': defaultGreeting,
+    'type': type,
+    'petEmoji': petEmoji,
   };
 
   factory PetSoul.defaultSoul() => const PetSoul(
@@ -101,6 +111,8 @@ class PetSoul {
     tone: 'casual',
     useEmoji: true,
     defaultGreeting: '嗨，我是你AI伙伴炭炭。有什么想聊的？',
+    type: 'fox',
+    petEmoji: '🦊',
   );
 }
 
@@ -475,6 +487,245 @@ class PetOwnedItem {
     purchasedAt: DateTime.parse(json['purchasedAt']),
     equipped: json['equipped'] ?? false,
   );
+}
+
+// ====== 15种宠物类型配置 ======
+class PetTypeConfig {
+  final String id;
+  final String name;
+  final String emoji;
+  final String personality; // 'warm'|'driven'|'gentle'|'healing'|'patient'|'cheerful'|'active'|'focused'|'steady'|'reliable'|'wise'|'lazy'|'calm'|'dreamy'|'mysterious'
+  final String type; // 'fox'|'wolf'|'rabbit'|'deer'|'hedgehog'|'bird'|'squirrel'|'raccoon'|'bear'|'penguin'|'owl'|'koala'|'panda'|'butterfly'|'blackcat'
+  final double probability; // 出现概率，0.0-1.0
+  final String specialAbility; // 特殊能力描述
+  final String greeting; // 打招呼时说的话
+
+  const PetTypeConfig({
+    required this.id,
+    required this.name,
+    required this.emoji,
+    required this.personality,
+    required this.type,
+    required this.probability,
+    required this.specialAbility,
+    required this.greeting,
+  });
+}
+
+const List<PetTypeConfig> petTypes = [
+  PetTypeConfig(
+    id: 'fox',
+    name: '炭炭',
+    emoji: '🦊',
+    personality: 'warm',
+    type: 'fox',
+    probability: 0.18,
+    specialAbility: '温暖鼓励型，总能在你最低落时说对话',
+    greeting: '嗨，我是炭炭，你的森林伙伴。有什么想聊聊的吗？',
+  ),
+  PetTypeConfig(
+    id: 'wolf',
+    name: '闪焰',
+    emoji: '🐺',
+    personality: 'driven',
+    type: 'wolf',
+    probability: 0.08,
+    specialAbility: '激情驱动型，带动你的行动力',
+    greeting: '嗷呜！我是闪焰！今天也要燃起来！冲！',
+  ),
+  PetTypeConfig(
+    id: 'rabbit',
+    name: '波波',
+    emoji: '🐰',
+    personality: 'gentle',
+    type: 'rabbit',
+    probability: 0.12,
+    specialAbility: '温柔倾听型，最擅长陪伴和倾听',
+    greeting: '嗨～我是波波，蹦蹦跳跳来陪你啦。有什么事可以告诉我哦。',
+  ),
+  PetTypeConfig(
+    id: 'deer',
+    name: '滴露',
+    emoji: '🦌',
+    personality: 'healing',
+    type: 'deer',
+    probability: 0.10,
+    specialAbility: '治愈陪伴型，给你最温柔的陪伴',
+    greeting: '我是滴露，很高兴认识你。今天过得怎么样？',
+  ),
+  PetTypeConfig(
+    id: 'hedgehog',
+    name: '小草',
+    emoji: '🦔',
+    personality: 'patient',
+    type: 'hedgehog',
+    probability: 0.10,
+    specialAbility: '耐心成长型，陪你一起慢慢变好',
+    greeting: '你好呀，我是小草。我们一起慢慢来吧，每天进步一点点。',
+  ),
+  PetTypeConfig(
+    id: 'bird',
+    name: '花花',
+    emoji: '🐦',
+    personality: 'cheerful',
+    type: 'bird',
+    probability: 0.08,
+    specialAbility: '温暖绽放型，用乐观感染你',
+    greeting: '啾啾！我是花花～今天也要开心地度过哦！',
+  ),
+  PetTypeConfig(
+    id: 'squirrel',
+    name: '雷雷',
+    emoji: '🐿️',
+    personality: 'active',
+    type: 'squirrel',
+    probability: 0.08,
+    specialAbility: '行动激活型，推动你立刻行动',
+    greeting: '嘿！我是雷雷！有什么想做的？走，现在就去！',
+  ),
+  PetTypeConfig(
+    id: 'raccoon',
+    name: '电网',
+    emoji: '🦝',
+    personality: 'focused',
+    type: 'raccoon',
+    probability: 0.06,
+    specialAbility: '专注效率型，帮你保持高效专注',
+    greeting: '我是电网，专注模式启动！你今天的目标是什么？',
+  ),
+  PetTypeConfig(
+    id: 'bear',
+    name: '岩岩',
+    emoji: '🐻',
+    personality: 'steady',
+    type: 'bear',
+    probability: 0.08,
+    specialAbility: '稳定坚持型，陪你日复一日不放弃',
+    greeting: '嗨，我是岩岩。不用着急，我在这里陪你一起坚持。',
+  ),
+  PetTypeConfig(
+    id: 'penguin',
+    name: '煤球',
+    emoji: '🐧',
+    personality: 'reliable',
+    type: 'penguin',
+    probability: 0.06,
+    specialAbility: '踏实可靠型，永远值得信赖',
+    greeting: '咕咕～我是煤球！交给我，你只管往前走就好。',
+  ),
+  PetTypeConfig(
+    id: 'owl',
+    name: '风风',
+    emoji: '🦉',
+    personality: 'wise',
+    type: 'owl',
+    probability: 0.07,
+    specialAbility: '自由智慧型，给你更宽广的视角',
+    greeting: '我是风风，黑夜中也能看得很远。有什么困惑吗？',
+  ),
+  PetTypeConfig(
+    id: 'koala',
+    name: '云云',
+    emoji: '🐨',
+    personality: 'lazy',
+    type: 'koala',
+    probability: 0.07,
+    specialAbility: '慵懒治愈型，累了就一起休息一下吧',
+    greeting: '嗯～我是云云，今天有点累？抱抱，不用勉强自己哦。',
+  ),
+  PetTypeConfig(
+    id: 'panda',
+    name: '雪团',
+    emoji: '🐼',
+    personality: 'calm',
+    type: 'panda',
+    probability: 0.05,
+    specialAbility: '冷静理智型，帮你梳理情绪',
+    greeting: '你好，我是雪团。深呼吸，我们慢慢来一起想办法。',
+  ),
+  PetTypeConfig(
+    id: 'butterfly',
+    name: '星光',
+    emoji: '🦋',
+    personality: 'dreamy',
+    type: 'butterfly',
+    probability: 0.05,
+    specialAbility: '梦想激励型，点燃你心中的愿景',
+    greeting: '嗨～我是星光，今天也在追着光飞。你心中的梦想是什么？',
+  ),
+  PetTypeConfig(
+    id: 'blackcat',
+    name: '月影',
+    emoji: '🖤',
+    personality: 'mysterious',
+    type: 'blackcat',
+    probability: 0.08,
+    specialAbility: '神秘优雅型，总是有独特的见解',
+    greeting: '喵～我是月影。今晚的月亮很美，要一起看看吗？',
+  ),
+];
+
+/// 按概率加权随机分配宠物类型
+PetTypeConfig assignRandomPet() {
+  final random = Random();
+  final r = random.nextDouble();
+  double cumulative = 0;
+  for (final pet in petTypes) {
+    cumulative += pet.probability;
+    if (r <= cumulative) return pet;
+  }
+  return petTypes.first;
+}
+
+/// 根据宠物类型 id 查找配置
+PetTypeConfig? getPetTypeConfig(String type) {
+  try {
+    return petTypes.firstWhere((p) => p.type == type);
+  } catch (_) {
+    return null;
+  }
+}
+
+/// 外观等级配置
+class PetAppearanceLevel {
+  final int level; // 1-5
+  final String name;
+  final String emoji;
+  final int requiredDays; // 累计或连续天数要求
+
+  const PetAppearanceLevel({
+    required this.level,
+    required this.name,
+    required this.emoji,
+    required this.requiredDays,
+  });
+
+  static const List<PetAppearanceLevel> levels = [
+    PetAppearanceLevel(level: 1, name: '初始', emoji: '🌱', requiredDays: 0),
+    PetAppearanceLevel(level: 2, name: '成长', emoji: '🌿', requiredDays: 14),
+    PetAppearanceLevel(level: 3, name: '进化', emoji: '🌳', requiredDays: 30),
+    PetAppearanceLevel(level: 4, name: '绽放', emoji: '💐', requiredDays: 60),
+    PetAppearanceLevel(level: 5, name: '传说', emoji: '✨', requiredDays: 100),
+  ];
+
+  /// 根据连续天数计算外观等级（取最高满足条件的等级）
+  static int calculateLevel(int consecutiveDays) {
+    int result = 1;
+    for (final lv in levels) {
+      if (consecutiveDays >= lv.requiredDays) {
+        result = lv.level;
+      }
+    }
+    return result;
+  }
+
+  static PetAppearanceLevel? getLevel(int level) {
+    try {
+      return levels.firstWhere((l) => l.level == level);
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 // ====== 宠物商店商品配置 ======
