@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import 'landing_screen.dart';
+import '../utils/storage_service.dart';
+import 'onboarding_screen.dart';
+import 'main_screen.dart';
 
-/// Splash Screen - 简洁品牌展示
+/// Splash Screen - 简洁品牌展示 + 直接跳转
 class SplashScreen extends StatefulWidget {
   final String? initialPage;
   const SplashScreen({super.key, this.initialPage});
@@ -33,11 +35,18 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _initApp() async {
     await Future.delayed(const Duration(milliseconds: 1800));
-    if (mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const LandingScreen()),
-      );
-    }
+    if (!mounted) return;
+    
+    final storage = await StorageService.getInstance();
+    if (!mounted) return;
+    
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => storage.isOnboardingComplete
+            ? const MainScreen()
+            : const OnboardingScreen(),
+      ),
+    );
   }
 
   @override

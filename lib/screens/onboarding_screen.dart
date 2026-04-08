@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../theme/app_theme.dart';
 import '../utils/storage_service.dart';
 import '../utils/pet_service.dart';
@@ -58,6 +59,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   bool _isLoadingPetSuggestions = false;
   // 用户编辑后的宠物建议（key=原始建议, value=编辑后的文本）
   Map<String, String> _editedPetSuggestions = {};
+  List<String> _lastLoadedGoals = []; // 缓存上次加载时的目标，用于判断是否需要重新加载
 
   static const int _totalPages = 2;
 
@@ -117,10 +119,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   /// 加载宠物的智能拆解建议（年度目标 → 月度挑战 → 每日行动）
   /// 最多等待12秒，超时则返回空结果让用户手动填写
+  /// 如果目标没有变化，会跳过重新加载
   Future<void> _loadPetSuggestions() async {
     final goals = _yearGoals.where((g) => g.trim().isNotEmpty).toList();
     if (goals.isEmpty) return;
     if (_isLoadingPetSuggestions) return;
+    // 如果目标没有变化，跳过重新加载
+    if (goals.length == _lastLoadedGoals.length && 
+        goals.every((g) => _lastLoadedGoals.contains(g))) {
+      return;
+    }
+    _lastLoadedGoals = List.from(goals);
 
     setState(() {
       _isLoadingPetSuggestions = true;
@@ -140,10 +149,54 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         });
       }
     } catch (e) {
+      // LLM 失败时，使用规则-based 回退生成建议
       if (mounted) {
-        setState(() => _isLoadingPetSuggestions = false);
+        final fallbackChallenges = _ruleBasedDecompose(goals);
+        setState(() {
+          _petSuggestedChallenges = fallbackChallenges;
+          _petDailyActionsPerChallenge = {};
+          _isLoadingPetSuggestions = false;
+        });
       }
     }
+  }
+
+  /// 规则-based 拆解（当 LLM 失败时的回退方案）
+  List<String> _ruleBasedDecompose(List<String> goals) {
+    final suggestions = <String>{};
+    for (final goal in goals) {
+      final g = goal.toLowerCase();
+      if (g.contains('研究生') || g.contains('考研') || g.contains('考博') || g.contains('上岸')) {
+        suggestions.add('制定备考计划并执行');
+        suggestions.add('每月完成1次模拟测试');
+      }
+      if (g.contains('马拉松') || g.contains('跑')) {
+        suggestions.add('每月跑步累计80-100公里');
+        suggestions.add('每月完成1次LSD（20km+）');
+      }
+      if (g.contains('运动') || g.contains('健身')) {
+        suggestions.add('每周运动3次');
+        suggestions.add('养成运动习惯');
+      }
+      if (g.contains('早起') || g.contains('早睡')) {
+        suggestions.add('养成早起习惯');
+      }
+      if (g.contains('书') || g.contains('阅读') || g.contains('读')) {
+        suggestions.add('每月读1-2本书');
+      }
+      if (g.contains('写作') || g.contains('写文章')) {
+        suggestions.add('每周写作3篇');
+      }
+      if (g.contains('英语') || g.contains('外语') || g.contains('语言')) {
+        suggestions.add('每天学英语30分钟');
+      }
+      // 如果没有匹配任何规则，添加默认项
+      if (suggestions.isEmpty) {
+        suggestions.add('制定本月核心目标');
+        suggestions.add('完成关键任务');
+      }
+    }
+    return suggestions.take(6).toList();
   }
 
   /// 处理宠物建议的点击：选中时弹出编辑框，取消选中时移除

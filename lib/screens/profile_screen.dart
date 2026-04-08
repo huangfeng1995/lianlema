@@ -629,7 +629,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final hasVision = _vision.isNotEmpty;
     final hasYearGoal = _annualIdentity.isNotEmpty;
     final constraints = _storage.getConstraints();
-    final hasConstraints = constraints.isNotEmpty;
+    // 只有当约束不是默认的「每天进步一点点」时才计数
+    final hasConstraints = constraints.isNotEmpty && constraints != '每天进步一点点';
 
     final completedCount = [hasAntiVision, hasVision, hasYearGoal, hasConstraints].where((b) => b).length;
 
@@ -786,110 +787,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildAntiVisionSection() {
-    // 都没写就隐藏
-    if (_antiVision.isEmpty && _vision.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              '反愿景提醒',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            TextButton.icon(
-              onPressed: _shareWithFriends,
-              icon: const Icon(Icons.share_outlined, size: 18),
-              label: const Text('告诉朋友'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                textStyle: const TextStyle(fontSize: 13),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppColors.textLight.withValues(alpha: 0.2),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  '可随时修改',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              if (_antiVision.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                const Text(
-                  '我最不想成为的人',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _antiVision,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
-                    height: 1.6,
-                  ),
-                ),
-              ],
-              if (_antiVision.isNotEmpty && _vision.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                const Divider(),
-                const SizedBox(height: 12),
-              ],
-              if (_vision.isNotEmpty) ...[
-                const Text(
-                  '我的愿景',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _vision,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
-                    height: 1.6,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
+    // 已合并到长期规划模块，隐藏重复内容
+    return const SizedBox.shrink();
   }
 
   /// 导出数据到剪贴板

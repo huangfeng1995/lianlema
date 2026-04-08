@@ -45,11 +45,23 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
   }
 
   String _getBossDesc(String key) {
+    // 如果是默认key，直接用boss内容里的对应项
+    if (key == 'default') {
+      return _bossContents[key] ?? '月度挑战';
+    }
     if (key.startsWith('custom_')) {
       final idx = int.tryParse(key.substring(7)) ?? 0;
+      // 如果内容已经加载过，优先用已加载的内容
+      if (_bossContents.containsKey(key) && _bossContents[key]!.isNotEmpty) {
+        return _bossContents[key]!;
+      }
       final customs = _storage.getCustomBosses();
       if (idx < customs.length) return customs[idx];
       return '自定义挑战';
+    }
+    // 如果内容已经加载过，优先用已加载的内容
+    if (_bossContents.containsKey(key) && _bossContents[key]!.isNotEmpty) {
+      return _bossContents[key]!;
     }
     final t = _bossTemplates.firstWhere(
       (t) => t['name'] == key,

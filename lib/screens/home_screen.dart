@@ -678,10 +678,40 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildHeader(),
-                  if (!_hasLongTermPlanning) _buildPlanningPrompt(),
+                  // 简洁顶部栏
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          '练了吗',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'Lv${_stats.level}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   _buildStreakCard(),
-                  _buildPetCard(),
                   _buildMonthlyBossCard(),
                   if (_todayLevers.isNotEmpty) _buildDailyCheckIn(),
                   const SizedBox(height: 20),
@@ -807,11 +837,27 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              const SizedBox(width: 44),
+              // 等级徽章
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    'Lv${_stats.level}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 20),
-          _buildLevelProgress(),
         ],
       ),
     );
@@ -953,13 +999,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: AppColors.textPrimary,
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          boss.content.split('；').first,
-                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
                       ],
                     ),
                   ),
@@ -972,8 +1011,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              // 任务列表
-              ...boss.content.split('；').skip(1).map((task) => Padding(
+              // 所有任务列表，不跳过第一个
+              const SizedBox(height: 8),
+              ...boss.content.split('；').map((task) => Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -983,7 +1023,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Text(
                         task.trim(),
                         style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -1116,7 +1156,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: Row(
           children: [
-            Icon(Icons.local_fire_department, size: 36, color: Color(0xFFFF4500)),
+            Icon(Icons.bolt, size: 36, color: Color(0xFFFFA500)),
             const SizedBox(width: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1350,12 +1390,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildPetCmdBtn(String label, IconData icon, PetCommand cmd) {
     return GestureDetector(
-      onTap: () async {
-        final ctx = _context ?? await PetService.instance.buildContext();
-        final resp = await PetService.instance.handleCommand(cmd, ctx);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(resp), duration: const Duration(seconds: 2)));
-        }
+      onTap: () {
+        // 点击按钮跳转到宠物页面并发送对应命令
+        Navigator.of(context).pushNamed(
+          '/pet',
+          arguments: {'initialMessage': label},
+        );
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1455,7 +1495,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '💡 点击下方「添加障碍预案」，设置「如果...我就...」的触发计划，让行动在障碍出现时自动执行。',
+                      '点击下方「添加障碍预案」，设置「如果...我就...」的触发计划，让行动在障碍出现时自动执行。',
                       style: TextStyle(
                         fontSize: 12,
                         color: const Color(0xFFFF6B35).withValues(alpha: 0.8),

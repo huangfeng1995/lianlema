@@ -25,6 +25,7 @@ class _PetScreenState extends State<PetScreen> {
   PetPreferences? _prefs;
   String _petName = StorageService.defaultPetName;
   late StorageService _storage;
+  bool _storageInitialized = false;
 
   @override
   void initState() {
@@ -34,6 +35,7 @@ class _PetScreenState extends State<PetScreen> {
 
   Future<void> _loadData() async {
     _storage = await StorageService.getInstance();
+    _storageInitialized = true;
     await PetService.instance.loadState();
     final ctx = await PetService.instance.buildContext();
     final mood = PetService.instance.moodState;
@@ -79,6 +81,14 @@ class _PetScreenState extends State<PetScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_storageInitialized) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
