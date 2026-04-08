@@ -44,6 +44,8 @@ class PetPush {
 /// 2. 权重动态调整
 /// 3. 行为反馈记录
 class PetPushService {
+  static final PetPushService instance = PetPushService._();
+  PetPushService._();
   static const int _maxDailyPushes = 4;
   static const int _minIntervalHours = 4;
   static const double _maxWeight = 2.0;

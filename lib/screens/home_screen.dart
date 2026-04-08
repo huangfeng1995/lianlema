@@ -7,6 +7,7 @@ import '../models/pet_models.dart';
 import '../utils/xp_service.dart';
 import '../utils/date_utils.dart' as app_date;
 import '../utils/badge_icon.dart';
+import '../services/pet_push_service.dart';
 
 import 'profile_screen.dart';
 import 'monthly_review_screen.dart';
@@ -71,6 +72,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hasLongTermPlanning = false; // 是否有长期规划
   PetContext? _context; // 宠物上下文
   String _petName = StorageService.defaultPetName; // 宠物名字
+  List<PetPush> _pushes = [];
+  Set<String> _dismissedPushIds = {};
 
   @override
   void initState() {
@@ -152,6 +155,16 @@ class _HomeScreenState extends State<HomeScreen> {
       _temptingBundling = temptingBundling;
       _isLoading = false;
     });
+
+    // 生成今日推送
+    if (_context != null) {
+      final pushes = await PetPushService.instance.generateDailyPushes(_context!);
+      if (mounted) {
+        setState(() {
+          _pushes = pushes.where((p) => !_dismissedPushIds.contains(p.id)).toList();
+        });
+      }
+    }
 
     // 月末/月初检查：显示月度复盘
     if (_storage.shouldShowMonthlyReview()) {
@@ -695,6 +708,35 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: AppColors.background,
       body: Stack(
         children: [
+          // 宠物主动推送 Banner
+          if (_pushes.isNotEmpty)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                bottom: false,
+                child: Column(
+                  children: _pushes.take(2).map((push) => Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: PetPushBanner(
+                      key: ValueKey(push.id),
+                      push: push,
+                      onClicked: () {
+                        PetPushService.instance.recordFeedback(push.type, true);
+                      },
+                      onDismissed: () {
+                        PetPushService.instance.recordFeedback(push.type, false);
+                        setState(() {
+                          _dismissedPushIds.add(push.id);
+                          _pushes.removeWhere((p) => p.id == push.id);
+                        });
+                      },
+                    ),
+                  )).toList(),
+                ),
+              ),
+            ),
           SafeArea(
             child: SingleChildScrollView(
               child: Column(
@@ -2081,5 +2123,128 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // 完全无内容时显示空
     return const SizedBox.shrink();
+  }
+}
+
+// ===== 宠物主动推送气泡 =====
+class PetPushBanner extends StatefulWidget {
+  final PetPush push;
+  final VoidCallback onClicked;
+  final VoidCallback onDismissed;
+
+  const PetPushBanner({
+    super.key,
+    required this.push,
+    required this.onClicked,
+    required this.onDismissed,
+  });
+
+  @override
+  State<PetPushBanner> createState() => _PetPushBannerState();
+}
+
+class _PetPushBannerState extends State<PetPushBanner>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _slideAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+    _slideAnimation = Tween<double>(begin: -0.1, end: 0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _dismiss() {
+    _controller.reverse().then((_) => widget.onDismissed());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: Offset(0, _slideAnimation.value),
+          end: Offset.zero,
+        ).animate(_controller),
+        child: GestureDetector(
+          onTap: widget.onClicked,
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFFFF6B35).withValues(alpha: 0.12),
+                  const Color(0xFFE85D2D).withValues(alpha: 0.06),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: const Color(0xFFFF6B35).withValues(alpha: 0.2),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.push.title,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFE85D2D),
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        widget.push.body,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textPrimary.withValues(alpha: 0.7),
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: _dismiss,
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(
+                      Icons.close,
+                      size: 16,
+                      color: AppColors.textSecondary.withValues(alpha: 0.4),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
