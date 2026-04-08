@@ -8,6 +8,7 @@ import '../utils/xp_service.dart';
 import '../utils/date_utils.dart' as app_date;
 import '../utils/badge_icon.dart';
 import '../services/pet_push_service.dart';
+import '../widgets/confetti_celebration.dart';
 
 import 'profile_screen.dart';
 import 'monthly_review_screen.dart';
@@ -280,6 +281,8 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!_minimalMode) {
       _playSuccessFeedback(xpEarned);
     }
+    // 彩纸庆祝动画
+    ConfettiOverlay.show(context);
 
     setState(() {
       _stats = finalStats;

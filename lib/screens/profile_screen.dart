@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
+import '../widgets/confetti_celebration.dart';
 import '../models/models.dart';
 import '../utils/storage_service.dart';
 import '../utils/xp_service.dart';
@@ -992,6 +993,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showBadgeDetail(AppBadge badge) {
+    // 已解锁徽章查看时触发彩纸庆祝
+    if (badge.isUnlocked) {
+      ConfettiOverlay.show(context);
+    }
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
