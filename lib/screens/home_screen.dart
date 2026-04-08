@@ -209,10 +209,24 @@ class _HomeScreenState extends State<HomeScreen> {
     // 计算新连续天数
     final newStreak = _stats.streak + 1;
 
+    // 连续打卡7天奖励
+    if (newStreak == 7) {
+      await _storage.addPetCoins(10, PetCoinReason.streak7);
+    }
+    // 连续打卡30天奖励
+    if (newStreak == 30) {
+      await _storage.addPetCoins(50, PetCoinReason.streak30);
+    }
+
     // 检查 Boss 是否被击败（在徽章检查之前）
     final bool bossWasAlreadyDefeated = _monthlyBoss != null && _monthlyBoss!.hp >= _monthlyBoss!.totalDays;
     final bool bossDefeatedNow = updatedBoss != null && updatedBoss.hp >= updatedBoss.totalDays;
     final bool bossJustDefeated = bossDefeatedNow && !bossWasAlreadyDefeated;
+
+    // Boss 击败奖励宠物币
+    if (bossJustDefeated) {
+      await _storage.addPetCoins(20, PetCoinReason.bossComplete);
+    }
 
     // 累计 XP（含 boss 击败奖励，只有刚击败才加）
     int totalXP = xpEarned;
