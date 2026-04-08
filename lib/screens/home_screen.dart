@@ -182,6 +182,9 @@ class _HomeScreenState extends State<HomeScreen> {
     _checkIns.add(checkIn);
     await _storage.saveCheckIns(_checkIns);
 
+    // 打卡奖励宠物币
+    await _storage.addPetCoins(5, PetCoinReason.dailyCheckIn);
+
     // 更新月度 Boss HP
     final boss = _storage.getMonthlyBoss();
     MonthlyBoss? updatedBoss;

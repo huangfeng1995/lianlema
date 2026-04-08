@@ -96,9 +96,11 @@ class PetActionService {
         leverIds: const [],
       ));
       await storage.saveCheckIns(checkIns);
+      // 打卡奖励宠物币
+      await storage.addPetCoins(5, PetCoinReason.dailyCheckIn);
       return PetActionResult(
         success: true,
-        message: '好的，今天打卡记录好了！✨ 你已经坚持了 ${streak + 1} 天！',
+        message: '好的，今天打卡记录好了！✨ 你已经坚持了 ${streak + 1} 天！获得 +5🪙',
         summary: '已记录今日打卡',
       );
     } catch (e) {

@@ -356,3 +356,167 @@ class PetPreferences {
     updatedAt: DateTime.now(),
   );
 }
+
+/// 宠物币交易记录原因
+enum PetCoinReason {
+  dailyCheckIn,   // 每日打卡
+  streak7,        // 连续7天
+  streak30,       // 连续30天
+  bossComplete,   // 完成月度Boss
+  buySnack,       // 购买零食
+  buyCostume,     // 购买外观
+  buyDecoration,  // 购买家居
+}
+
+/// 宠物币交易记录
+class PetCoinTransaction {
+  final String id;
+  final int amount; // 正数=获得，负数=消耗
+  final PetCoinReason reason;
+  final DateTime createdAt;
+
+  PetCoinTransaction({
+    required this.id,
+    required this.amount,
+    required this.reason,
+    required this.createdAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'amount': amount,
+    'reason': reason.index,
+    'createdAt': createdAt.toIso8601String(),
+  };
+
+  factory PetCoinTransaction.fromJson(Map<String, dynamic> json) =>
+      PetCoinTransaction(
+        id: json['id'] ?? '',
+        amount: json['amount'] ?? 0,
+        reason: PetCoinReason.values[json['reason'] ?? 0],
+        createdAt: DateTime.parse(json['createdAt']),
+      );
+}
+
+/// 宠物商店物品分类
+enum PetShopCategory {
+  costume,     // 外观
+  snack,       // 零食
+  decoration,  // 家居
+}
+
+/// 宠物商店物品
+class PetShopItem {
+  final String id;
+  final String name;
+  final String description;
+  final int price;
+  final PetShopCategory category;
+  final String icon;
+  final int effect; // 零食的心情恢复值，0=无效果
+
+  const PetShopItem({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.price,
+    required this.category,
+    required this.icon,
+    this.effect = 0,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'description': description,
+    'price': price,
+    'category': category.index,
+    'icon': icon,
+    'effect': effect,
+  };
+
+  factory PetShopItem.fromJson(Map<String, dynamic> json) => PetShopItem(
+    id: json['id'] ?? '',
+    name: json['name'] ?? '',
+    description: json['description'] ?? '',
+    price: json['price'] ?? 0,
+    category: PetShopCategory.values[json['category'] ?? 0],
+    icon: json['icon'] ?? '',
+    effect: json['effect'] ?? 0,
+  );
+}
+
+/// 宠物背包物品（已购买的）
+class PetOwnedItem {
+  final String itemId;
+  final DateTime purchasedAt;
+  final bool equipped; // 是否正在穿戴/使用
+
+  PetOwnedItem({
+    required this.itemId,
+    required this.purchasedAt,
+    this.equipped = false,
+  });
+
+  PetOwnedItem copyWith({bool? equipped}) => PetOwnedItem(
+    itemId: itemId,
+    purchasedAt: purchasedAt,
+    equipped: equipped ?? this.equipped,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'itemId': itemId,
+    'purchasedAt': purchasedAt.toIso8601String(),
+    'equipped': equipped,
+  };
+
+  factory PetOwnedItem.fromJson(Map<String, dynamic> json) => PetOwnedItem(
+    itemId: json['itemId'] ?? '',
+    purchasedAt: DateTime.parse(json['purchasedAt']),
+    equipped: json['equipped'] ?? false,
+  );
+}
+
+// ====== 宠物商店商品配置 ======
+class PetShopConfig {
+  static const List<PetShopItem> allItems = [
+    // ===== 外观：颜色变体 =====
+    PetShopItem(id: 'costume_spring', name: '春色', description: '粉色渐变', price: 30, category: PetShopCategory.costume, icon: '🌸'),
+    PetShopItem(id: 'costume_summer', name: '夏色', description: '绿松石渐变', price: 30, category: PetShopCategory.costume, icon: '🌊'),
+    PetShopItem(id: 'costume_autumn', name: '秋色', description: '金色渐变', price: 30, category: PetShopCategory.costume, icon: '🍂'),
+    PetShopItem(id: 'costume_winter', name: '冬色', description: '冰蓝渐变', price: 30, category: PetShopCategory.costume, icon: '❄️'),
+    PetShopItem(id: 'costume_neon', name: '霓虹', description: '赛博朋克风格', price: 50, category: PetShopCategory.costume, icon: '🌃'),
+    // ===== 外观：配件 =====
+    PetShopItem(id: 'costume_hat', name: '小帽子', description: '萌系小帽', price: 20, category: PetShopCategory.costume, icon: '🎩'),
+    PetShopItem(id: 'costume_glasses', name: '太阳镜', description: '酷酷的', price: 25, category: PetShopCategory.costume, icon: '🕶️'),
+    PetShopItem(id: 'costume_scarf', name: '围巾', description: '暖和的围巾', price: 25, category: PetShopCategory.costume, icon: '🧣'),
+    PetShopItem(id: 'costume_cape', name: '小披风', description: '超级英雄风', price: 40, category: PetShopCategory.costume, icon: '🛡️'),
+    // ===== 外观：特效 =====
+    PetShopItem(id: 'costume_fire', name: '火焰光环', description: '火焰围绕', price: 60, category: PetShopCategory.costume, icon: '🔥'),
+    PetShopItem(id: 'costume_star', name: '星光粒子', description: '星星闪烁', price: 60, category: PetShopCategory.costume, icon: '✨'),
+    // ===== 零食 =====
+    PetShopItem(id: 'snack_fish', name: '小鱼干', description: '心情+1', price: 5, category: PetShopCategory.snack, icon: '🐟', effect: 1),
+    PetShopItem(id: 'snack_biscuit', name: '能量饼干', description: '心情+2', price: 8, category: PetShopCategory.snack, icon: '🍪', effect: 2),
+    PetShopItem(id: 'snack_candy', name: '星星糖', description: '心情+5', price: 15, category: PetShopCategory.snack, icon: '⭐', effect: 5),
+    PetShopItem(id: 'snack_mystic', name: '神秘果', description: '心情+10', price: 30, category: PetShopCategory.snack, icon: '🔮', effect: 10),
+    // ===== 家居 =====
+    PetShopItem(id: 'deco_cushion', name: '软垫', description: '舒适的床', price: 15, category: PetShopCategory.decoration, icon: '🛋️'),
+    PetShopItem(id: 'deco_plant', name: '盆栽', description: '绿色植物装饰', price: 20, category: PetShopCategory.decoration, icon: '🌱'),
+    PetShopItem(id: 'deco_frame', name: '相框', description: '放打卡照片', price: 20, category: PetShopCategory.decoration, icon: '🖼️'),
+    PetShopItem(id: 'deco_lantern', name: '小灯笼', description: '温暖的灯光', price: 25, category: PetShopCategory.decoration, icon: '🏮'),
+    PetShopItem(id: 'deco_tapestry', name: '挂毯', description: '背景装饰', price: 30, category: PetShopCategory.decoration, icon: '🧶'),
+    PetShopItem(id: 'deco_starlight', name: '星星灯', description: '梦幻氛围', price: 40, category: PetShopCategory.decoration, icon: '💫'),
+    PetShopItem(id: 'deco_window', name: '落地窗', description: '可以看窗外', price: 50, category: PetShopCategory.decoration, icon: '🪟'),
+  ];
+
+  static List<PetShopItem> byCategory(PetShopCategory cat) =>
+      allItems.where((i) => i.category == cat).toList();
+
+  static PetShopItem? getById(String id) {
+    try {
+      return allItems.firstWhere((i) => i.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+}

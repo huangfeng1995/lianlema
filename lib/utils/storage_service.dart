@@ -85,6 +85,11 @@ class StorageService {
   static const String _keyPetName = 'pet_name'; // 宠物名字
   static const String _keyPushWeights = 'push_weights'; // 推送类型权重
   static const String _keyPetAdoptDate = 'pet_adopt_date'; // 宠物领养日期
+  static const String _keyPetCoins = 'pet_coins'; // 宠物币余额
+  static const String _keyPetCoinTransactions = 'pet_coin_transactions'; // 宠物币交易记录
+  static const String _keyPetOwnedItems = 'pet_owned_items'; // 已拥有物品
+  static const String _keyEquippedCostume = 'equipped_costume'; // 当前穿戴外观
+  static const String _keyEquippedDecorations = 'equipped_decorations'; // 当前家居装饰
 
   // ====== 宠物名字 ======
   static const String defaultPetName = '炭炭';
@@ -108,6 +113,101 @@ class StorageService {
     final str = _prefs.getString(_keyPetAdoptDate);
     if (str == null) return null;
     return DateTime.tryParse(str);
+  }
+
+  // ====== 宠物币余额 ======
+  int getPetCoins() {
+    return _prefs.getInt(_keyPetCoins) ?? 50; // 默认50
+  }
+
+  Future<void> savePetCoins(int amount) async {
+    await _prefs.setInt(_keyPetCoins, amount);
+  }
+
+  // ====== 宠物币交易记录 ======
+  List<PetCoinTransaction> getPetCoinTransactions() {
+    final str = _prefs.getString(_keyPetCoinTransactions);
+    if (str == null) return [];
+    final list = jsonDecode(str) as List;
+    return list.map((e) => PetCoinTransaction.fromJson(e)).toList();
+  }
+
+  Future<void> addPetCoinTransaction(PetCoinTransaction tx) async {
+    final txs = getPetCoinTransactions();
+    txs.add(tx);
+    // 最多保留200条记录
+    if (txs.length > 200) {
+      txs.removeRange(0, txs.length - 200);
+    }
+    final list = txs.map((t) => t.toJson()).toList();
+    await _prefs.setString(_keyPetCoinTransactions, jsonEncode(list));
+  }
+
+  /// 增减宠物币并记录交易
+  Future<void> addPetCoins(int amount, PetCoinReason reason) async {
+    final current = getPetCoins();
+    final newAmount = current + amount;
+    await savePetCoins(newAmount);
+    final tx = PetCoinTransaction(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      amount: amount,
+      reason: reason,
+      createdAt: DateTime.now(),
+    );
+    await addPetCoinTransaction(tx);
+  }
+
+  // ====== 宠物背包物品 ======
+  List<PetOwnedItem> getPetOwnedItems() {
+    final str = _prefs.getString(_keyPetOwnedItems);
+    if (str == null) return [];
+    final list = jsonDecode(str) as List;
+    return list.map((e) => PetOwnedItem.fromJson(e)).toList();
+  }
+
+  Future<void> savePetOwnedItems(List<PetOwnedItem> items) async {
+    final list = items.map((i) => i.toJson()).toList();
+    await _prefs.setString(_keyPetOwnedItems, jsonEncode(list));
+  }
+
+  Future<void> addPetOwnedItem(PetOwnedItem item) async {
+    final items = getPetOwnedItems();
+    // 防止重复添加
+    if (!items.any((i) => i.itemId == item.itemId)) {
+      items.add(item);
+      await savePetOwnedItems(items);
+    }
+  }
+
+  Future<void> removePetOwnedItem(String itemId) async {
+    final items = getPetOwnedItems();
+    items.removeWhere((i) => i.itemId == itemId);
+    await savePetOwnedItems(items);
+  }
+
+  // ====== 穿戴外观 ======
+  String? getEquippedCostume() {
+    return _prefs.getString(_keyEquippedCostume);
+  }
+
+  Future<void> saveEquippedCostume(String? costumeId) async {
+    if (costumeId == null) {
+      await _prefs.remove(_keyEquippedCostume);
+    } else {
+      await _prefs.setString(_keyEquippedCostume, costumeId);
+    }
+  }
+
+  // ====== 家居装饰 ======
+  List<String> getEquippedDecorations() {
+    final str = _prefs.getString(_keyEquippedDecorations);
+    if (str == null) return [];
+    final List decoded = jsonDecode(str);
+    return decoded.cast<String>();
+  }
+
+  Future<void> saveEquippedDecorations(List<String> decorationIds) async {
+    await _prefs.setString(_keyEquippedDecorations, jsonEncode(decorationIds));
   }
 
   /// 判断宠物是否处于蛋阶段（领养后7天内）
