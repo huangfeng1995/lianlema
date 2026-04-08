@@ -598,9 +598,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Icon(
                           getBadgeIcon(badge.icon),
                           size: 36,
-                          color: badge.isUnlocked
-                              ? Color(0xFFFF6B00)
-                              : AppColors.textLight.withValues(alpha: 0.35),
+                          color: getBadgeColor(badge.icon, isUnlocked: badge.isUnlocked),
                         ),
                       ),
                     ),
@@ -1019,9 +1017,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Icon(
                   getBadgeIcon(badge.icon),
                   size: 56,
-                  color: badge.isUnlocked
-                      ? Color(0xFFFF6B00)
-                      : AppColors.textLight.withValues(alpha: 0.35),
+                  color: getBadgeColor(badge.icon, isUnlocked: badge.isUnlocked),
                 ),
               ),
             ),

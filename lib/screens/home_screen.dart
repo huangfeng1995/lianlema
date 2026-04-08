@@ -500,7 +500,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
-                  children: newBadges.map((b) => Icon(getBadgeIcon(b.icon), size: 36, color: Color(0xFFFF6B00))).toList(),
+                  children: newBadges.map((b) => Icon(getBadgeIcon(b.icon), size: 36, color: getBadgeColor(b.icon, isUnlocked: b.isUnlocked))).toList(),
                 ),
                 const SizedBox(height: 4),
                 Text(
