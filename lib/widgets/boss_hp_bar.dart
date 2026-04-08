@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import '../widgets/confetti_celebration.dart';
 
@@ -34,10 +33,12 @@ class _BossHpBarState extends State<BossHpBar> with SingleTickerProviderStateMix
 
     // 击败时触发彩纸动画
     if (widget.currentHp <= 0 && !_hasShownConfetti) {
-      Future.delayed(Duration.zero, () {
-      ConfettiOverlay.show(context);
-      _hasShownConfetti = true;
-    });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ConfettiOverlay.show(context);
+          _hasShownConfetti = true;
+        }
+      });
     }
   }
 
@@ -45,7 +46,7 @@ class _BossHpBarState extends State<BossHpBar> with SingleTickerProviderStateMix
   void didUpdateWidget(covariant BossHpBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     // HP 从 >0 变为 0 时触发彩纸
-    if (oldWidget.currentHp > 0 && widget.currentHp <= 0 && !_hasShownConfetti) {
+    if (oldWidget.currentHp > 0 && widget.currentHp <= 0 && !_hasShownConfetti && mounted) {
       ConfettiOverlay.show(context);
       _hasShownConfetti = true;
     }
@@ -72,16 +73,16 @@ class _BossHpBarState extends State<BossHpBar> with SingleTickerProviderStateMix
 
     // 边框颜色
     final Color borderColor = isDefeated
-        ? const Color(0xFF228B22).withOpacity(0.5)
+        ? const Color(0xFF228B22).withValues(alpha: 0.5)
         : isLowHp
-            ? const Color(0xFFFF4500).withOpacity(0.5)
-            : const Color(0xFF8B0000).withOpacity(0.3);
+            ? const Color(0xFFFF4500).withValues(alpha: 0.5)
+            : const Color(0xFF8B0000).withValues(alpha: 0.3);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
+        color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: borderColor, width: 1.5),
       ),
@@ -141,7 +142,7 @@ class _BossHpBarState extends State<BossHpBar> with SingleTickerProviderStateMix
                           child: Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [hpColor, hpColor.withOpacity(0.8)],
+                                colors: [hpColor, hpColor.withValues(alpha: 0.8)],
                               ),
                             ),
                           ),
