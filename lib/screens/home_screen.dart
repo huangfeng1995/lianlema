@@ -11,6 +11,7 @@ import '../services/pet_push_service.dart';
 import '../widgets/confetti_celebration.dart';
 import '../widgets/level_up_celebration.dart';
 import '../widgets/boss_hp_bar.dart';
+import '../widgets/boss_victory_celebration.dart';
 
 import 'profile_screen.dart';
 import 'monthly_review_screen.dart';
@@ -296,11 +297,17 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {});
 
     if (bossJustDefeated) {
-      _showVictoryDialog(
-        updatedBoss!,
-        onDismiss: () => _showMonthlyReview(
-          forYear: updatedBoss!.year,
-          forMonth: updatedBoss!.month,
+      BossVictoryOverlay.show(
+        context,
+        bossName: updatedBoss!.content,
+        month: updatedBoss!.month,
+        totalDays: updatedBoss!.totalDays,
+        onDismiss: () => _showVictoryDialog(
+          updatedBoss!,
+          onDismiss: () => _showMonthlyReview(
+            forYear: updatedBoss!.year,
+            forMonth: updatedBoss!.month,
+          ),
         ),
       );
     }
