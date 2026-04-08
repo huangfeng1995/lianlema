@@ -784,9 +784,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       _monthlyBoss!.month == DateTime.now().month &&
                       _monthlyBoss!.year == DateTime.now().year)
                     BossHpBar(
-                      currentHp: _stats!.currentMonthStreak,
-                      maxHp: DateTime(DateTime.now().year, DateTime.now().month + 1, 0).day,
-                      bossName: _monthlyBoss!.name,
+                      currentHp: _monthlyBoss!.hp,
+                      maxHp: _monthlyBoss!.totalDays,
+                      bossName: _monthlyBoss!.content,
                       currentMonth: _monthlyBoss!.month,
                     ),
                   _buildMonthlyBossCard(),

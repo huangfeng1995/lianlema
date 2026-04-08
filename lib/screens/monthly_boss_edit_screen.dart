@@ -272,7 +272,7 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
                     BossHpBar(
                       currentHp: _boss!.hp,
                       maxHp: _boss!.totalDays,
-                      bossName: _boss!.name,
+                      bossName: _boss!.content,
                       currentMonth: _boss!.month,
                     ),
                     const SizedBox(height: 24),

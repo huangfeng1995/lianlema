@@ -9,6 +9,17 @@ import 'utils/storage_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 全局异常捕获，防止乱码显示
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    // 打印错误到控制台，不在 UI 显示乱码
+    print('Flutter Error: ${details.exception}');
+  };
+  // 异步异常捕获
+  PlatformDispatcher.instance.onError = (error, stack) {
+    print('Async Error: $error');
+    return true;
+  };
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
