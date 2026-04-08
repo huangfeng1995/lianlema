@@ -192,6 +192,9 @@ class PetService {
     bool isCorrection = correctionPatterns.any((p) => p.hasMatch(userMessage));
 
     if (isCorrection) {
+      // 生成具体的"学到了什么"作为 correctionNote
+      final learnedWhat = _extractWhatWasLearned(userMessage);
+
       // 记录纠正到记忆
       final memory = PetMemory(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -199,7 +202,7 @@ class PetService {
         type: 'correction',
         content: userMessage,
         petResponse: petResponse,
-        correctionNote: '用户进行了语气/风格纠正',
+        correctionNote: learnedWhat,
       );
       _memories.add(memory);
       if (_memories.length > 50) {
@@ -260,6 +263,70 @@ class PetService {
   }
 
   /// 生成道歉+修正回复
+  /// 从纠正内容中提取"学到了什么"，用于告知用户
+  String _extractWhatWasLearned(String userCorrection) {
+    final msg = userCorrection.toLowerCase();
+
+    if (msg.contains('太官方') || msg.contains('正式') || msg.contains('说教')) {
+      return '说话要口语化，像朋友聊天，不讲大道理';
+    }
+    if (msg.contains('太严肃') || msg.contains('正经')) {
+      return '语气要轻松活泼，可以俏皮一点';
+    }
+    if (msg.contains('太长') || msg.contains('太多')) {
+      return '回复要简短有力，控制在50字以内';
+    }
+    if (msg.contains('太短') || msg.contains('太少')) {
+      return '可以稍微多说一点，给出更多细节';
+    }
+    if (msg.contains('太温柔') || msg.contains('太软')) {
+      return '可以更直接一点';
+    }
+    if (msg.contains('不要') && (msg.contains('说教') || msg.contains('道理'))) {
+      return '不说道理，只给具体建议';
+    }
+    if (msg.contains('换个说法') || msg.contains('换种说法')) {
+      return '换一种表达方式';
+    }
+
+    // 通用提取："不是X而是Y" 格式
+    final notPattern = RegExp(r'不是[，。,]([^，,，.]+)');
+    final match = notPattern.firstMatch(userCorrection);
+    if (match != null) {
+      return '不是「${match.group(1)}」这样的，应该${_extractWhatShouldDo(userCorrection)}';
+    }
+
+    return '调整回复风格';
+  }
+
+  String _extractWhatShouldDo(String text) {
+    final butPattern = RegExp(r'而是[^
+，。,.]+');
+    final match = butPattern.firstMatch(text);
+    return match?.group(0) ?? '换一种方式表达';
+  }
+
+  /// 生成纠正后的确认信息，明确告诉用户"我学会了什么"
+  String _generateLearningConfirmation(String userCorrection, String learnedWhat) {
+    final buf = StringBuffer();
+
+    // 道歉
+    if (_prefs.tone == 'casual') {
+      buf.write('啊我记住了！刚才是我不对 😅\n');
+    } else if (_prefs.tone == 'playful') {
+      buf.write('收到收到！这次我学到了～ ✨\n');
+    } else {
+      buf.write('明白了，已记录本次调整。\n');
+    }
+
+    // 明确告诉用户学到了什么
+    if (learnedWhat.isNotEmpty && learnedWhat != '调整回复风格') {
+      buf.write('✅ 已学会：$learnedWhat');
+    }
+
+    return buf.toString();
+  }
+
   String generateCorrectionApology(String originalResponse, String userCorrection) {
     final buf = StringBuffer();
 
@@ -451,37 +518,31 @@ class PetService {
 
   /// 调用 MiniMax LLM 生成回复（Claude兼容接口）
   Future<String> chat(String userMessage, PetContext context) async {
-    // 先检测是否是纠正
-    final isCorrection = await detectAndAdaptToCorrection(userMessage, '');
-
     _conversationHistory.add({'role': 'user', 'content': userMessage});
 
+    // 先调用 LLM 生成回复
+    String response;
     try {
-      final response = await _callMiniMax(userMessage, context);
-
+      response = await _callMiniMax(userMessage, context);
       _conversationHistory.add({'role': 'assistant', 'content': response});
-      // 回复成功后恢复平静心情
       await updateMood(PetMoodState(mood: PetMood.calm, updatedAt: DateTime.now()));
-
-      // 如果是纠正，在回复前加一句道歉
-      if (isCorrection) {
-        final apology = generateCorrectionApology(response, userMessage);
-        return '$apology\n\n$response';
-      }
-
-      return response;
     } catch (e) {
       debugPrint('[PetService] MiniMax API error: $e');
-      // API失败时切换到休息状态
       await updateMood(PetMoodState(mood: PetMood.resting, updatedAt: DateTime.now()));
-
-      // 如果是纠正，即使 API 失败也显示道歉
-      if (isCorrection) {
-        return generateCorrectionApology('', userMessage);
-      }
-
       return _fallbackResponse(userMessage, context);
     }
+
+    // 检测是否是纠正，并记录宠物原回复供后续分析
+    final isCorrected = await detectAndAdaptToCorrection(userMessage, response);
+
+    // 如果是纠正，生成道歉+确认记住了什么
+    if (isCorrected) {
+      final learnedWhat = _extractWhatWasLearned(userMessage);
+      final apology = _generateLearningConfirmation(userMessage, learnedWhat);
+      return '$apology\n\n$response';
+    }
+
+    return response;
   }
 
   Future<String> _callMiniMax(String userMessage, PetContext context) async {
@@ -574,19 +635,23 @@ class PetService {
     buf.writeln(emojiInstruction);
     buf.writeln('你有心理学背景，精通内化理论（Self-Determination Theory）、Tiny Habits和行为塑造方法。');
     buf.writeln('你会记住用户说过的话，有同理心，会鼓励、会撒娇，偶尔也会有小脾气。');
+    buf.writeln('⚠️ 重要原则：绝对不能在【用户偏好记忆】中列出的事情上再犯同样的错误。');
 
     // 如果有记忆，添加记忆上下文
     if (_memories.isNotEmpty) {
       buf.writeln();
-      buf.writeln('【用户偏好记忆】');
-      // 只显示最近的3条记忆
-      final recentMemories = _memories.reversed.take(3).toList();
+      buf.writeln('【用户偏好记忆】（请务必遵守）');
+      final recentMemories = _memories.reversed.take(5).toList();
       for (final memory in recentMemories) {
         if (memory.type == 'correction') {
-          buf.writeln('- 用户曾说：「${memory.content}」（已记住并调整）');
+          final learned = memory.correctionNote ?? memory.content;
+          buf.writeln('⚠️ 纠正过：「${memory.content}」→ 学会了：$learned');
+        }
+        if (memory.type == 'preference') {
+          buf.writeln('💡 偏好：${memory.content}');
         }
       }
-      buf.writeln('请根据以上偏好调整你的回复风格。');
+      buf.writeln('以上每条都要遵守，不许再犯。');
     }
 
     buf.writeln();
