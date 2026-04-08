@@ -4,6 +4,8 @@ import '../theme/app_theme.dart';
 import '../utils/storage_service.dart';
 import '../utils/pet_service.dart';
 import '../services/pet_push_service.dart';
+import 'pet_shop_screen.dart';
+import 'pet_home_screen.dart';
 
 class PetScreen extends StatefulWidget {
   /// 可选：打开时自动发送的消息（如障碍引导）
@@ -105,6 +107,25 @@ class _PetScreenState extends State<PetScreen> {
         centerTitle: true,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.store_outlined, size: 22),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PetShopScreen()),
+            ),
+            tooltip: '宠物商店',
+          ),
+          IconButton(
+            icon: const Icon(Icons.home_outlined, size: 22),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PetHomeScreen()),
+            ),
+            tooltip: '宠物家',
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: Column(
         children: [
