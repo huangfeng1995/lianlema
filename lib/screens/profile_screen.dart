@@ -9,6 +9,7 @@ import '../utils/xp_service.dart';
 import '../utils/date_utils.dart' as app_date;
 import '../utils/badge_icon.dart';
 import 'settings_screen.dart';
+import 'report_center_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -93,6 +94,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             icon: const Icon(Icons.download_outlined),
             onPressed: _exportData,
             tooltip: '导出数据',
+          ),
+          IconButton(
+            icon: const Icon(Icons.analytics_outlined),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ReportCenterScreen()),
+              );
+            },
+            tooltip: '报告中心',
           ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
