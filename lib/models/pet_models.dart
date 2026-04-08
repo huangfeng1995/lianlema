@@ -771,3 +771,365 @@ class PetShopConfig {
     }
   }
 }
+
+// ===== 预设目标知识库 =====
+
+/// 单个预设目标模板
+class PresetGoalTemplate {
+  final String id;
+  final String name; // 显示名称
+  final List<String> keywords; // 匹配关键词
+  final String category; // 'health'|'learning'|'skill'|'finance'|'life'
+  final List<String> monthlyPhases; // 月度阶段模板
+  final List<DailyLeverTemplate> dailyActions; // 每日行动模板
+
+  const PresetGoalTemplate({
+    required this.id,
+    required this.name,
+    required this.keywords,
+    required this.category,
+    required this.monthlyPhases,
+    required this.dailyActions,
+  });
+
+  /// 匹配度计算（0.0-1.0）
+  double matchScore(String userGoal) {
+    final lower = userGoal.toLowerCase();
+    int hits = 0;
+    for (final kw in keywords) {
+      if (lower.contains(kw.toLowerCase())) hits++;
+    }
+    if (keywords.isEmpty) return 0;
+    return hits / keywords.length;
+  }
+}
+
+/// 每日行动模板
+class DailyLeverTemplate {
+  final String action; // 行动描述，含占位符 {param}
+  final String unit; // 单位（分钟/个/页）
+  final String paramHint; // 参数提示
+
+  const DailyLeverTemplate({
+    required this.action,
+    required this.unit,
+    required this.paramHint,
+  });
+
+  /// 填充参数后生成具体行动
+  String fill({int? minutes, int? count, int? pages}) {
+    var result = action;
+    if (minutes != null) result = result.replaceAll('{minutes}', '$minutes');
+    if (count != null) result = result.replaceAll('{count}', '$count');
+    if (pages != null) result = result.replaceAll('{pages}', '$pages');
+    return result;
+  }
+}
+
+/// 预设目标知识库
+class PresetGoalLibrary {
+  static const List<PresetGoalTemplate> _presets = [
+    // ===== 健康类 =====
+    PresetGoalTemplate(
+      id: 'fitness_general',
+      name: '健身运动',
+      keywords: ['健身', '运动', '锻炼', '体能', '健康'],
+      category: 'health',
+      monthlyPhases: [
+        '第1月：建立运动习惯（每周3次）',
+        '第2月：提升强度（每周4次）',
+        '第3月：突破瓶颈（每周5次）',
+      ],
+      dailyActions: [
+        DailyLeverTemplate(
+          action: '做{minutes}分钟{activity}',
+          unit: '分钟',
+          paramHint: '如：20分钟慢跑',
+        ),
+        DailyLeverTemplate(
+          action: '做{count}个俯卧撑',
+          unit: '个',
+          paramHint: '如：20个俯卧撑',
+        ),
+      ],
+    ),
+    PresetGoalTemplate(
+      id: 'running',
+      name: '跑步',
+      keywords: ['跑步', '慢跑', '马拉松', '跑步习惯'],
+      category: 'health',
+      monthlyPhases: [
+        '第1月：建立跑步习惯（每周3次，每次20分钟）',
+        '第2月：提升跑量（每周4次，每次30分钟）',
+        '第3月：连续跑完5公里',
+      ],
+      dailyActions: [
+        DailyLeverTemplate(
+          action: '跑{minutes}分钟',
+          unit: '分钟',
+          paramHint: '如：25分钟慢跑',
+        ),
+        DailyLeverTemplate(
+          action: '做{count}分钟拉伸',
+          unit: '分钟',
+          paramHint: '如：5分钟跑后拉伸',
+        ),
+      ],
+    ),
+    PresetGoalTemplate(
+      id: 'weight_loss',
+      name: '减脂',
+      keywords: ['减脂', '减肥', '瘦身', '体脂'],
+      category: 'health',
+      monthlyPhases: [
+        '第1月：调整饮食结构（戒零食）',
+        '第2月：配合有氧运动（每周4次）',
+        '第3月：进入减脂加速期',
+      ],
+      dailyActions: [
+        DailyLeverTemplate(
+          action: '做{minutes}分钟有氧运动',
+          unit: '分钟',
+          paramHint: '如：30分钟跳绳',
+        ),
+        DailyLeverTemplate(
+          action: '记录饮食（拍照）',
+          unit: '次',
+          paramHint: '早中晚各1次',
+        ),
+      ],
+    ),
+
+    // ===== 学习类 =====
+    PresetGoalTemplate(
+      id: 'reading',
+      name: '阅读习惯',
+      keywords: ['阅读', '读书', '看书', '阅读习惯'],
+      category: 'learning',
+      monthlyPhases: [
+        '第1月：建立每日阅读习惯（每天10页）',
+        '第2月：提升阅读速度（每天20页）',
+        '第3月：主题阅读（选定方向深入）',
+      ],
+      dailyActions: [
+        DailyLeverTemplate(
+          action: '读{pages}页书',
+          unit: '页',
+          paramHint: '如：20页',
+        ),
+        DailyLeverTemplate(
+          action: '写{count}句话读书笔记',
+          unit: '句',
+          paramHint: '如：3句话感想',
+        ),
+      ],
+    ),
+    PresetGoalTemplate(
+      id: 'english',
+      name: '英语提升',
+      keywords: ['英语', '英文', '学英语', '英语学习', '口语', '听力'],
+      category: 'learning',
+      monthlyPhases: [
+        '第1月：词汇积累（每天背{count}个单词）',
+        '第2月：听力突破（每天{minutes}分钟听力）',
+        '第3月：口语练习（每天跟读）',
+      ],
+      dailyActions: [
+        DailyLeverTemplate(
+          action: '背{count}个英语单词',
+          unit: '个',
+          paramHint: '如：20个单词',
+        ),
+        DailyLeverTemplate(
+          action: '听{minutes}分钟英语',
+          unit: '分钟',
+          paramHint: '如：15分钟',
+        ),
+        DailyLeverTemplate(
+          action: '跟读{minutes}分钟英语音频',
+          unit: '分钟',
+          paramHint: '如：10分钟影子跟读',
+        ),
+      ],
+    ),
+    PresetGoalTemplate(
+      id: 'exam_prep',
+      name: '备考复习',
+      keywords: ['考试', '备考', '复习', '考研', 'CDA', '考证'],
+      category: 'learning',
+      monthlyPhases: [
+        '第1月：过完一遍基础知识',
+        '第2月：专项突破（按章节刷题）',
+        '第3月：模拟考试+查漏补缺',
+      ],
+      dailyActions: [
+        DailyLeverTemplate(
+          action: '学{count}节课程内容',
+          unit: '节',
+          paramHint: '如：2节课',
+        ),
+        DailyLeverTemplate(
+          action: '做{count}道练习题',
+          unit: '道',
+          paramHint: '如：15道题',
+        ),
+        DailyLeverTemplate(
+          action: '复习{count}页笔记',
+          unit: '页',
+          paramHint: '如：10页',
+        ),
+      ],
+    ),
+
+    // ===== 技能类 =====
+    PresetGoalTemplate(
+      id: 'programming',
+      name: '编程学习',
+      keywords: ['编程', '代码', '程序员', 'Python', 'Java', '前端', 'Flutter'],
+      category: 'skill',
+      monthlyPhases: [
+        '第1月：基础语法+小项目',
+        '第2月：框架学习+实战项目',
+        '第3月：项目完善+作品集',
+      ],
+      dailyActions: [
+        DailyLeverTemplate(
+          action: '写{count}行代码',
+          unit: '行',
+          paramHint: '如：50行',
+        ),
+        DailyLeverTemplate(
+          action: '学{minutes}分钟编程课程',
+          unit: '分钟',
+          paramHint: '如：30分钟',
+        ),
+      ],
+    ),
+    PresetGoalTemplate(
+      id: 'writing',
+      name: '写作',
+      keywords: ['写作', '写文章', '内容创作', '自媒体', '写小说'],
+      category: 'skill',
+      monthlyPhases: [
+        '第1月：建立写作习惯（每天写）',
+        '第2月：提升文章质量',
+        '第3月：固定发布节奏',
+      ],
+      dailyActions: [
+        DailyLeverTemplate(
+          action: '写{count}字',
+          unit: '字',
+          paramHint: '如：500字',
+        ),
+        DailyLeverTemplate(
+          action: '修改{count}段旧文章',
+          unit: '段',
+          paramHint: '如：2段',
+        ),
+      ],
+    ),
+
+    // ===== 财务类 =====
+    PresetGoalTemplate(
+      id: 'saving',
+      name: '存钱理财',
+      keywords: ['存钱', '理财', '储蓄', '省钱', '财务自由'],
+      category: 'finance',
+      monthlyPhases: [
+        '第1月：记账+分析消费习惯',
+        '第2月：制定预算+强制储蓄',
+        '第3月：开始低风险投资',
+      ],
+      dailyActions: [
+        DailyLeverTemplate(
+          action: '记录一笔消费',
+          unit: '条',
+          paramHint: '随手记',
+        ),
+        DailyLeverTemplate(
+          action: '检查今日支出是否超预算',
+          unit: '次',
+          paramHint: '1次/天',
+        ),
+      ],
+    ),
+
+    // ===== 生活类 =====
+    PresetGoalTemplate(
+      id: 'early_bird',
+      name: '早起习惯',
+      keywords: ['早起', '早睡', '作息', '生物钟'],
+      category: 'life',
+      monthlyPhases: [
+        '第1周：每天提前10分钟起床',
+        '第2周：固定6:30起床',
+        '第3周：固定6:00起床',
+      ],
+      dailyActions: [
+        DailyLeverTemplate(
+          action: '{time}起床',
+          unit: '时间',
+          paramHint: '如：6:30',
+        ),
+        DailyLeverTemplate(
+          action: '睡前{count}分钟不看手机',
+          unit: '分钟',
+          paramHint: '如：30分钟',
+        ),
+      ],
+    ),
+    PresetGoalTemplate(
+      id: 'diet',
+      name: '健康饮食',
+      keywords: ['饮食', '健康饮食', '减油减糖', '营养'],
+      category: 'life',
+      monthlyPhases: [
+        '第1月：戒掉明显不健康零食',
+        '第2月：自己做饭（每周3次）',
+        '第3月：固定健康饮食结构',
+      ],
+      dailyActions: [
+        DailyLeverTemplate(
+          action: '记录早/午/晚三餐',
+          unit: '顿',
+          paramHint: '拍照记录',
+        ),
+        DailyLeverTemplate(
+          action: '喝{count}杯水',
+          unit: '杯',
+          paramHint: '如：8杯水',
+        ),
+      ],
+    ),
+  ];
+
+  /// 根据用户输入找到最匹配的目标
+  /// 返回（匹配模板, 匹配度）
+  static (PresetGoalTemplate?, double) findBestMatch(String userGoal) {
+    if (userGoal.trim().isEmpty) return (null, 0);
+
+    PresetGoalTemplate? best;
+    double bestScore = 0;
+
+    for (final preset in _presets) {
+      final score = preset.matchScore(userGoal);
+      if (score > bestScore) {
+        bestScore = score;
+        best = preset;
+      }
+    }
+
+    // 阈值：超过0.3分才认为是有效匹配
+    return bestScore >= 0.3 ? (best, bestScore) : (null, 0);
+  }
+
+  /// 获取指定类别的所有预设
+  static List<PresetGoalTemplate> byCategory(String category) {
+    return _presets.where((p) => p.category == category).toList();
+  }
+
+  /// 获取所有类别
+  static List<String> get categories {
+    return _presets.map((p) => p.category).toSet().toList();
+  }
+}

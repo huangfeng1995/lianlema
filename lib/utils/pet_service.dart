@@ -300,8 +300,7 @@ class PetService {
   }
 
   String _extractWhatShouldDo(String text) {
-    final butPattern = RegExp(r'而是[^
-，。,.]+');
+    final butPattern = RegExp(r'而是[^\n。，,。]+');
     final match = butPattern.firstMatch(text);
     return match?.group(0) ?? '换一种方式表达';
   }
@@ -845,13 +844,44 @@ class PetService {
     await _saveMemories();
   }
 
-  /// 宠物智能拆解：年度目标 → 月度挑战 → 每日行动（调用 LLM）
+  /// 宠物智能拆解：年度目标 → 月度挑战 → 每日行动
+  /// 使用预设知识库作为上下文参考，提升 LLM 拆解质量和速度
   Future<DecompositionResult> decomposeGoals(List<String> yearGoals) async {
     if (yearGoals.isEmpty || yearGoals.every((g) => g.trim().isEmpty)) {
       return DecompositionResult(monthlyChallenges: [], dailyActionsPerChallenge: {});
     }
 
+    // ===== 收集预设知识库中的相关参考 =====
     final goalsText = yearGoals.where((g) => g.isNotEmpty).join('\n');
+    final allPresetExamples = <String>[];
+    final allPresetActions = <String>[];
+
+    for (final goal in yearGoals.where((g) => g.isNotEmpty)) {
+      final (preset, score) = PresetGoalLibrary.findBestMatch(goal);
+      if (preset != null && score >= 0.3) {
+        // 收集匹配的预设作为参考示例
+        for (final phase in preset.monthlyPhases) {
+          allPresetExamples.add(phase);
+        }
+        for (final action in preset.dailyActions) {
+          allPresetActions.add('  → ${action.action}（单位：${action.unit}，提示：${action.paramHint}）');
+        }
+      }
+    }
+
+    // 构建预设参考上下文（如果有匹配的话）
+    String presetContext = '';
+    if (allPresetExamples.isNotEmpty) {
+      presetContext = '''
+【参考案例】（以下案例来自同类目标的经验总结，帮你生成更符合实际的拆解）
+常见月度挑战模式：
+${allPresetExamples.map((e) => '- $e').join('\n')}
+常用每日行动格式：
+${allPresetActions.join('\n')}
+
+以上案例仅供参考，你需要根据用户的具体目标生成个性化的拆解方案。
+''';
+    }
 
     final prompt = '''
 【宠物拆解框架 v1.0】
@@ -860,7 +890,7 @@ class PetService {
 
 【年度目标】
 $goalsText
-
+$presetContext
 【拆解原则】
 
 一、每月挑战标准（必须满足）
