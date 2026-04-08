@@ -9,6 +9,7 @@ import '../utils/date_utils.dart' as app_date;
 import '../utils/badge_icon.dart';
 import '../services/pet_push_service.dart';
 import '../widgets/confetti_celebration.dart';
+import '../widgets/level_up_celebration.dart';
 import '../widgets/boss_hp_bar.dart';
 
 import 'profile_screen.dart';
@@ -305,9 +306,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // 显示奖励提示
+    final didLevelUp = XpService.didLevelUp(oldStats, newStats);
+    if (didLevelUp) {
+      LevelUpOverlay.show(context, finalStats.level);
+    }
     _showRewardDialog(
       xpEarned: xpEarned,
-      didLevelUp: XpService.didLevelUp(oldStats, newStats),
+      didLevelUp: didLevelUp,
       newBadges: newUnlockedBadges,
     );
   }
