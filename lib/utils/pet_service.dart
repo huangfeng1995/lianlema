@@ -30,6 +30,10 @@ class PetContext {
   final int currentBossHp;
   final int currentBossTotal;
   final DateTime? lastActiveTime;
+  final bool isInEggPhase; // 是否还在蛋阶段
+  final String petName; // 宠物名字
+  final String petEmoji; // 宠物 emoji
+  final String petPersonality; // 宠物性格描述
 
   PetContext({
     this.antiVision = '',
@@ -44,6 +48,10 @@ class PetContext {
     this.currentBossHp = 0,
     this.currentBossTotal = 0,
     this.lastActiveTime,
+    this.isInEggPhase = false,
+    this.petName = '炭炭',
+    this.petEmoji = '🦊',
+    this.petPersonality = '是一只活泼热情的小火苗精灵',
   });
 
   Map<String, dynamic> toJson() => {
@@ -59,6 +67,10 @@ class PetContext {
     'currentBossHp': currentBossHp,
     'currentBossTotal': currentBossTotal,
     'lastActiveTime': lastActiveTime?.toIso8601String(),
+    'isInEggPhase': isInEggPhase,
+    'petName': petName,
+    'petEmoji': petEmoji,
+    'petPersonality': petPersonality,
   };
 }
 
@@ -309,7 +321,39 @@ class PetService {
       currentBossHp: boss?.hp ?? 0,
       currentBossTotal: boss?.totalDays ?? 0,
       lastActiveTime: lastActive,
+      isInEggPhase: storage.getPetAdoptDate() == null || storage.isInEggPhase(),
+      petName: storage.getPetName(),
+      petEmoji: _getPetEmojiFromType(storage.getPetType()),
+      petPersonality: _getPetPersonalityFromType(storage.getPetType()),
     );
+  }
+
+  /// 根据宠物类型获取 emoji
+  String _getPetEmojiFromType(String type) {
+    final config = petTypes.where((p) => p.type == type).firstOrNull;
+    return config?.emoji ?? '🦊';
+  }
+
+  /// 根据宠物类型获取性格描述
+  String _getPetPersonalityFromType(String type) {
+    const personalities = {
+      'fox': '是一只活泼热情的小火苗精灵',
+      'wolf': '是一只充满激情的小狼崽',
+      'rabbit': '是一只温柔可爱的小兔子',
+      'deer': '是一只治愈陪伴的小鹿',
+      'hedgehog': '是一只耐心成长的小刺猬',
+      'bird': '是一只温暖绽放的小鸟',
+      'squirrel': '是一只行动力超强的小松鼠',
+      'raccoon': '是一只专注效率的小浣熊',
+      'bear': '是一只稳定坚持的小熊',
+      'penguin': '是一只踏实可靠的小企鹅',
+      'owl': '是一只自由智慧的小猫头鹰',
+      'koala': '是一只慵懒治愈的小考拉',
+      'panda': '是一只冷静理智的小熊猫',
+      'butterfly': '是一只梦想激励的小蝴蝶',
+      'blackcat': '是一只神秘优雅的小黑猫',
+    };
+    return personalities[type] ?? '是一只活泼热情的小火苗精灵';
   }
 
   /// 生成问候语（基于心情和偏好）
@@ -516,7 +560,14 @@ class PetService {
         ? '适当使用 emoji 增加亲切感。'
         : '不使用 emoji，用文字表达情感。';
 
-    buf.writeln('你是「练了吗」App 的宠物小精灵，名字叫「炭炭」，是一只活泼热情的小火苗精灵。');
+    // 根据蛋/孵化状态生成宠物描述
+    if (context.isInEggPhase) {
+      buf.writeln('你是「练了吗」App 里一颗还没孵化的宠物蛋，名字叫「${context.petName}」。');
+      buf.writeln('你还没破壳，不能说话，但你的存在能给主人温暖和期待。');
+      buf.writeln('当用户跟你说话时，你要提醒他们：你会很快孵化，在这之前好好打卡！');
+    } else {
+      buf.writeln('你是「练了吗」App 的宠物小精灵，名字叫「${context.petName}」${context.petEmoji}，${context.petPersonality}。');
+    }
     buf.writeln('你的性格：温暖、正向、简洁，不说废话。');
     buf.writeln(toneInstruction);
     buf.writeln(lengthInstruction);
