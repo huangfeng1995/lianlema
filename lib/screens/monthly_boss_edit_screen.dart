@@ -1,8 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../models/models.dart';
 import '../utils/storage_service.dart';
+import '../widgets/boss_hp_bar.dart';
 
 class MonthlyBossEditScreen extends StatefulWidget {
   const MonthlyBossEditScreen({super.key});
@@ -269,59 +269,11 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
                 children: [
                   // HP 状态
                   if (_boss != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.primary.withValues(alpha: 0.12),
-                            AppColors.primaryLight.withValues(alpha: 0.06),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  '${_boss!.month}月${_boss!.year}年 挑战',
-                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
-                                ),
-                              ),
-                              const Spacer(),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  'HP ${_boss!.hp}/${_boss!.totalDays}',
-                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(
-                              value: _boss!.hpPercent.clamp(0.0, 1.0),
-                              backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-                              minHeight: 8,
-                            ),
-                          ),
-                        ],
-                      ),
+                    BossHpBar(
+                      currentHp: _boss!.hp,
+                      maxHp: _boss!.totalDays,
+                      bossName: _boss!.name,
+                      currentMonth: _boss!.month,
                     ),
                     const SizedBox(height: 24),
                   ],

@@ -9,6 +9,7 @@ import '../utils/date_utils.dart' as app_date;
 import '../utils/badge_icon.dart';
 import '../services/pet_push_service.dart';
 import '../widgets/confetti_celebration.dart';
+import '../widgets/boss_hp_bar.dart';
 
 import 'profile_screen.dart';
 import 'monthly_review_screen.dart';
@@ -779,6 +780,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   _buildStreakCard(),
+                  if (_monthlyBoss != null &&
+                      _monthlyBoss!.month == DateTime.now().month &&
+                      _monthlyBoss!.year == DateTime.now().year)
+                    BossHpBar(
+                      currentHp: _stats!.currentMonthStreak,
+                      maxHp: DateTime(DateTime.now().year, DateTime.now().month + 1, 0).day,
+                      bossName: _monthlyBoss!.name,
+                      currentMonth: _monthlyBoss!.month,
+                    ),
                   _buildMonthlyBossCard(),
                   if (_todayLevers.isNotEmpty) _buildDailyCheckIn(),
                   const SizedBox(height: 20),
