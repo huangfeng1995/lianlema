@@ -12,6 +12,7 @@ import '../widgets/confetti_celebration.dart';
 import '../widgets/level_up_celebration.dart';
 import '../widgets/boss_hp_bar.dart';
 import '../widgets/boss_victory_celebration.dart';
+import '../widgets/streak_broken_overlay.dart';
 
 import 'profile_screen.dart';
 import 'monthly_review_screen.dart';
@@ -173,6 +174,19 @@ class _HomeScreenState extends State<HomeScreen> {
     // 月末/月初检查：显示月度复盘
     if (_storage.shouldShowMonthlyReview()) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _showMonthlyReview());
+    }
+
+    // Streak 断裂提示
+    if (_streakBroken) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        StreakBrokenOverlay.show(
+          context,
+          brokenAtStreak: _stats.streak + 1, // 断裂前的连续天数
+          onDismiss: () {
+            // 动画结束后什么也不做，回到主界面
+          },
+        );
+      });
     }
   }
 
