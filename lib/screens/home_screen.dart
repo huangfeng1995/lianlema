@@ -247,18 +247,6 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    // 打卡后心情+3
-    final currentMood = _storage.getPetMoodValue();
-    await _storage.savePetMoodValue(currentMood + 3);
-
-    // 更新 GetX 心情控制器
-    if (Get.isRegistered<PetMoodController>()) {
-      PetMoodController.to.onCheckIn(
-        streak: newStreak,
-        totalCheckIns: _stats.totalCheckIns + 1,
-      );
-    }
-
     // 激励有效性学习：用户打卡了
     PetPushService.instance.onCheckIn(checkedInToday: true);
 
