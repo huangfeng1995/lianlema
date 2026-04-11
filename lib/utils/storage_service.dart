@@ -94,6 +94,8 @@ class StorageService {
   static const String _keyPetAppearanceLevel = 'pet_appearance_level'; // 外观等级 1-5
   static const String _keyPetMoodValue = 'pet_mood_value'; // 心情数值 0-100
   static const String _keyPetPersonality = 'pet_personality'; // 大五人格
+  static const String _keyEncouragementRecords = 'encouragement_records'; // 激励记录
+  static const String _keyEncouragementStats = 'encouragement_stats'; // 激励有效性统计
 
   // ====== 宠物名字 ======
   static const String defaultPetName = '炭炭';
@@ -344,6 +346,31 @@ class StorageService {
     final str = _prefs.getString(_keyPetMoodState);
     if (str == null) return PetMoodState.initial();
     return PetMoodState.fromJson(jsonDecode(str));
+  }
+
+  // ====== 激励有效性记录 ======
+  Future<void> saveEncouragementRecords(List<EncouragementRecord> records) async {
+    final list = records.map((r) => r.toJson()).toList();
+    await _prefs.setString(_keyEncouragementRecords, jsonEncode(list));
+  }
+
+  List<EncouragementRecord> getEncouragementRecords() {
+    final str = _prefs.getString(_keyEncouragementRecords);
+    if (str == null) return [];
+    final list = jsonDecode(str) as List;
+    return list.map((j) => EncouragementRecord.fromJson(j)).toList();
+  }
+
+  Future<void> saveEncouragementStats(Map<int, EncouragementStats> stats) async {
+    final map = stats.map((k, v) => MapEntry(k.toString(), v.toJson()));
+    await _prefs.setString(_keyEncouragementStats, jsonEncode(map));
+  }
+
+  Map<int, EncouragementStats> getEncouragementStats() {
+    final str = _prefs.getString(_keyEncouragementStats);
+    if (str == null) return {};
+    final map = jsonDecode(str) as Map<String, dynamic>;
+    return map.map((k, v) => MapEntry(int.parse(k), EncouragementStats.fromJson(v)));
   }
 
   // ====== Onboarding ======

@@ -17,6 +17,7 @@ class PetBubble extends StatefulWidget {
 class PetBubbleState extends State<PetBubble> with SingleTickerProviderStateMixin {
   bool _isExpanded = false;
   bool _isLoading = false;
+  bool _isSending = false;
   String _petMessage = '';
   String? _proactiveInsight; // 主动洞察（未读）
   final TextEditingController _inputController = TextEditingController();
@@ -511,34 +512,43 @@ class PetBubbleState extends State<PetBubble> with SingleTickerProviderStateMixi
   }
 
   Future<void> _sendMessage() async {
-    final text = _inputController.text.trim();
-    if (text.isEmpty) return;
-
-    _inputController.clear();
-    setState(() {
-      _messages.add(ChatMessage(text: text, isUser: true));
-      _isLoading = true;
-    });
-
-    _scrollToBottom();
-
+    if (_isSending) return;
+    _isSending = true;
     try {
-      final ctx = _context ?? await PetService.instance.buildContext();
-      final response = await PetService.instance.chat(text, ctx);
+      final text = _inputController.text.trim();
+      if (text.isEmpty) {
+        _isSending = false;
+        return;
+      }
 
+      _inputController.clear();
       setState(() {
-        _messages.add(ChatMessage(text: response, isUser: false));
-        _isLoading = false;
-        _petMessage = '';
+        _messages.add(ChatMessage(text: text, isUser: true));
+        _isLoading = true;
       });
-    } catch (e) {
-      setState(() {
-        _messages.add(ChatMessage(text: '网络有点问题，稍后再试试吧 😅', isUser: false));
-        _isLoading = false;
-      });
+
+      _scrollToBottom();
+
+      try {
+        final ctx = _context ?? await PetService.instance.buildContext();
+        final response = await PetService.instance.chat(text, ctx);
+
+        setState(() {
+          _messages.add(ChatMessage(text: response, isUser: false));
+          _isLoading = false;
+          _petMessage = '';
+        });
+      } catch (e) {
+        setState(() {
+          _messages.add(ChatMessage(text: '网络有点问题，稍后再试试吧 😅', isUser: false));
+          _isLoading = false;
+        });
+      }
+
+      _scrollToBottom();
+    } finally {
+      _isSending = false;
     }
-
-    _scrollToBottom();
   }
 
   Future<void> _handleCommand(PetCommand command) async {

@@ -770,7 +770,148 @@ class PetPreferences {
   );
 }
 
-/// 宠物币交易记录原因
+/// ====== 激励有效性学习 ======
+
+/// 激励话术类型（6种风格）
+enum EncouragementType {
+  /// 温暖鼓励：正面夸奖、陪伴感强
+  encouragement,
+  /// 数据理性：用数据说话、逻辑清晰
+  dataDriven,
+  /// 激将型：挑战、激将、反向激励
+  toughLove,
+  /// 温暖陪伴：不施压、接纳情绪
+  warmCompanion,
+  /// 幽默调侃：用轻松方式化解压力
+  humor,
+  /// 沉默支持：少说话、给空间
+  silentSupport,
+}
+
+extension EncouragementTypeExtension on EncouragementType {
+  String get label {
+    switch (this) {
+      case EncouragementType.encouragement:
+        return '温暖鼓励';
+      case EncouragementType.dataDriven:
+        return '数据理性';
+      case EncouragementType.toughLove:
+        return '激将激励';
+      case EncouragementType.warmCompanion:
+        return '温暖陪伴';
+      case EncouragementType.humor:
+        return '幽默调侃';
+      case EncouragementType.silentSupport:
+        return '沉默支持';
+    }
+  }
+
+  String get emoji {
+    switch (this) {
+      case EncouragementType.encouragement:
+        return '🌟';
+      case EncouragementType.dataDriven:
+        return '📊';
+      case EncouragementType.toughLove:
+        return '🔥';
+      case EncouragementType.warmCompanion:
+        return '🤗';
+      case EncouragementType.humor:
+        return '😄';
+      case EncouragementType.silentSupport:
+        return '🌙';
+    }
+  }
+}
+
+/// 单条激励记录（带结果追踪）
+class EncouragementRecord {
+  final String id;
+  final EncouragementType type;
+  final String text;
+  final DateTime sentAt;
+  /// 发送后次日是否打卡（null=未到评估时间）
+  final bool? ledToCheckIn;
+
+  EncouragementRecord({
+    required this.id,
+    required this.type,
+    required this.text,
+    required this.sentAt,
+    this.ledToCheckIn,
+  });
+
+  EncouragementRecord copyWith({bool? ledToCheckIn}) => EncouragementRecord(
+    id: id,
+    type: type,
+    text: text,
+    sentAt: sentAt,
+    ledToCheckIn: ledToCheckIn,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'type': type.index,
+    'text': text,
+    'sentAt': sentAt.toIso8601String(),
+    'ledToCheckIn': ledToCheckIn,
+  };
+
+  factory EncouragementRecord.fromJson(Map<String, dynamic> json) =>
+      EncouragementRecord(
+        id: json['id'] ?? '',
+        type: EncouragementType.values[json['type'] ?? 0],
+        text: json['text'] ?? '',
+        sentAt: DateTime.parse(json['sentAt']),
+        ledToCheckIn: json['ledToCheckIn'],
+      );
+}
+
+/// 单个激励类型的有效性数据
+class EncouragementStats {
+  final EncouragementType type;
+  /// 发送次数
+  final int attempts;
+  /// 成功次数（次日打卡）
+  final int wins;
+  /// 指数移动平均分数（EMA，0.0-1.0）
+  final double effectiveness;
+
+  const EncouragementStats({
+    required this.type,
+    this.attempts = 0,
+    this.wins = 0,
+    this.effectiveness = 0.5,
+  });
+
+  EncouragementStats recordAttempt({required bool success, double alpha = 0.2}) {
+    // EMA update: new = alpha * success + (1-alpha) * old
+    final newEff = alpha * (success ? 1.0 : 0.0) + (1 - alpha) * effectiveness;
+    return EncouragementStats(
+      type: type,
+      attempts: attempts + 1,
+      wins: wins + (success ? 1 : 0),
+      effectiveness: newEff,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'type': type.index,
+    'attempts': attempts,
+    'wins': wins,
+    'effectiveness': effectiveness,
+  };
+
+  factory EncouragementStats.fromJson(Map<String, dynamic> json) =>
+      EncouragementStats(
+        type: EncouragementType.values[json['type'] ?? 0],
+        attempts: json['attempts'] ?? 0,
+        wins: json['wins'] ?? 0,
+        effectiveness: (json['effectiveness'] ?? 0.5).toDouble(),
+      );
+}
+
+/// ====== 宠物币交易记录原因
 enum PetCoinReason {
   dailyCheckIn,   // 每日打卡
   streak7,        // 连续7天

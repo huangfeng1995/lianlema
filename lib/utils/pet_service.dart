@@ -93,6 +93,15 @@ class PetService {
   PetPreferences _prefs = PetPreferences.defaultPrefs();
   final List<Map<String, String>> _conversationHistory = [];
   List<PetMemory> _memories = [];
+  List<EncouragementRecord> _encouragementRecords = [];
+  Map<int, EncouragementStats> _encouragementStats = {};
+
+  /// 初始化激励统计（每个类型默认 0.5 效果分）
+  void _initEncouragementStats() {
+    for (final type in EncouragementType.values) {
+      _encouragementStats[type.index] = EncouragementStats(type: type);
+    }
+  }
 
   /// 加载宠物所有状态（从持久化存储）
   Future<void> loadState() async {
@@ -101,6 +110,12 @@ class PetService {
     _moodState = storage.getPetMoodState();
     _prefs = storage.getPetPreferences();
     _memories = storage.getPetMemories();
+    _encouragementRecords = storage.getEncouragementRecords();
+    final storedStats = storage.getEncouragementStats();
+    _initEncouragementStats();
+    for (final entry in storedStats.entries) {
+      _encouragementStats[entry.key] = entry.value;
+    }
   }
 
   /// 保存宠物心情状态
@@ -171,8 +186,9 @@ class PetService {
   /// 获取宠物记忆
   List<PetMemory> get memories => List.unmodifiable(_memories);
 
-  /// ====== 反思机制（牛小数四步法第四步）======
+  /// ====== 反思机制 v2.0（MemPalace 风格）======
   /// 检测用户是否在纠正宠物，并更新偏好
+  /// 整合了：自动分类、语义标签、去重检测、原始文本存储
   Future<bool> detectAndAdaptToCorrection(String userMessage, String petResponse) async {
     // 检测纠正模式
     final correctionPatterns = [
@@ -195,20 +211,32 @@ class PetService {
       // 生成具体的"学到了什么"作为 correctionNote
       final learnedWhat = _extractWhatWasLearned(userMessage);
 
-      // 记录纠正到记忆
+      // 提取语义标签
+      final tags = _extractTags(userMessage, 'correction');
+
+      // 自动判断 Wing 分类
+      final wing = _categorizeWing(userMessage, 'correction');
+
+      // 判断重要性
+      final importance = _determineImportance(userMessage, 'correction', tags);
+
+      // 构建 MemPalace 风格的记忆（原始文本 + 结构化数据）
       final memory = PetMemory(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         createdAt: DateTime.now(),
+        lastAccessedAt: DateTime.now(),
         type: 'correction',
-        content: userMessage,
-        petResponse: petResponse,
+        wing: wing,
+        importance: importance,
+        tags: tags,
+        content: userMessage, // 原始文本 verbatim
+        petResponse: petResponse, // 宠物的错误回复也保留
         correctionNote: learnedWhat,
+        summary: '纠正: $learnedWhat', // 语义摘要
       );
-      _memories.add(memory);
-      if (_memories.length > 50) {
-        _memories.removeRange(0, _memories.length - 50);
-      }
-      await _saveMemories();
+
+      // 归档记忆（包含去重检测）
+      await _fileMemory(memory);
 
       // 分析纠正类型并调整偏好
       await _adaptPreferences(userMessage);
@@ -260,6 +288,296 @@ class PetService {
     if (updated) {
       await _savePreferences();
     }
+  }
+
+  // ====== MemPalace 风格记忆管理 ======
+
+  /// 提取语义标签（基于 MemPalace 的自动索引）
+  List<MemoryTag> _extractTags(String userMessage, String type) {
+    final tags = <MemoryTag>[];
+    final msg = userMessage.toLowerCase();
+
+    // 语气标签
+    if (msg.contains('太官方') || msg.contains('正式') || msg.contains('说教')) {
+      tags.add(const MemoryTag(name: '语气', category: 'tone'));
+      tags.add(const MemoryTag(name: '口语化', category: 'tone'));
+    }
+    if (msg.contains('太严肃') || msg.contains('正经')) {
+      tags.add(const MemoryTag(name: '语气', category: 'tone'));
+      tags.add(const MemoryTag(name: '活泼', category: 'tone'));
+    }
+    if (msg.contains('太温柔') || msg.contains('太软')) {
+      tags.add(const MemoryTag(name: '语气', category: 'tone'));
+      tags.add(const MemoryTag(name: '直接', category: 'tone'));
+    }
+
+    // 长度标签
+    if (msg.contains('太长') || msg.contains('太多')) {
+      tags.add(const MemoryTag(name: '回复长度', category: 'length'));
+      tags.add(const MemoryTag(name: '简短', category: 'length'));
+    }
+    if (msg.contains('太短') || msg.contains('太少')) {
+      tags.add(const MemoryTag(name: '回复长度', category: 'length'));
+      tags.add(const MemoryTag(name: '详细', category: 'length'));
+    }
+
+    // Emoji 标签
+    if (msg.contains('emoji') || msg.contains('表情')) {
+      if (msg.contains('不要') || msg.contains('太多')) {
+        tags.add(const MemoryTag(name: 'emoji', category: 'emoji'));
+        tags.add(const MemoryTag(name: '不用表情', category: 'emoji'));
+      } else if (msg.contains('来点') || msg.contains('加点')) {
+        tags.add(const MemoryTag(name: 'emoji', category: 'emoji'));
+        tags.add(const MemoryTag(name: '使用表情', category: 'emoji'));
+      }
+    }
+
+    // 身份认知标签
+    if (msg.contains('我') && (msg.contains('是') || msg.contains('的人') || msg.contains('想要'))) {
+      tags.add(const MemoryTag(name: '身份认知', category: 'identity'));
+    }
+
+    // 目标标签
+    if (msg.contains('目标') || msg.contains('想') || msg.contains('要成为')) {
+      tags.add(const MemoryTag(name: '目标', category: 'aspiration'));
+    }
+
+    return tags;
+  }
+
+  /// 自动判断记忆的 Wing 分类
+  MemoryWing _categorizeWing(String userMessage, String type) {
+    final msg = userMessage.toLowerCase();
+
+    // 身份认知
+    if (msg.contains('我是') ||
+        msg.contains('我是一个') ||
+        msg.contains('我想成为') ||
+        msg.contains('我要成为') ||
+        type == 'identity') {
+      return MemoryWing.identity;
+    }
+
+    // 目标愿景
+    if (msg.contains('目标') ||
+        msg.contains('愿景') ||
+        msg.contains('想成为') ||
+        msg.contains('要成为') ||
+        type == 'aspiration') {
+      return MemoryWing.aspiration;
+    }
+
+    // 里程碑
+    if (type == 'milestone' ||
+        msg.contains('达成') ||
+        msg.contains('完成') && msg.contains('天') ||
+        msg.contains('突破')) {
+      return MemoryWing.milestone;
+    }
+
+    // 经验教训
+    if (type == 'lesson' ||
+        msg.contains('学到了') ||
+        msg.contains('明白了') ||
+        msg.contains('教训')) {
+      return MemoryWing.lesson;
+    }
+
+    // 默认：偏好习惯
+    return MemoryWing.preference;
+  }
+
+  /// 判断记忆的重要性等级
+  MemoryImportance _determineImportance(String userMessage, String type, List<MemoryTag> tags) {
+    final msg = userMessage.toLowerCase();
+
+    // 高优先级：身份认知、重大里程碑
+    if (type == 'identity' ||
+        type == 'milestone' ||
+        tags.any((t) => t.category == 'identity')) {
+      return MemoryImportance.high;
+    }
+
+    // 中优先级：核心偏好（语气、长度）
+    if (tags.any((t) => t.category == 'tone' || t.category == 'length')) {
+      return MemoryImportance.medium;
+    }
+
+    // 低优先级：临时偏好、随口一提
+    return MemoryImportance.low;
+  }
+
+  /// 去重检测（基于 MemPalace 的重复记忆处理）
+  /// 返回 true 表示有重复，不需要再添加
+  bool _isDuplicate(String userMessage, List<MemoryTag> newTags) {
+    final normalizedNew = userMessage.toLowerCase().trim();
+
+    for (final memory in _memories) {
+      // 1. 精确内容匹配
+      if (memory.content.toLowerCase().trim() == normalizedNew) {
+        debugPrint('[PetMemory] 精确重复，跳过: $normalizedNew');
+        return true;
+      }
+
+      // 2. 标签重叠检测（关键语义相似）
+      final overlapTags = newTags.where((newTag) =>
+        memory.tags.any((oldTag) =>
+          oldTag.category == newTag.category && oldTag.name == newTag.name
+        )
+      ).toList();
+
+      if (overlapTags.length >= 2) {
+        // 3. 内容相似度检查（简单关键词重叠）
+        final newWords = normalizedNew.split(RegExp(r'\s+')).toSet();
+        final oldWords = memory.content.toLowerCase().split(RegExp(r'\s+')).toSet();
+        final intersection = newWords.intersection(oldWords);
+
+        // 如果超过50%的词重复，且标签重叠>=2，认为是重复
+        if (intersection.length >= newWords.length * 0.5 && newWords.length > 3) {
+          debugPrint('[PetMemory] 语义重复，跳过: $normalizedNew (相似: ${memory.content})');
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /// 归档记忆到 Palace（整合所有处理逻辑）
+  Future<void> _fileMemory(PetMemory memory) async {
+    // 去重检查
+    if (_isDuplicate(memory.content, memory.tags)) {
+      return;
+    }
+
+    _memories.add(memory);
+
+    // LRU 清理：超过50条时移除最旧的低优先级记忆
+    if (_memories.length > 50) {
+      _memories.sort((a, b) {
+        // 优先保留重要的
+        if (a.importance != b.importance) {
+          return b.importance.index.compareTo(a.importance.index);
+        }
+        // 其次按创建时间
+        return a.createdAt.compareTo(b.createdAt);
+      });
+
+      // 移除最旧的低优先级记忆
+      while (_memories.length > 50) {
+        final lowPriorityIdx = _memories.lastIndexWhere(
+          (m) => m.importance == MemoryImportance.low && !m.isPermanent
+        );
+        if (lowPriorityIdx != -1) {
+          _memories.removeAt(lowPriorityIdx);
+        } else {
+          break;
+        }
+      }
+    }
+
+    await _saveMemories();
+  }
+
+  /// 语义检索记忆（简化版 MemPalace ChromaDB 搜索）
+  /// 根据标签类别和关键词搜索相关记忆
+  List<PetMemory> searchMemories({
+    String? keyword,
+    MemoryWing? wing,
+    MemoryTag? tag,
+    int limit = 5,
+  }) {
+    var results = _memories.where((m) => !m.isExpired).toList();
+
+    // 按 Wing 筛选
+    if (wing != null) {
+      results = results.where((m) => m.wing == wing).toList();
+    }
+
+    // 按标签筛选
+    if (tag != null) {
+      results = results.where((m) =>
+        m.tags.any((t) => t.category == tag.category && t.name == tag.name)
+      ).toList();
+    }
+
+    // 按关键词筛选（简单的包含匹配）
+    if (keyword != null && keyword.isNotEmpty) {
+      final kw = keyword.toLowerCase();
+      results = results.where((m) =>
+        m.content.toLowerCase().contains(kw) ||
+        (m.correctionNote?.toLowerCase().contains(kw) ?? false) ||
+        (m.summary?.toLowerCase().contains(kw) ?? false) ||
+        m.tags.any((t) => t.name.toLowerCase().contains(kw))
+      ).toList();
+    }
+
+    // 按重要性排序（重要的在前）和最后访问时间
+    results.sort((a, b) {
+      if (a.importance != b.importance) {
+        return a.importance.index.compareTo(b.importance.index);
+      }
+      final aTime = a.lastAccessedAt ?? a.createdAt;
+      final bTime = b.lastAccessedAt ?? b.createdAt;
+      return bTime.compareTo(aTime);
+    });
+
+    return results.take(limit).toList();
+  }
+
+  /// 获取特定 Wing 分类的所有有效记忆
+  List<PetMemory> getMemoriesByWing(MemoryWing wing, {int limit = 10}) {
+    return _memories
+        .where((m) => m.wing == wing && !m.isExpired)
+        .toList()
+      ..sort((a, b) {
+        if (a.importance != b.importance) {
+          return a.importance.index.compareTo(b.importance.index);
+        }
+        return b.createdAt.compareTo(a.createdAt);
+      })
+      ..take(limit);
+  }
+
+  /// 构建用户偏好记忆上下文（给 LLM 看的格式化文本）
+  String _buildMemoryContext() {
+    if (_memories.isEmpty) return '';
+
+    final buf = StringBuffer();
+    buf.writeln('【用户偏好记忆 - MemPalace 归档】（请务必遵守）');
+
+    // 按 Wing 分组展示
+    final byWing = <MemoryWing, List<PetMemory>>{};
+    for (final m in _memories.where((m) => !m.isExpired)) {
+      byWing.putIfAbsent(m.wing, () => []).add(m);
+    }
+
+    for (final wing in byWing.keys) {
+      final memories = byWing[wing]!;
+      final wingNames = {
+        MemoryWing.identity: '👤 身份认知',
+        MemoryWing.aspiration: '🎯 目标愿景',
+        MemoryWing.preference: '💡 偏好习惯',
+        MemoryWing.milestone: '🏆 重要事件',
+        MemoryWing.lesson: '📝 经验教训',
+      };
+
+      buf.writeln('\n${wingNames[wing] ?? wing}:');
+      for (final memory in memories.take(3)) {
+        if (memory.type == 'correction') {
+          final learned = memory.correctionNote ?? memory.content;
+          final importance = memory.importance == MemoryImportance.high ? '⭐' : '•';
+          buf.writeln('  $importance ⚠️ 纠正过：「${memory.content}」→ 学会了：$learned');
+        } else if (memory.type == 'preference') {
+          buf.writeln('  • 💡 偏好：${memory.content}');
+        } else if (memory.type == 'milestone') {
+          buf.writeln('  ⭐🏆 里程碑：${memory.summary ?? memory.content}');
+        }
+      }
+    }
+
+    buf.writeln('\n以上每条都要遵守，不许再犯。');
+    return buf.toString();
   }
 
   /// 生成道歉+修正回复
@@ -585,7 +903,10 @@ class PetService {
       if (contentList != null) {
         for (final item in contentList) {
           if (item['type'] == 'text' && (item['text'] as String?)?.isNotEmpty == true) {
-            return (item['text'] as String).trim();
+            String text = (item['text'] as String).trim();
+            // 清理无效 Unicode 字符，将无法识别的字符替换为替代符号
+            text = _sanitizeText(text);
+            return text;
           }
         }
       }
@@ -636,21 +957,11 @@ class PetService {
     buf.writeln('你会记住用户说过的话，有同理心，会鼓励、会撒娇，偶尔也会有小脾气。');
     buf.writeln('⚠️ 重要原则：绝对不能在【用户偏好记忆】中列出的事情上再犯同样的错误。');
 
-    // 如果有记忆，添加记忆上下文
-    if (_memories.isNotEmpty) {
+    // 如果有记忆，添加 MemPalace 风格的记忆上下文
+    final memoryContext = _buildMemoryContext();
+    if (memoryContext.isNotEmpty) {
       buf.writeln();
-      buf.writeln('【用户偏好记忆】（请务必遵守）');
-      final recentMemories = _memories.reversed.take(5).toList();
-      for (final memory in recentMemories) {
-        if (memory.type == 'correction') {
-          final learned = memory.correctionNote ?? memory.content;
-          buf.writeln('⚠️ 纠正过：「${memory.content}」→ 学会了：$learned');
-        }
-        if (memory.type == 'preference') {
-          buf.writeln('💡 偏好：${memory.content}');
-        }
-      }
-      buf.writeln('以上每条都要遵守，不许再犯。');
+      buf.writeln(memoryContext);
     }
 
     buf.writeln();
@@ -884,55 +1195,60 @@ ${allPresetActions.join('\n')}
     }
 
     final prompt = '''
-【宠物拆解框架 v1.0】
+【宠物拆解框架 v2.0 - 量化行动生成器】
 
-你是「${_soul.name}」，用户的宠物伙伴。你的任务是把年度目标拆解为可执行的月度挑战和每日行动。
+你是「${_soul.name}」，用户的宠物伙伴。你的任务是把目标拆解为可量化的每日行动。
 
-【年度目标】
+【目标】
 $goalsText
 $presetContext
-【拆解原则】
 
-一、每月挑战标准（必须满足）
-- 可衡量：能说"做到了"或"没做到"，不含模糊词
-- 具体：指出时间/数量/行为，不含"尽量""适当"等词
-- 当月可完成：不是最终目标，而是推动目标的第一步
+【核心原则：每个行动必须量化】
 
-二、每日行动标准（必须满足）
-- 可衡量：做完能打勾，有具体数量或动作
-- 当天可做：不超过30分钟
-- 格式：每天[做什么具体动作]+[具体参数]
+★ 禁止输出示例（这些是错的，不要这样做）：
+- ✗ "每天读书"（没有数量）
+- ✗ "每天学习"（太模糊）
+- ✗ "复习专业课内容"（没有页数/章节）
+- ✗ "适当运动"（没有时间/强度）
+- ✗ "背诵英语单词"（没有数量）
 
-三、拆解策略
+★ 正确输出示例：
+- ✓ "用配套APP背30个法律英语单词"
+- ✓ "看专业课教材10页并标注重点"
+- ✓ "做10道民法选择题并订正错题"
+- ✓ "跟读英语音频5分钟，录音回听"
+- ✓ "早上7:30起床，晨跑20分钟"
 
-★ 习惯型目标（如养成早起、吃早餐习惯）
-  → 不要说"建立最小化闭环"这类抽象话
-  → 应该拆成具体行为：固定时间做固定动作
-  → 例如："养成吃早餐习惯" → "工作日7:30在家吃早餐"
-  → 每日行动：每天早上7:30在家吃一口饭
+【针对备考类目标的特别要求】
 
-★ 成就型目标（如考研、跑马拉松）
-  → 拆解为备考行动的具体量化指标
-  → 每日行动：背多少个单词、看几页书、做几道题
+如果目标是考研/法考/法律硕士等考试类，必须生成以下类型的量化行动：
+1. 背书类：每天背X个名词解释/X道简答题
+2. 做题类：每天做X道选择题/X道主观题
+3. 看教材类：每天看X页教材/X节课程
+4. 复习类：每天复习X页旧知识
+5. 听力/口语：每天听/说X分钟
 
-★ 技能型目标（如编程、英语）
-  → 分解sub-skills，每月专攻一个
-  → 每日行动：小节练习+数量，如"每天用英语影子跟读2分钟"
+【挑战拆分原则】
+- 每月聚焦1-2个子目标，不要贪多
+- 第一个月：打基础（看书/听课/背单词）
+- 第二个月：强化（做题/背诵/专项突破）
+- 第三个月：冲刺（模拟考试/查漏补缺）
 
 【输出格式】
 只输出JSON，不要其他内容：
 {
   "monthlyChallenges": ["挑战1", "挑战2"],
   "dailyActionsPerChallenge": {
-    "挑战1": ["行动1", "行动2"]
+    "挑战1": ["量化行动1", "量化行动2"],
+    "挑战2": ["量化行动1"]
   }
 }
 
-【注意】
-- 挑战数量：2-4个
-- 每个挑战对应1-2条每日行动
-- 行动描述中必须包含具体数字或动作，不能含"若干""尽量""适度"
-- 语言简洁，不用成语，不用抽象隐喻
+【强制要求】
+- 每个行动必须包含阿拉伯数字（1-9等）
+- 每个行动必须包含时间/数量/页数/题数中的至少一个
+- 不允许输出"若干""适量""适度""尽量"等模糊词
+- 挑战和行动数量都要精简（2-4个挑战，每个1-2条行动）
 ''';
 
     try {
@@ -1000,7 +1316,16 @@ $presetContext
           final actions = <String>[];
           if (entry.value is List) {
             for (final a in entry.value) {
-              if (a is String && a.isNotEmpty) actions.add(a);
+              if (a is String && a.isNotEmpty) {
+                // 验证：每个行动必须包含数字，否则尝试补充或跳过
+                final quantifiedAction = _quantifyAction(a);
+                if (quantifiedAction != null) {
+                  actions.add(quantifiedAction);
+                } else {
+                  // 如果无法量化，保留原始但标记（降级使用）
+                  debugPrint('[PetMemory] 行动无法量化，跳过: $a');
+                }
+              }
             }
           }
           if (actions.isNotEmpty) actionsMap[entry.key] = actions;
@@ -1012,6 +1337,60 @@ $presetContext
       debugPrint('PetService _parseDecompositionResponse error: $e');
       return DecompositionResult(monthlyChallenges: [], dailyActionsPerChallenge: {});
     }
+  }
+
+  /// 清理文本中的无效 Unicode 字符
+  /// 将无法显示的字符替换为安全的替代符号
+  String _sanitizeText(String text) {
+    // 移除可能导致渲染问题的控制字符（保留换行和Tab）
+    text = text.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]'), '');
+
+    // 将无法识别的 Unicode 替代字符替换为友好符号
+    text = text.replaceAll('\uFFFD', '~');
+    text = text.replaceAll('\u{FFFD}', '~');
+
+    // 清理首尾空白（但保留中间的空格格式）
+    text = text.trim();
+
+    // 移除连续的纯空格（替换为单个空格）
+    text = text.replaceAll(RegExp(r' {2,}'), ' ');
+
+    return text;
+  }
+
+  /// 量化行动验证：如果行动不含数字，尝试补充；无法量化则返回null
+  /// 这是一个后处理保障，确保LLM输出的行动都有量化指标
+  String? _quantifyAction(String action) {
+    // 检查是否包含阿拉伯数字
+    final hasNumber = RegExp(r'\d').hasMatch(action);
+    if (hasNumber) return action;
+
+    // 尝试智能补充数量
+    final lower = action.toLowerCase();
+
+    if (lower.contains('读') || lower.contains('看书') || lower.contains('阅读')) {
+      return action.contains('每天') || action.contains('每天') == false
+          ? '$action（每天10页）'
+          : '${action}10页';
+    }
+    if (lower.contains('背') && (lower.contains('单词') || lower.contains('词') || lower.contains('名词'))) {
+      return action.contains('每天') ? '$action，每天20个' : '每天背20个相关词汇';
+    }
+    if (lower.contains('做题') || lower.contains('练习') || lower.contains('题')) {
+      return action.contains('每天') ? '$action，每天10道' : '每天做10道题';
+    }
+    if (lower.contains('跑') || lower.contains('运动') || lower.contains('健身')) {
+      return action.contains('每天') ? '$action，每天30分钟' : '每天运动30分钟';
+    }
+    if (lower.contains('听') || lower.contains('听力')) {
+      return action.contains('每天') ? '$action，每天15分钟' : '每天听15分钟';
+    }
+    if (lower.contains('写') || lower.contains('写作') || lower.contains('日记')) {
+      return action.contains('每天') ? '$action，每天300字' : '每天写300字';
+    }
+
+    // 无法自动量化，返回null跳过该行动
+    return null;
   }
 
   String _formatDate(DateTime d) =>
@@ -1079,5 +1458,105 @@ $presetContext
     final cleanPlan = plan.startsWith('我就') ? plan.substring(2).trim() : plan;
 
     return '如果$cleanObstacle，我就$cleanPlan';
+  }
+
+  // ====== 激励有效性学习 ======
+
+  /// 记录一次激励发送（次日打卡时评估）
+  Future<void> recordEncouragement(EncouragementType type, String text) async {
+    final record = EncouragementRecord(
+      id: '${DateTime.now().millisecondsSinceEpoch}',
+      type: type,
+      text: text,
+      sentAt: DateTime.now(),
+    );
+    _encouragementRecords.add(record);
+
+    // 只保留最近14天记录，防止无限增长
+    final cutoff = DateTime.now().subtract(const Duration(days: 14));
+    _encouragementRecords = _encouragementRecords
+        .where((r) => r.sentAt.isAfter(cutoff))
+        .toList();
+
+    await _saveEncouragementRecords();
+    debugPrint('[Encouragement] Recorded: ${type.label} — "$text"');
+  }
+
+  /// 评估激励有效性：用户在昨天发送激励后，今天是否打卡了
+  /// 每天打卡时调用，评估最近一次激励
+  Future<void> evaluateEncouragementEffectiveness({required bool checkedInToday}) async {
+    final now = DateTime.now();
+    final yesterday = now.subtract(const Duration(days: 1));
+    final yesterdayStart = DateTime(yesterday.year, yesterday.month, yesterday.day);
+    final yesterdayEnd = yesterdayStart.add(const Duration(days: 1));
+
+    // 找到昨天发送的激励
+    final yesterdayRecords = _encouragementRecords.where((r) =>
+        r.sentAt.isAfter(yesterdayStart) && r.sentAt.isBefore(yesterdayEnd) &&
+        r.ledToCheckIn == null).toList();
+
+    if (yesterdayRecords.isEmpty) return;
+
+    // 取最近一条
+    final latest = yesterdayRecords.last;
+
+    // 更新该激励的评估结果
+    final updated = latest.copyWith(ledToCheckIn: checkedInToday);
+
+    // 在记录中替换
+    final idx = _encouragementRecords.indexWhere((r) => r.id == latest.id);
+    if (idx != -1) {
+      _encouragementRecords[idx] = updated;
+    }
+
+    // 更新 EMA 分数
+    final typeIdx = updated.type.index;
+    final current = _encouragementStats[typeIdx] ??
+        EncouragementStats(type: updated.type);
+    _encouragementStats[typeIdx] = current.recordAttempt(success: checkedInToday);
+
+    await _saveEncouragementRecords();
+    await _saveEncouragementStats();
+    debugPrint('[Encouragement] Evaluated ${updated.type.label}: '
+        'checkIn=$checkedInToday, eff=${_encouragementStats[typeIdx]!.effectiveness.toStringAsFixed(2)}');
+  }
+
+  /// 获取最有效的激励类型列表（降序）
+  List<EncouragementType> getEffectiveTypes({int limit = 3}) {
+    final sorted = EncouragementType.values.toList()
+      ..sort((a, b) {
+        final aEff = _encouragementStats[a.index]?.effectiveness ?? 0.5;
+        final bEff = _encouragementStats[b.index]?.effectiveness ?? 0.5;
+        return bEff.compareTo(aEff);
+      });
+    return sorted.take(limit).toList();
+  }
+
+  /// 构建激励偏好上下文（给 LLM 看的提示）
+  String buildEncouragementContext() {
+    final effective = getEffectiveTypes(limit: 3);
+    if (effective.isEmpty) return '';
+
+    final buf = StringBuffer();
+    buf.writeln('【激励有效性参考】（以下话术风格效果较好，可优先使用）');
+    for (final type in effective) {
+      final stats = _encouragementStats[type.index];
+      final attempts = stats?.attempts ?? 0;
+      final eff = stats?.effectiveness ?? 0.5;
+      buf.writeln('  ${type.emoji} ${type.label} — 历史成功率 ${(eff * 100).round()}%（$attempts次数据）');
+    }
+    return buf.toString();
+  }
+
+  /// 持久化激励记录
+  Future<void> _saveEncouragementRecords() async {
+    final storage = await StorageService.getInstance();
+    await storage.saveEncouragementRecords(_encouragementRecords);
+  }
+
+  /// 持久化激励统计
+  Future<void> _saveEncouragementStats() async {
+    final storage = await StorageService.getInstance();
+    await storage.saveEncouragementStats(_encouragementStats);
   }
 }

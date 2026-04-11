@@ -59,7 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
     'psychology': Icons.psychology,
     'celebration': Icons.celebration,
     'thumb_up': Icons.thumb_up,
-    'sentiment_relieved': Icons.sentiment_relieved,
+    'sentiment_relieved': Icons.sentiment_satisfied,
     'auto_awesome': Icons.auto_awesome,
     'pets': Icons.pets,
     'whatshot': Icons.whatshot,
@@ -229,6 +229,9 @@ class _HomeScreenState extends State<HomeScreen> {
     _checkIns.add(checkIn);
     await _storage.saveCheckIns(_checkIns);
 
+    // 计算新连续天数（提前定义，供多处使用）
+    final newStreak = _stats.streak + 1;
+
     // 打卡奖励宠物币
     await _storage.addPetCoins(5, PetCoinReason.dailyCheckIn);
 
@@ -243,6 +246,21 @@ class _HomeScreenState extends State<HomeScreen> {
         totalCheckIns: _stats.totalCheckIns + 1,
       );
     }
+
+    // 打卡后心情+3
+    final currentMood = _storage.getPetMoodValue();
+    await _storage.savePetMoodValue(currentMood + 3);
+
+    // 更新 GetX 心情控制器
+    if (Get.isRegistered<PetMoodController>()) {
+      PetMoodController.to.onCheckIn(
+        streak: newStreak,
+        totalCheckIns: _stats.totalCheckIns + 1,
+      );
+    }
+
+    // 激励有效性学习：用户打卡了
+    PetPushService.instance.onCheckIn(checkedInToday: true);
 
     // 更新月度 Boss HP
     final boss = _storage.getMonthlyBoss();
@@ -264,9 +282,6 @@ class _HomeScreenState extends State<HomeScreen> {
       totalLevers: _todayLevers.length,
       currentStreak: _stats.streak,
     );
-
-    // 计算新连续天数
-    final newStreak = _stats.streak + 1;
 
     // 连续打卡7天奖励
     if (newStreak == 7) {

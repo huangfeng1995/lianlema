@@ -66,7 +66,7 @@ class ConfettiCelebration extends StatefulWidget {
 class _ConfettiCelebrationState extends State<ConfettiCelebration>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late List<ConfettiParticle> _particles;
+  List<ConfettiParticle> _particles = [];
   final Random _random = Random();
   Size _screenSize = Size.zero;
 

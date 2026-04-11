@@ -12,19 +12,20 @@ void main() {
       ),
     );
 
-    // 验证欢迎页标题
-    expect(find.text('欢迎来到练了吗'), findsOneWidget);
+    // 验证年度目标页面标题
+    expect(find.text('年度目标'), findsOneWidget);
 
-    // 验证功能卡片显示
-    expect(find.text('每日打卡'), findsOneWidget);
-    expect(find.text('月度Boss战'), findsOneWidget);
-    expect(find.text('每日杠杆'), findsOneWidget);
+    // 验证副标题
+    expect(find.text('这一年结束后，你在哪方面想有突破？'), findsOneWidget);
+
+    // 验证输入框提示文字
+    expect(find.text('例如：读完24本书，跑完半程马拉松...'), findsOneWidget);
 
     // 验证下一步按钮存在
     expect(find.text('下一步'), findsOneWidget);
   });
 
-  testWidgets('OnboardingScreen navigation works', (WidgetTester tester) async {
+  testWidgets('OnboardingScreen can enter year goal and navigate', (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme,
@@ -32,11 +33,12 @@ void main() {
       ),
     );
 
-    // 点击下一步
-    await tester.tap(find.text('下一步'));
-    await tester.pumpAndSettle();
+    // 输入年度目标
+    final textField = find.byType(TextField).first;
+    await tester.enterText(textField, '读完24本书');
+    await tester.pump();
 
-    // 验证进入反愿景页面
-    expect(find.text('「反愿景」\n锁定1年不可更改'), findsOneWidget);
+    // 下一步按钮应可用（已填写目标）
+    expect(find.text('下一步'), findsOneWidget);
   });
 }

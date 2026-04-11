@@ -77,7 +77,7 @@ class PetActionService {
     const milestones = [7, 30, 100];
     final streak = (ctx['streak'] as int?) ?? 0;
     for (final m in milestones) {
-      if ((streak - m).abs() <= 2 && streak < m) return true;
+      if (streak != m && (streak - m).abs() <= 2) return true;
     }
     return false;
   }

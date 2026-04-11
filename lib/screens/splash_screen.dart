@@ -87,12 +87,9 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                     ],
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image(
-                      image: const AssetImage('assets/images/icon/paw_icon.png'),
-                      fit: BoxFit.cover,
-                    ),
+                  child: Image(
+                    image: const AssetImage('assets/images/icon/splash_icon.png'),
+                    fit: BoxFit.contain,
                   ),
                 ),
                 const Spacer(flex: 2),

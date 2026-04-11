@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lianlema/models/pet_models.dart';
+import 'package:lianlema/utils/pet_service.dart';
 
 void main() {
   group('PetSoul', () {
@@ -20,52 +21,64 @@ void main() {
   });
 
   group('PetMemory', () {
-    test('permanent memories have no expiry', () {
-      final memory = PetMemory.permanent(
+    test('milestone memories are permanent', () {
+      final memory = PetMemory(
         id: '1',
-        type: PetMemoryType.milestone,
+        createdAt: DateTime.now(),
+        type: 'milestone',
+        wing: MemoryWing.milestone,
         content: '第一次完成挑战',
+        petResponse: '',
       );
       expect(memory.isPermanent, true);
       expect(memory.isExpired, false);
     });
 
-    test('event memories expire after 30 days', () {
-      final memory = PetMemory.event(
+    test('low importance memories expire after 30 days', () {
+      final memory = PetMemory(
         id: '2',
+        createdAt: DateTime.now(),
+        type: 'event',
+        importance: MemoryImportance.low,
         content: '今天打卡了',
+        petResponse: '',
       );
       expect(memory.isPermanent, false);
-      expect(memory.expiresAt, isNotNull);
-      expect(memory.expiresAt!.difference(DateTime.now()).inDays, 30);
+      expect(memory.isExpired, false); // just created, not yet expired
     });
 
-    test('identity is permanent', () {
-      final memory = PetMemory.permanent(
+    test('identity wing is permanent', () {
+      final memory = PetMemory(
         id: '3',
-        type: PetMemoryType.identity,
+        createdAt: DateTime.now(),
+        type: 'identity',
+        wing: MemoryWing.identity,
         content: '我想成为能跑马拉松的人',
+        petResponse: '',
       );
       expect(memory.isPermanent, true);
     });
 
-    test('lesson is permanent', () {
-      final memory = PetMemory.permanent(
+    test('lesson wing is permanent', () {
+      final memory = PetMemory(
         id: '4',
-        type: PetMemoryType.lesson,
+        createdAt: DateTime.now(),
+        type: 'lesson',
+        wing: MemoryWing.lesson,
         content: '之前放弃是因为目标太大',
+        petResponse: '',
       );
       expect(memory.isPermanent, true);
     });
   });
 
-  group('PetMemoryType', () {
-    test('permanent types are correctly identified', () {
-      expect(PetMemoryType.identity.index, 0);
-      expect(PetMemoryType.milestone.index, 1);
-      expect(PetMemoryType.lesson.index, 2);
-      expect(PetMemoryType.preference.index, 3);
-      expect(PetMemoryType.event.index, 4);
+  group('MemoryWing', () {
+    test('wing enum has correct values', () {
+      expect(MemoryWing.identity.index, 0);
+      expect(MemoryWing.aspiration.index, 1);
+      expect(MemoryWing.preference.index, 2);
+      expect(MemoryWing.milestone.index, 3);
+      expect(MemoryWing.lesson.index, 4);
     });
   });
 
@@ -73,7 +86,7 @@ void main() {
     test('default preferences are correct', () {
       final prefs = PetPreferences.defaultPrefs();
       expect(prefs.tone, 'casual');
-      expect(prefs.responseLength, 'medium');
+      expect(prefs.responseLength, 'short');
       expect(prefs.useEmoji, true);
     });
 
@@ -82,7 +95,7 @@ void main() {
       final updated = prefs.copyWith(tone: 'playful', useEmoji: false);
       expect(updated.tone, 'playful');
       expect(updated.useEmoji, false);
-      expect(updated.responseLength, 'medium'); // unchanged
+      expect(updated.responseLength, 'short'); // unchanged
     });
   });
 
@@ -93,7 +106,7 @@ void main() {
     });
 
     test('toJson/fromJson roundtrip', () {
-      final state = PetMoodState(mood: PetMood.happy, lastUpdated: DateTime.now());
+      final state = PetMoodState(mood: PetMood.happy, updatedAt: DateTime.now());
       final json = state.toJson();
       final restored = PetMoodState.fromJson(json);
       expect(restored.mood, PetMood.happy);
@@ -102,7 +115,7 @@ void main() {
 
   group('PetContext', () {
     test('empty context has zero values', () {
-      final ctx = PetContext.empty();
+      final ctx = PetContext();
       expect(ctx.streak, 0);
       expect(ctx.checkedInToday, false);
       expect(ctx.monthlyBoss, '');

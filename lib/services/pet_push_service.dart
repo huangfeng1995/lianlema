@@ -43,6 +43,7 @@ class PetPush {
 /// 1. 每日推送队列生成
 /// 2. 权重动态调整
 /// 3. 行为反馈记录
+/// 4. 激励有效性学习
 class PetPushService {
   static final PetPushService instance = PetPushService._();
   PetPushService._();
@@ -53,6 +54,52 @@ class PetPushService {
   static const int _decayDays = 14; // streakReminder 衰减周期
 
   Random _random = Random();
+
+  /// 推断 PushType 对应的激励类型
+  EncouragementType _inferEncouragementType(PushType type, String body) {
+    final lower = body.toLowerCase();
+    if (lower.contains('数据') || lower.contains('%') || lower.contains('率')) {
+      return EncouragementType.dataDriven;
+    }
+    if (lower.contains('厉害') || lower.contains('太棒') || lower.contains('加油') ||
+        lower.contains('坚持') || lower.contains('进步')) {
+      return EncouragementType.encouragement;
+    }
+    if (lower.contains('想') || lower.contains('陪') || lower.contains('理解') ||
+        lower.contains('休息')) {
+      return EncouragementType.warmCompanion;
+    }
+    if (lower.contains('？') && lower.length < 40) {
+      return EncouragementType.silentSupport;
+    }
+    switch (type) {
+      case PushType.streakReminder:
+        return EncouragementType.encouragement;
+      case PushType.milestoneApproaching:
+        return EncouragementType.encouragement;
+      case PushType.idleWarning:
+        return EncouragementType.warmCompanion;
+      case PushType.weeklySummary:
+        return EncouragementType.dataDriven;
+      case PushType.challengeProgress:
+        return EncouragementType.dataDriven;
+      case PushType.obstacleGuidance:
+        return EncouragementType.warmCompanion;
+    }
+  }
+
+  /// 发送推送时调用：记录激励类型供后续评估
+  Future<void> onPushSent(PetPush push) async {
+    final type = _inferEncouragementType(push.type, push.body);
+    await PetService.instance.recordEncouragement(type, push.body);
+  }
+
+  /// 用户打卡时调用：评估昨日激励的有效性
+  Future<void> onCheckIn({required bool checkedInToday}) async {
+    await PetService.instance.evaluateEncouragementEffectiveness(
+      checkedInToday: checkedInToday,
+    );
+  }
 
   /// 生成今日推送队列（基于用户上下文）
   Future<List<PetPush>> generateDailyPushes(PetContext ctx) async {

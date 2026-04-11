@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../models/models.dart';
 import '../utils/storage_service.dart';
 import '../utils/notification_service.dart';
+import '../utils/pet_service.dart';
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
@@ -20,6 +21,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
   String _antiVision = '';
   String _vision = '';
+
+  // AI 拆解状态
+  bool _isDecomposing = false;
 
   // 专注提醒数据
   List<Map<String, dynamic>> _focusReminders = [];
@@ -358,13 +362,24 @@ class _GoalsScreenState extends State<GoalsScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.cardBackground,
         title: const Text('设置本月挑战'),
-        content: TextField(
-          controller: controller,
-          maxLines: 3,
-          decoration: const InputDecoration(
-            hintText: '例如：每天运动30分钟',
-            border: OutlineInputBorder(),
-          ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: controller,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                hintText: '例如：每天运动30分钟',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '保存后可点击「AI智能拆解」生成每日行动',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary.withValues(alpha: 0.7)),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -374,8 +389,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
           ElevatedButton(
             onPressed: () {
               final now = DateTime.now();
+              final newContent = controller.text.trim();
               _monthlyBoss = MonthlyBoss(
-                content: controller.text,
+                content: newContent,
                 month: now.month,
                 year: now.year,
                 totalDays: appDateDaysInMonth(now),
@@ -389,6 +405,107 @@ class _GoalsScreenState extends State<GoalsScreen> {
         ],
       ),
     );
+  }
+
+  /// 调用 AI 智能拆解：根据月度挑战生成每日行动
+  Future<void> _decomposeBossWithAI() async {
+    if (_monthlyBoss == null || _monthlyBoss!.content.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('请先设置本月挑战目标'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isDecomposing = true);
+
+    try {
+      final result = await PetService.instance
+          .decomposeGoals([_monthlyBoss!.content])
+          .timeout(const Duration(seconds: 15));
+
+      if (result.monthlyChallenges.isNotEmpty || result.dailyActionsPerChallenge.isNotEmpty) {
+        // 合并所有挑战的每日行动
+        final allActions = <String>[];
+        for (final actions in result.dailyActionsPerChallenge.values) {
+          allActions.addAll(actions);
+        }
+
+        if (allActions.isNotEmpty) {
+          setState(() {
+            // 更新每日杠杆
+            _dailyLevers = allActions.take(5).map((a) => {
+              'obstacle': '',
+              'plan': a,
+            }).toList();
+            // 确保至少有3个槽位
+            while (_dailyLevers.length < 3) {
+              _dailyLevers.add({'obstacle': '', 'plan': ''});
+            }
+          });
+
+          // 自动保存
+          await _saveDailyLevers();
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('已生成 ${allActions.take(5).length} 条每日行动 ✨'),
+                backgroundColor: AppColors.success,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('拆解结果为空，请手动设置每日行动'),
+                backgroundColor: Colors.orange,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('拆解超时，请手动设置每日行动'),
+              backgroundColor: Colors.orange,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('拆解失败: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDecomposing = false);
+    }
+  }
+
+  Future<void> _saveDailyLevers() async {
+    // 过滤掉空的杠杆
+    final validLevers = _dailyLevers.where((l) => (l['plan'] ?? '').trim().isNotEmpty).toList();
+    if (validLevers.isEmpty) return;
+
+    await _storage.saveDailyLevers(validLevers);
+
+    // 同时更新 dailyActions
+    final dailyActions = validLevers.map((l) => l['plan'] ?? '').toList();
+    await _storage.saveDailyActions(dailyActions);
   }
 
   Widget _buildDailyLeversCard() {
@@ -530,6 +647,51 @@ class _GoalsScreenState extends State<GoalsScreen> {
               ),
             );
           }),
+          // AI 智能拆解按钮
+          if (!_isEditing && _monthlyBoss != null && _monthlyBoss!.content.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: _isDecomposing ? null : _decomposeBossWithAI,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primary.withValues(alpha: 0.1),
+                      const Color(0xFFFF6B35).withValues(alpha: 0.1),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: const Color(0xFFFF6B35).withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (_isDecomposing)
+                      const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF6B35)),
+                      )
+                    else
+                      const Icon(Icons.auto_awesome, size: 14, color: Color(0xFFFF6B35)),
+                    const SizedBox(width: 6),
+                    Text(
+                      _isDecomposing ? 'AI 拆解中...' : 'AI 智能拆解',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFFF6B35),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

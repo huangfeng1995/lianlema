@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lianlema/services/pet_action_service.dart';
-import 'package:lianlema/models/pet_models.dart';
 
 void main() {
   group('PetActionService - 主动触发判断（无需storage）', () {
@@ -57,20 +56,13 @@ void main() {
   });
 }
 
-PetContext _makeCtx({
+Map<String, dynamic> _makeCtx({
   int streak = 0,
   int totalCheckIns = 0,
   bool checkedInToday = false,
-}) => PetContext(
-  streak: streak,
-  totalCheckIns: totalCheckIns,
-  checkedInToday: checkedInToday,
-  antiVision: '',
-  vision: '',
-  yearGoal: '',
-  monthlyBoss: '',
-  dailyLevers: [],
-  constraints: [],
-  currentBossHp: 0,
-  currentBossTotal: 0,
-);
+}) =>
+    {
+      'streak': streak,
+      'totalCheckIns': totalCheckIns,
+      'checkedInToday': checkedInToday,
+    };

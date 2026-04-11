@@ -93,17 +93,23 @@ class _BossHpBarState extends State<BossHpBar> with SingleTickerProviderStateMix
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '${_getMonthName(widget.currentMonth)}：${widget.bossName}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+              Flexible(
+                child: Text(
+                  widget.bossName.isNotEmpty
+                      ? '${_getMonthName(widget.currentMonth)}：${widget.bossName}'
+                      : '${_getMonthName(widget.currentMonth)}：设置本月挑战',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
               Text(
                 isDefeated
-                    ? '✅ Boss 已击败'
+                    ? '✅ 已击败'
                     : 'HP ${widget.currentHp}/${widget.maxHp}',
                 style: TextStyle(
                   color: isDefeated
