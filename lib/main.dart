@@ -1,11 +1,14 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/pet_screen.dart';
 import 'utils/notification_service.dart';
 import 'utils/storage_service.dart';
+import 'controllers/pet_mood_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +44,14 @@ void main() async {
 
 // GlobalKey 供 SettingsScreen 触发主题重建
 final GlobalKey<_LianlemaAppState> appKey = GlobalKey<_LianlemaAppState>();
+
+/// GetX 全局依赖绑定
+class AppBindings extends Bindings {
+  @override
+  void dependencies() {
+    Get.put(PetMoodController(), permanent: true);
+  }
+}
 
 class LianlemaApp extends StatefulWidget {
   final String? initialPage;
@@ -79,13 +90,14 @@ class _LianlemaAppState extends State<LianlemaApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return GetMaterialApp(
       key: appKey,
       title: '练了吗',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: _themeMode,
+      initialBinding: AppBindings(),
       home: SplashScreen(initialPage: widget.initialPage),
       routes: {
         '/main': (context) => MainScreen(initialPage: widget.initialPage),

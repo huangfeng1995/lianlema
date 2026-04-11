@@ -93,6 +93,7 @@ class StorageService {
   static const String _keyPetType = 'pet_type'; // 宠物类型 id
   static const String _keyPetAppearanceLevel = 'pet_appearance_level'; // 外观等级 1-5
   static const String _keyPetMoodValue = 'pet_mood_value'; // 心情数值 0-100
+  static const String _keyPetPersonality = 'pet_personality'; // 大五人格
 
   // ====== 宠物名字 ======
   static const String defaultPetName = '炭炭';
@@ -238,6 +239,17 @@ class StorageService {
 
   Future<void> savePetMoodValue(int value) async {
     await _prefs.setInt(_keyPetMoodValue, value.clamp(0, 100));
+  }
+
+  // ====== 大五人格 ======
+  Future<void> savePetPersonality(PetPersonality personality) async {
+    await _prefs.setString(_keyPetPersonality, jsonEncode(personality.toJson()));
+  }
+
+  PetPersonality getPetPersonality() {
+    final str = _prefs.getString(_keyPetPersonality);
+    if (str == null) return PetPersonality.random();
+    return PetPersonality.fromJson(jsonDecode(str));
   }
 
   /// 消耗宠物币（余额不足时抛出异常）
@@ -852,11 +864,14 @@ Future<void> saveOnboardingData({
     await setOnboardingComplete(true);
     await saveBadges(_defaultBadges);
     await saveLastReviewMonth('${now.year}-${now.month.toString().padLeft(2, '0')}');
-    // 首次领养宠物，记录领养日期，随机分配宠物类型
+    // 首次领养宠物，记录领养日期，随机分配宠物类型，生成性格
     if (getPetAdoptDate() == null) {
       await savePetAdoptDate(now);
       final assignedPet = assignRandomPet();
       await savePetType(assignedPet.type);
+      // 生成大五人格并保存
+      final personality = PetPersonality.random();
+      await savePetPersonality(personality);
       final soul = getPetSoul();
       await savePetSoul(PetSoul(
         name: soul.name,

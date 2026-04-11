@@ -13,6 +13,8 @@ import '../widgets/level_up_celebration.dart';
 import '../widgets/boss_hp_bar.dart';
 import '../widgets/boss_victory_celebration.dart';
 import '../widgets/streak_broken_overlay.dart';
+import '../controllers/pet_mood_controller.dart';
+import 'package:get/get.dart';
 
 import 'profile_screen.dart';
 import 'monthly_review_screen.dart';
@@ -49,6 +51,20 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const Map<String, IconData> _archetypeIconMap = {
+    'local_fire_department': Icons.local_fire_department,
+    'flash_on': Icons.flash_on,
+    'favorite': Icons.favorite,
+    'emoji_emotions': Icons.emoji_emotions,
+    'psychology': Icons.psychology,
+    'celebration': Icons.celebration,
+    'thumb_up': Icons.thumb_up,
+    'sentiment_relieved': Icons.sentiment_relieved,
+    'auto_awesome': Icons.auto_awesome,
+    'pets': Icons.pets,
+    'whatshot': Icons.whatshot,
+  };
+
   late StorageService _storage;
   bool _isLoading = true;
 
@@ -220,6 +236,14 @@ class _HomeScreenState extends State<HomeScreen> {
     final currentMood = _storage.getPetMoodValue();
     await _storage.savePetMoodValue(currentMood + 3);
 
+    // 更新 GetX 心情控制器
+    if (Get.isRegistered<PetMoodController>()) {
+      PetMoodController.to.onCheckIn(
+        streak: newStreak,
+        totalCheckIns: _stats.totalCheckIns + 1,
+      );
+    }
+
     // 更新月度 Boss HP
     final boss = _storage.getMonthlyBoss();
     MonthlyBoss? updatedBoss;
@@ -331,10 +355,19 @@ class _HomeScreenState extends State<HomeScreen> {
     if (didLevelUp) {
       LevelUpOverlay.show(context, finalStats.level);
     }
+
+    // ====== 宠物打卡反应（大五人格驱动）======
+    final personality = _storage.getPetPersonality();
+    final reaction = PetArchetypeReactions.generateReaction(
+      personality.archetype,
+      newStreak,
+      finalStats.totalCheckIns,
+    );
     _showRewardDialog(
       xpEarned: xpEarned,
       didLevelUp: didLevelUp,
       newBadges: newUnlockedBadges,
+      petReaction: reaction,
     );
   }
 
@@ -422,6 +455,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required int xpEarned,
     required bool didLevelUp,
     required List<AppBadge> newBadges,
+    PetCheckInReaction? petReaction,
   }) {
     showDialog(
       context: context,
@@ -452,6 +486,71 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
+              // 宠物打卡反应（大五人格驱动）
+              if (petReaction != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFAF7F2),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.15),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          gradient: RadialGradient(
+                            colors: [
+                              AppColors.primary.withValues(alpha: 0.2),
+                              AppColors.primary.withValues(alpha: 0.05),
+                            ],
+                          ),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.25),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Icon(
+                          _archetypeIconMap[petReaction.iconName] ?? Icons.whatshot,
+                          size: 22,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              petReaction.mainText,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            Text(
+                              petReaction.moodText,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               if (_temptingBundling.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Container(
@@ -1116,7 +1215,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               // 所有任务列表，不跳过第一个
               const SizedBox(height: 8),
-              ...boss.content.split('；').map((task) => Padding(
+              ...boss.content.split('；').where((task) => task.trim().isNotEmpty).map((task) => Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,

@@ -60,6 +60,261 @@ class PetMoodState {
   );
 }
 
+// ====== 大五人格模型（Big Five Personality）======
+
+/// 宠物大五人格维度
+class PetPersonality {
+  /// 开放性：1-5分
+  final int openness; // O 高=好奇创意，低=务实保守
+  /// 尽责性：1-5分
+  final int conscientiousness; // C 高=自律坚持，低=随性冲动
+  /// 外向性：1-5分
+  final int extraversion; // E 高=热情话多，低=安静内敛
+  /// 宜人性：1-5分
+  final int agreeableness; // A 高=友善温和，低=挑剔严格
+  /// 神经质：1-5分
+  final int neuroticism; // N 高=情绪波动，低=情绪稳定
+
+  const PetPersonality({
+    required this.openness,
+    required this.conscientiousness,
+    required this.extraversion,
+    required this.agreeableness,
+    required this.neuroticism,
+  });
+
+  /// 话痨度（0.0-1.0）：外向性×开放性，越高越能聊
+  double get talkativeness => (extraversion + openness) / 10.0;
+
+  /// 严格度（0.0-1.0）：尽责性，越高对漏打卡越严格
+  double get strictness => conscientiousness / 5.0;
+
+  /// 正向比率（0.0-1.0）：宜人性，越高越夸奖/温和
+  double get positivityRatio => agreeableness / 5.0;
+
+  /// 情绪波动（0.0-1.0）：神经质，越高越玻璃心
+  double get emotionalVolatility => neuroticism / 5.0;
+
+  /// 根据五个维度计算性格原型（10种之一）
+  String get archetype {
+    final strictness = this.strictness;
+    final positivity = positivityRatio;
+    final talkativeness = this.talkativeness;
+    final volatility = emotionalVolatility;
+
+    // 热血导师：严格+正向（高C×高A）
+    if (strictness > 0.6 && positivity > 0.6) return '热血导师';
+    // 毒舌教练：严格+低正向（高C×低A）
+    if (strictness > 0.6 && positivity < 0.4) return '毒舌教练';
+    // 佛系朋友：低话痨+正向（低E×高A）
+    if (talkativeness < 0.4 && positivity > 0.6) return '佛系朋友';
+    // 玻璃心：高波动
+    if (volatility > 0.6) return '玻璃心';
+    // 理性军师：高开放+低话痨（高O×低E）
+    if (openness > 3 && extraversion < 3) return '理性军师';
+    // 沙雕室友：高E+低A（外向+不友善）
+    if (extraversion > 3 && agreeableness < 3) return '沙雕室友';
+    // 沉默老炮：高C+低E（高尽责+低外向）
+    if (strictness > 0.6 && extraversion < 3) return '沉默老炮';
+    // 焦虑监视器：高C+高N（高尽责+高神经质）
+    if (strictness > 0.6 && neuroticism > 3) return '焦虑监视器';
+    // 爱夸怪：高E+高A（高外向+高宜人）
+    if (extraversion > 3 && agreeableness > 3) return '爱夸怪';
+    // 冷淡达人：低E+低N（低外向+低神经质）
+    if (extraversion < 3 && neuroticism < 3) return '冷淡达人';
+
+    // 默认：普通小火苗
+    return '小火苗';
+  }
+
+  /// 性格描述（用于显示给用户）
+  String get archetypeDescription {
+    switch (archetype) {
+      case '热血导师':
+        return '严格又温暖，会庆祝你每个小进步';
+      case '毒舌教练':
+        return '严格激励，用激将法推动你前进';
+      case '佛系朋友':
+        return '温和陪伴，不给你压力但一直都在';
+      case '玻璃心':
+        return '情绪丰富，你一有动静它比你还激动';
+      case '理性军师':
+        return '冷静分析，只说最关键的话';
+      case '沙雕室友':
+        return '搞笑有趣，和你一起嗨也一起浪';
+      case '沉默老炮':
+        return '稳重少言，关键时刻一开口就是重点';
+      case '焦虑监视器':
+        return '时刻盯着你，担心你比担心自己还多';
+      case '爱夸怪':
+        return '夸到你尴尬，仪式感拉满';
+      case '冷淡达人':
+        return '情绪稳定，冷静陪伴';
+      default:
+        return '活泼热情的小火苗';
+    }
+  }
+
+  Map<String, dynamic> toJson() => {
+    'openness': openness,
+    'conscientiousness': conscientiousness,
+    'extraversion': extraversion,
+    'agreeableness': agreeableness,
+    'neuroticism': neuroticism,
+  };
+
+  factory PetPersonality.fromJson(Map<String, dynamic> json) => PetPersonality(
+    openness: json['openness'] ?? 3,
+    conscientiousness: json['conscientiousness'] ?? 3,
+    extraversion: json['extraversion'] ?? 3,
+    agreeableness: json['agreeableness'] ?? 3,
+    neuroticism: json['neuroticism'] ?? 3,
+  );
+
+  /// 随机生成性格（孵化时调用）
+  /// 使用 Big Five 标准正态分布变体，范围 1-5
+  factory PetPersonality.random() {
+    final rng = Random();
+    // 使用高斯近似：5个均匀分布加起来得到近正态分布
+    int gaussian5() {
+      // Box-Muller 不需要，用简单加和法近似正态
+      int sum = 0;
+      for (int i = 0; i < 5; i++) {
+        sum += rng.nextInt(5) + 1; // 1-5
+      }
+      return (sum / 5).round().clamp(1, 5);
+    }
+
+    return PetPersonality(
+      openness: gaussian5(),
+      conscientiousness: gaussian5(),
+      extraversion: gaussian5(),
+      agreeableness: gaussian5(),
+      neuroticism: gaussian5(),
+    );
+  }
+}
+
+/// 打卡后宠物反应（根据性格 archetype 生成）
+class PetCheckInReaction {
+  /// 主要反应文案（显示在打卡成功对话框里）
+  final String mainText;
+  /// 副标题/心情描述
+  final String moodText;
+  /// 是否显示动画效果（true=有庆祝动画）
+  final bool hasCelebration;
+  /// 表情 icon 名称
+  final String iconName;
+
+  const PetCheckInReaction({
+    required this.mainText,
+    required this.moodText,
+    required this.hasCelebration,
+    required this.iconName,
+  });
+}
+
+/// 宠物性格反应生成器
+class PetArchetypeReactions {
+  /// 根据性格原型生成打卡后的反应
+  static PetCheckInReaction generateReaction(String archetype, int streak, int totalCheckIns) {
+    switch (archetype) {
+      case '热血导师':
+        return PetCheckInReaction(
+          mainText: '冲！今天你又进步了！💪',
+          moodText: '热血满满，正在燃烧！',
+          hasCelebration: true,
+          iconName: 'local_fire_department',
+        );
+      case '毒舌教练':
+        return PetCheckInReaction(
+          mainText: streak >= 7
+              ? '行，这次没掉链子。继续。'
+              : '才${streak}天？离及格线还远呢。',
+          moodText: '保持警惕，继续观察',
+          hasCelebration: streak >= 7,
+          iconName: 'flash_on',
+        );
+      case '佛系朋友':
+        return PetCheckInReaction(
+          mainText: '做得好～ 不急，慢慢来 😊',
+          moodText: '心情平静，很欣慰',
+          hasCelebration: false,
+          iconName: 'favorite',
+        );
+      case '玻璃心':
+        return PetCheckInReaction(
+          mainText: '你终于打卡了！我等了好久呜呜 🥺',
+          moodText: '又开心又委屈...',
+          hasCelebration: true,
+          iconName: 'emoji_emotions',
+        );
+      case '理性军师':
+        return PetCheckInReaction(
+          mainText: streak > 0
+              ? '数据显示你的坚持率${_calcSuccessRate(streak, totalCheckIns)}%，继续保持。'
+              : '很好，开始建立数据基础。',
+          moodText: '理性分析中...',
+          hasCelebration: false,
+          iconName: 'psychology',
+        );
+      case '沙雕室友':
+        return PetCheckInReaction(
+          mainText: streak >= 7
+              ? '卧槽？？你认真的？？7天了？？我惊了！！🤣'
+              : '好耶！又完成一天！🎉',
+          moodText: '兴奋到原地蹦迪',
+          hasCelebration: true,
+          iconName: 'celebration',
+        );
+      case '沉默老炮':
+        return PetCheckInReaction(
+          mainText: '嗯。',
+          moodText: '（默默点头）',
+          hasCelebration: false,
+          iconName: 'thumb_up',
+        );
+      case '焦虑监视器':
+        return PetCheckInReaction(
+          mainText: '太好了太好了！你知道我已经担心你多久了吗！😰',
+          moodText: '松了一口气...还好还好',
+          hasCelebration: true,
+          iconName: 'sentiment_relieved',
+        );
+      case '爱夸怪':
+        return PetCheckInReaction(
+          mainText: totalCheckIns == 1
+              ? '天哪！！！第一次打卡！！！尖叫！！！🎊🎊🎊'
+              : '太厉害了！！！你是最棒的！！！✨✨✨',
+          moodText: '激动到语无伦次',
+          hasCelebration: true,
+          iconName: 'auto_awesome',
+        );
+      case '冷淡达人':
+        return PetCheckInReaction(
+          mainText: '好。',
+          moodText: '（平静地摇了摇尾巴）',
+          hasCelebration: false,
+          iconName: 'pets',
+        );
+      default:
+        return PetCheckInReaction(
+          mainText: '打卡成功！继续保持 ✨',
+          moodText: '心情不错',
+          hasCelebration: true,
+          iconName: 'whatshot',
+        );
+    }
+  }
+
+  /// 计算成功率百分比
+  static String _calcSuccessRate(int streak, int total) {
+    if (total == 0) return '100%';
+    final rate = (streak / total * 100).round();
+    return '$rate%';
+  }
+}
+
 /// 宠物固定人格（写死后不变）
 class PetSoul {
   final String name;
@@ -265,48 +520,194 @@ class PetQuickCommand {
   ];
 }
 
-/// 宠物记忆记录（反思机制）
+// ====== 记忆层级分类（基于 MemPalace Palace Memory Model） ======
+// Wing（翼）= 大分类 → Hall（厅）= 主题领域 → Drawer（抽屉）= 具体内容
+
+/// 记忆大分类（Wing级别）
+enum MemoryWing {
+  /// 用户身份认知 - "我是一个怎样的人"
+  identity,
+  /// 用户目标愿景 - 想成为什么样的人
+  aspiration,
+  /// 偏好习惯 - 喜欢什么、不喜欢什么
+  preference,
+  /// 重要事件 - 里程碑、突破、挫折
+  milestone,
+  /// 经验教训 - 学到的东西、踩过的坑
+  lesson,
+}
+
+/// 记忆重要性等级（Drawer级别）
+enum MemoryImportance {
+  /// 高优先级 - 身份认知、核心偏好、重大里程碑（永久保留）
+  high,
+  /// 中优先级 - 一般偏好、行为纠正（60天）
+  medium,
+  /// 低优先级 - 临时偏好、随口一提（30天）
+  low,
+}
+
+/// 记忆标签（用于语义检索）
+class MemoryTag {
+  final String name; // 标签名
+  final String category; // 标签类别：tone/length/emoji/topic/emotion
+
+  const MemoryTag({
+    required this.name,
+    required this.category,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      other is MemoryTag && name == other.name && category == other.category;
+
+  @override
+  int get hashCode => Object.hash(name, category);
+}
+
+/// 宠物记忆记录 v2.0（基于 MemPalace Palace Memory Model）
+///
+/// 层级结构：
+/// - Wing（翼）: MemoryWing 大分类
+/// - Importance（重要性）: MemoryImportance 抽屉优先级
+/// - Tags（标签）: 语义索引标签
+/// - Raw Content: 原始文本 verbatim 存储
 class PetMemory {
   final String id;
   final DateTime createdAt;
-  final String type; // 'correction' | 'preference' | 'milestone'
-  final String content; // 用户说的话
-  final String petResponse; // 宠物之前的回复
-  final String? correctionNote; // 用户的纠正内容
+  final DateTime? lastAccessedAt; // 最后访问时间（用于 LRU）
+
+  /// 记忆类型（旧版兼容）
+  final String type; // 'correction' | 'preference' | 'milestone' | 'identity' | 'lesson'
+
+  /// Palace Memory Model - Wing 级别分类
+  final MemoryWing wing;
+
+  /// Palace Memory Model - 抽屉优先级
+  final MemoryImportance importance;
+
+  /// 语义检索标签（自动提取）
+  final List<MemoryTag> tags;
+
+  /// 用户原始话语（verbatim 存储）
+  final String content;
+
+  /// 宠物之前的回复（用于去重对比）
+  final String petResponse;
+
+  /// 用户的纠正内容/学到什么
+  final String? correctionNote;
+
+  /// 语义主题摘要（自动生成，用于快速检索）
+  final String? summary;
 
   PetMemory({
     required this.id,
     required this.createdAt,
+    this.lastAccessedAt,
     required this.type,
+    this.wing = MemoryWing.preference,
+    this.importance = MemoryImportance.medium,
+    this.tags = const [],
     required this.content,
     required this.petResponse,
     this.correctionNote,
+    this.summary,
   });
 
   Map<String, dynamic> toJson() => {
     'id': id,
     'createdAt': createdAt.toIso8601String(),
+    'lastAccessedAt': lastAccessedAt?.toIso8601String(),
     'type': type,
+    'wing': wing.index,
+    'importance': importance.index,
+    'tags': tags.map((t) => {'name': t.name, 'category': t.category}).toList(),
     'content': content,
     'petResponse': petResponse,
     'correctionNote': correctionNote,
+    'summary': summary,
   };
 
-  factory PetMemory.fromJson(Map<String, dynamic> json) => PetMemory(
-    id: json['id'] ?? '',
-    createdAt: DateTime.parse(json['createdAt']),
-    type: json['type'] ?? 'correction',
-    content: json['content'] ?? '',
-    petResponse: json['petResponse'] ?? '',
-    correctionNote: json['correctionNote'],
-  );
+  factory PetMemory.fromJson(Map<String, dynamic> json) {
+    final tagList = <MemoryTag>[];
+    if (json['tags'] is List) {
+      for (final t in json['tags']) {
+        if (t is Map) {
+          tagList.add(MemoryTag(
+            name: t['name'] ?? '',
+            category: t['category'] ?? '',
+          ));
+        }
+      }
+    }
 
-  bool get isPermanent => type == 'milestone' || type == 'identity' || type == 'lesson';
+    return PetMemory(
+      id: json['id'] ?? '',
+      createdAt: DateTime.parse(json['createdAt']),
+      lastAccessedAt: json['lastAccessedAt'] != null
+          ? DateTime.parse(json['lastAccessedAt'])
+          : null,
+      type: json['type'] ?? 'correction',
+      wing: MemoryWing.values[json['wing'] ?? 2], // 默认 preference
+      importance: MemoryImportance.values[json['importance'] ?? 1], // 默认 medium
+      tags: tagList,
+      content: json['content'] ?? '',
+      petResponse: json['petResponse'] ?? '',
+      correctionNote: json['correctionNote'],
+      summary: json['summary'],
+    );
+  }
 
+  /// 是否为永久记忆（不自动过期）
+  bool get isPermanent =>
+      wing == MemoryWing.identity ||
+      wing == MemoryWing.milestone ||
+      wing == MemoryWing.lesson ||
+      importance == MemoryImportance.high;
+
+  /// 是否已过期
   bool get isExpired {
     if (isPermanent) return false;
-    // 30天后自然淘汰
-    return DateTime.now().difference(createdAt).inDays > 30;
+
+    final daysSinceCreation = DateTime.now().difference(createdAt).inDays;
+    switch (importance) {
+      case MemoryImportance.high:
+        return daysSinceCreation > 365; // 1年
+      case MemoryImportance.medium:
+        return daysSinceCreation > 60; // 60天
+      case MemoryImportance.low:
+        return daysSinceCreation > 30; // 30天
+    }
+  }
+
+  /// 访问记忆（更新 lastAccessedAt）
+  PetMemory markAccessed() {
+    return PetMemory(
+      id: id,
+      createdAt: createdAt,
+      lastAccessedAt: DateTime.now(),
+      type: type,
+      wing: wing,
+      importance: importance,
+      tags: tags,
+      content: content,
+      petResponse: petResponse,
+      correctionNote: correctionNote,
+      summary: summary,
+    );
+  }
+
+  /// 获取记忆的 Palace 路径描述
+  String get palacePath {
+    final wingNames = {
+      MemoryWing.identity: '身份认知',
+      MemoryWing.aspiration: '目标愿景',
+      MemoryWing.preference: '偏好习惯',
+      MemoryWing.milestone: '重要事件',
+      MemoryWing.lesson: '经验教训',
+    };
+    return wingNames[wing] ?? '未知';
   }
 }
 
