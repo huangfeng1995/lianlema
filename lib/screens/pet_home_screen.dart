@@ -1,8 +1,72 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../models/pet_models.dart';
 import '../theme/app_theme.dart';
 import '../utils/storage_service.dart';
 import 'pet_evolution_screen.dart';
+
+/// 宠物emoji → IconData 映射
+IconData petEmojiToIcon(String emoji) {
+  switch (emoji) {
+    case '🥚': return Icons.egg_outlined;
+    case '🦊': return CupertinoIcons.hare;
+    case '🐺': return CupertinoIcons.flame;
+    case '🐰': return CupertinoIcons.hare;
+    case '🦌': return CupertinoIcons.leaf_arrow_circlepath;
+    case '🦔': return CupertinoIcons.leaf_arrow_circlepath;
+    case '🐦': return CupertinoIcons.paperplane;
+    case '🐿️': return CupertinoIcons.bolt;
+    case '🦝': return CupertinoIcons.eye;
+    case '🐻': return CupertinoIcons.house;
+    case '🐧': return CupertinoIcons.snow;
+    case '🦉': return CupertinoIcons.moon;
+    case '🐨': return CupertinoIcons.cloud;
+    case '🐼': return CupertinoIcons.circle_grid_hex;
+    case '🦋': return CupertinoIcons.sparkles;
+    case '🖤': return CupertinoIcons.moon_fill;
+    case '🐾': return CupertinoIcons.paw;
+    default: return CupertinoIcons.hare;
+  }
+}
+
+/// 心情emoji → IconData 映射
+IconData moodEmojiToIcon(String emoji) {
+  switch (emoji) {
+    case '😄': return CupertinoIcons.hand_thumbsup_fill;
+    case '🙂': return CupertinoIcons.hand_thumbsup;
+    case '😌': return CupertinoIcons.heart;
+    case '😢': return CupertinoIcons.drop;
+    case '😭': return CupertinoIcons.cloud_rain;
+    default: return CupertinoIcons.smiley;
+  }
+}
+
+/// 通用emoji → IconData 映射（记忆亮点、道具图标等）
+IconData anyEmojiToIcon(String emoji) {
+  switch (emoji) {
+    // 记忆亮点
+    case '🎯': return CupertinoIcons.scope;
+    case '🔥': return CupertinoIcons.flame;
+    case '⚡': return CupertinoIcons.bolt_fill;
+    case '💬': return CupertinoIcons.chat_bubble_2;
+    case '🏆': return CupertinoIcons.rosette;
+    case '⬆️': return CupertinoIcons.arrow_up_circle_fill;
+    // 心情
+    case '😄': return CupertinoIcons.hand_thumbsup_fill;
+    case '🙂': return CupertinoIcons.hand_thumbsup;
+    case '😌': return CupertinoIcons.heart;
+    case '😢': return CupertinoIcons.drop;
+    case '😭': return CupertinoIcons.cloud_rain;
+    // 道具/零食
+    case '🍪': return CupertinoIcons.gift;
+    case '🏠': return CupertinoIcons.house_fill;
+    case '👗': return CupertinoIcons.checkmark_seal;
+    case '🛒': return CupertinoIcons.cart;
+    case '💬': return CupertinoIcons.chat_bubble_2;
+    case '🪙': return CupertinoIcons.bitcoin_circle;
+    default: return CupertinoIcons.circle;
+  }
+}
 
 /// 宠物主页 — 淘宝AI助手卡片风格
 /// 顶部标题 + 宠物大卡片（站立平台光效） + 底部横向滑动互动按钮
@@ -251,7 +315,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    Text(_petEmoji, style: const TextStyle(fontSize: 56)),
+                    Icon(petEmojiToIcon(_petEmoji), size: 64, color: AppColors.primary),
                     if (costume != null)
                       Positioned(
                         bottom: 6,
@@ -293,7 +357,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(moodEmoji, style: const TextStyle(fontSize: 14)),
+                      Icon(moodEmojiToIcon(moodEmoji), size: 16, color: AppColors.primary),
                       const SizedBox(width: 4),
                       Text(
                         _getMoodText(),
@@ -372,14 +436,14 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
   Widget _buildStatsRow() {
     return Row(
       children: [
-        Expanded(child: _buildStatTile('🪙', '宠物币', '$_coins', AppColors.primary)),
+        Expanded(child: _buildStatTile(CupertinoIcons.bitcoin_circle, '宠物币', '$_coins', AppColors.primary)),
         const SizedBox(width: 12),
-        Expanded(child: _buildStatTile('🔥', '连续打卡', '$_streakDays天', const Color(0xFFE85A1C))),
+        Expanded(child: _buildStatTile(CupertinoIcons.flame, '连续打卡', '$_streakDays天', const Color(0xFFE85A1C))),
       ],
     );
   }
 
-  Widget _buildStatTile(String emoji, String label, String value, Color accent) {
+  Widget _buildStatTile(IconData icon, String label, String value, Color accent) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       decoration: BoxDecoration(
@@ -389,7 +453,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
       ),
       child: Row(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 22)),
+          Icon(icon, size: 22, color: accent),
           const SizedBox(width: 10),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,11 +550,11 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
   }
 
   String _getIntimacyHint() {
-    if (_intimacy >= 80) return '我们心意相通 💕';
-    if (_intimacy >= 60) return '已经成为好朋友啦 🌟';
-    if (_intimacy >= 40) return '越来越了解彼此了 😊';
-    if (_intimacy >= 20) return '慢慢熟悉中... 🤝';
-    return '初次见面，请多关照 👋';
+    if (_intimacy >= 80) return '我们心意相通';
+    if (_intimacy >= 60) return '已经成为好朋友啦';
+    if (_intimacy >= 40) return '越来越了解彼此了';
+    if (_intimacy >= 20) return '慢慢熟悉中...';
+    return '初次见面，请多关照';
   }
 
   // ====== 心情进度条 ======
@@ -541,7 +605,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
           if (moodDecayDesc.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
-              '💤 $moodDecayDesc',
+              moodDecayDesc,
               style: const TextStyle(fontSize: 12, color: AppColors.textLight),
             ),
           ],
@@ -606,7 +670,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(m.emoji, style: const TextStyle(fontSize: 12)),
+                    Icon(anyEmojiToIcon(m.emoji), size: 14, color: AppColors.primary),
                     const SizedBox(width: 4),
                     Text(
                       m.title,
@@ -679,17 +743,17 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             children: [
-              _buildActionChip(Icons.restaurant, '喂零食', '🍪', _openSnackSheet),
+              _buildActionChip(Icons.restaurant, '喂零食', _openSnackSheet),
               const SizedBox(width: 10),
-              _buildActionChip(Icons.home, '家居', '🏠', _openDecorationSheet),
+              _buildActionChip(Icons.home, '家居', _openDecorationSheet),
               const SizedBox(width: 10),
-              _buildActionChip(Icons.checkroom, '换装', '👗', _openCostumeSheet),
+              _buildActionChip(Icons.checkroom, '换装', _openCostumeSheet),
               const SizedBox(width: 10),
-              _buildActionChip(Icons.store, '商店', '🛒', _openShop),
+              _buildActionChip(Icons.store, '商店', _openShop),
               const SizedBox(width: 10),
-              _buildActionChip(Icons.chat_bubble, '聊天', '💬', _openChat),
+              _buildActionChip(Icons.chat_bubble, '聊天', _openChat),
               const SizedBox(width: 10),
-              _buildActionChip(Icons.local_fire_department, '进化', '🔥', _openEvolution),
+              _buildActionChip(Icons.local_fire_department, '进化', _openEvolution),
               const SizedBox(width: 20),
             ],
           ),
@@ -698,7 +762,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     );
   }
 
-  Widget _buildActionChip(IconData icon, String label, String emoji, VoidCallback onTap) {
+  Widget _buildActionChip(IconData icon, String label, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -719,7 +783,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 24)),
+            Icon(icon, size: 22, color: AppColors.primary),
             const SizedBox(height: 4),
             Text(
               label,
@@ -826,7 +890,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     if (!_initialized || _storage.getPetAdoptDate() == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('先领养你的宠物吧 🐾'),
+          content: Text('先领养你的宠物吧'),
           behavior: SnackBarBehavior.floating,
           duration: Duration(seconds: 2),
         ),
@@ -859,7 +923,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$_petName 吃了 ${item.icon}${item.name}，心情提升了！'),
+        content: Text('$_petName 吃了 ${item.name}，心情提升了！'),
         backgroundColor: AppColors.primary,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -919,7 +983,7 @@ class _SnackSheet extends StatelessWidget {
               const Spacer(),
               Row(
                 children: [
-                  const Text('🪙', style: TextStyle(fontSize: 14)),
+                  const Icon(CupertinoIcons.bitcoin_circle, size: 14, color: AppColors.primary),
                   const SizedBox(width: 4),
                   Text('$coins', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary)),
                 ],
@@ -966,7 +1030,7 @@ class _SnackChip extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(item.icon, style: const TextStyle(fontSize: 24)),
+            Icon(anyEmojiToIcon(item.icon), size: 22, color: AppColors.primary),
             const SizedBox(height: 4),
             Text(item.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.primary)),
             Text('心情+${item.effect}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
@@ -1102,7 +1166,7 @@ class _ItemChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(item.icon, style: const TextStyle(fontSize: 18)),
+            Icon(anyEmojiToIcon(item.icon), size: 16, color: AppColors.primary),
             const SizedBox(width: 6),
             Text(
               item.name,
@@ -1160,13 +1224,20 @@ class _PetAdoptionDialogState extends State<_PetAdoptionDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             // 标题
-            const Text(
-              '🐾 领养你的宠物',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(CupertinoIcons.paw, size: 18, color: AppColors.primary),
+                const SizedBox(width: 6),
+                const Text(
+                  '领养你的宠物',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 6),
             Text(
@@ -1206,7 +1277,7 @@ class _PetAdoptionDialogState extends State<_PetAdoptionDialog> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(pet.emoji, style: const TextStyle(fontSize: 36)),
+                          Icon(petEmojiToIcon(pet.emoji), size: 36, color: AppColors.primary),
                           const SizedBox(height: 4),
                           Text(
                             pet.name,
@@ -1255,7 +1326,7 @@ class _PetAdoptionDialogState extends State<_PetAdoptionDialog> {
                   Navigator.pop(context);
                 },
                 child: Text(
-                  '领养 ${allPets[_selectedIndex].emoji} ${allPets[_selectedIndex].name}',
+                  '领养 ${allPets[_selectedIndex].name}',
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
               ),
