@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../models/models.dart';
@@ -940,26 +941,26 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-              // 宠物推送通知栏
-              if (_currentPush != null) ...[
+              // 宠物推送通知栏（初始化完成且有推送时才显示）
+              if (!_isLoading && _currentPush != null) ...[
                 PetPushBanner(push: _currentPush!),
                 const SizedBox(height: 12),
               ],
               // ===== 大字问候语 =====
               _buildGreetingHeader(),
               const SizedBox(height: 28),
-              // 长期计划 — 炭火橙左边框
+              // 长期计划
               _buildWarmCard(
-                accent: AppColors.primary,
+                accent: const Color(0xFFE8533A),
                 child: _buildVisionCard(),
               ),
               const SizedBox(height: 16),
-              // 本月挑战 — 琥珀色左边框
+              // 本月挑战
               if (_monthlyBoss != null &&
                   _monthlyBoss!.month == DateTime.now().month &&
                   _monthlyBoss!.year == DateTime.now().year)
                 _buildWarmCard(
-                  accent: const Color(0xFFFFA500),
+                  accent: const Color(0xFFF5A623),
                   child: BossHpBar(
                     currentHp: _monthlyBoss!.hp,
                     maxHp: _monthlyBoss!.totalDays,
@@ -978,12 +979,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               if (_monthlyBoss != null) const SizedBox(height: 16),
-              // 今日行动 — 薄荷绿左边框
-              if (_todayLevers.isNotEmpty)
-                _buildWarmCard(
-                  accent: const Color(0xFF6DBF8B),
-                  child: _buildDailyCheckIn(),
-                ),
+              // 今日行动
+              _buildWarmCard(
+                accent: const Color(0xFFFFCC00),
+                child: _buildDailyCheckIn(),
+              ),
               const SizedBox(height: 32),
             ],
           ),
@@ -1897,9 +1897,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              // 连续打卡 + 累计打卡
-              Icon(Icons.bolt, size: 13, color: const Color(0xFFFFA500)),
-              const SizedBox(width: 3),
+              // 连续 + 累计
+              Text(
+                '连续 ',
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
               Text(
                 '${_stats.streak} 天',
                 style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
@@ -1908,7 +1910,11 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(width: 1, height: 10, color: AppColors.textLight.withValues(alpha: 0.2)),
               const SizedBox(width: 10),
               Text(
-                '${_stats.totalCheckIns} 累计',
+                '累积 ',
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              Text(
+                '${_stats.totalCheckIns}',
                 style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
               const Spacer(),
@@ -2099,66 +2105,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildEmptyLeversCard() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.3),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Text(
+        '添加你的今日行动',
+        style: TextStyle(
+          fontSize: 14,
+          color: AppColors.textSecondary,
         ),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.flag,
-            size: 40,
-            color: AppColors.primary,
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            '还没有设置今日行动',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            '点击下方「目标」标签\n设置你的每日杠杆',
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.lightbulb_outline,
-                    size: 16, color: AppColors.primary),
-                SizedBox(width: 6),
-                Text(
-                  'IF-THEN格式效果更好',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -2435,6 +2389,32 @@ class _HomeScreenState extends State<HomeScreen> {
     final subtitle = _context != null
         ? PetService.instance.generateGreetingSubtitle(_context!)
         : '';
+    // 宠物专属logo：蛋阶段显示🥚，否则用SF Symbols图标
+    final petLogo = (_context != null && !_context!.isInEggPhase)
+        ? _context!.petEmoji
+        : '🥚';
+
+    IconData _petIcon(String emoji) {
+      switch (emoji) {
+        case '🥚': return Icons.egg_outlined;
+        case '🦊': return CupertinoIcons.hare;
+        case '🐺': return CupertinoIcons.flame;
+        case '🐰': return CupertinoIcons.hare;
+        case '🦌': return CupertinoIcons.leaf_arrow_circlepath;
+        case '🦔': return CupertinoIcons.leaf_arrow_circlepath;
+        case '🐦': return CupertinoIcons.paperplane;
+        case '🐿️': return CupertinoIcons.bolt;
+        case '🦝': return CupertinoIcons.eye;
+        case '🐻': return CupertinoIcons.house;
+        case '🐧': return CupertinoIcons.snow;
+        case '🦉': return CupertinoIcons.moon;
+        case '🐨': return CupertinoIcons.cloud;
+        case '🐼': return CupertinoIcons.circle_grid_hex;
+        case '🦋': return CupertinoIcons.sparkles;
+        case '🖤': return CupertinoIcons.moon_fill;
+        default: return CupertinoIcons.hare;
+      }
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2459,54 +2439,41 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 10),
         // 主问候语 + 宠物 Logo
         Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
           children: [
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    greeting,
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      height: 1.2,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  if (subtitle.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            // 宠物 Logo
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  _petName.isNotEmpty ? _petName[0] : '🐾',
-                  style: const TextStyle(fontSize: 18),
+              child: Text(
+                greeting,
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                  height: 1.2,
+                  letterSpacing: -0.5,
                 ),
               ),
             ),
+            Icon(
+              _petIcon(petLogo),
+              size: 16,
+              color: AppColors.primary,
+            ),
           ],
         ),
+        if (subtitle.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ],
     );
   }
