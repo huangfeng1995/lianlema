@@ -14,7 +14,7 @@ import '../widgets/boss_hp_bar.dart';
 import '../widgets/boss_victory_celebration.dart';
 import '../widgets/streak_broken_overlay.dart';
 import '../widgets/evolution_celebration.dart';
-import '../widgets/pet_bubble.dart';
+import '../widgets/pet_push_banner.dart';
 import '../controllers/pet_mood_controller.dart';
 import '../services/share_service.dart';
 import 'package:get/get.dart';
@@ -98,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hasLongTermPlanning = false; // 是否有长期规划
   PetContext? _context; // 宠物上下文
   String _petName = StorageService.defaultPetName; // 宠物名字
-  final GlobalKey<PetBubbleState> _petBubbleKey = GlobalKey<PetBubbleState>();
+  PetPush? _currentPush;
 
   @override
   void initState() {
@@ -112,6 +112,13 @@ class _HomeScreenState extends State<HomeScreen> {
     await PetService.instance.loadState();
     _context = await PetService.instance.buildContext();
     _petName = _storage.getPetName();
+    // 加载宠物推送（取最高优先级一条）
+    try {
+      final pushes = await PetPushService.instance.generateDailyPushes(_context!);
+      if (pushes.isNotEmpty) {
+        _currentPush = pushes.first;
+      }
+    } catch (_) {}
 
     final stats = _storage.getUserStats();
     final leverMaps = _storage.getDailyLevers();
@@ -926,53 +933,61 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Stack(
-        children: [
-          SafeArea(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  const SizedBox(height: 12),
-                  // 长期计划
-                  _buildCardWrapper(
-                    child: _buildVisionCard(),
-                  ),
-                  const SizedBox(height: 12),
-                  // 本月挑战
-                  if (_monthlyBoss != null &&
-                      _monthlyBoss!.month == DateTime.now().month &&
-                      _monthlyBoss!.year == DateTime.now().year)
-                    _buildCardWrapper(
-                      child: BossHpBar(
-                        currentHp: _monthlyBoss!.hp,
-                        maxHp: _monthlyBoss!.totalDays,
-                        bossName: _monthlyBoss!.content,
-                        currentMonth: _monthlyBoss!.month,
-                        onTap: () {
-                          if (mounted) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) =>
-                                      const MonthlyBossEditScreen()),
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                  const SizedBox(height: 12),
-                  // 今日行动
-                  if (_todayLevers.isNotEmpty)
-                    _buildCardWrapper(
-                      child: _buildDailyCheckIn(),
-                    ),
-                  const SizedBox(height: 20),
-                ],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 20),
+              // 宠物推送通知栏
+              if (_currentPush != null) ...[
+                PetPushBanner(push: _currentPush!),
+                const SizedBox(height: 12),
+              ],
+              // ===== 大字问候语 =====
+              _buildGreetingHeader(),
+              const SizedBox(height: 28),
+              // 长期计划 — 炭火橙左边框
+              _buildWarmCard(
+                accent: AppColors.primary,
+                child: _buildVisionCard(),
               ),
-            ),
+              const SizedBox(height: 16),
+              // 本月挑战 — 琥珀色左边框
+              if (_monthlyBoss != null &&
+                  _monthlyBoss!.month == DateTime.now().month &&
+                  _monthlyBoss!.year == DateTime.now().year)
+                _buildWarmCard(
+                  accent: const Color(0xFFFFA500),
+                  child: BossHpBar(
+                    currentHp: _monthlyBoss!.hp,
+                    maxHp: _monthlyBoss!.totalDays,
+                    bossName: _monthlyBoss!.content,
+                    currentMonth: _monthlyBoss!.month,
+                    onTap: () {
+                      if (mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  const MonthlyBossEditScreen()),
+                        );
+                      }
+                    },
+                  ),
+                ),
+              if (_monthlyBoss != null) const SizedBox(height: 16),
+              // 今日行动 — 薄荷绿左边框
+              if (_todayLevers.isNotEmpty)
+                _buildWarmCard(
+                  accent: const Color(0xFF6DBF8B),
+                  child: _buildDailyCheckIn(),
+                ),
+              const SizedBox(height: 32),
+            ],
           ),
-          PetBubble(key: _petBubbleKey),
-        ],
+        ),
       ),
     );
   }
@@ -2442,23 +2457,95 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// 统一卡片包装
-  Widget _buildCardWrapper({required Widget child}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.cardBackground,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+  /// Warm Editorial 风格：无白卡，左侧彩色强调边
+  Widget _buildWarmCard({required Color accent, required Widget child}) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border(
+          left: BorderSide(color: accent, width: 3),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  /// 大字问候 Header — Warm Editorial Typography
+  Widget _buildGreetingHeader() {
+    final now = DateTime.now();
+    final weekday = _weekdayZh(now.weekday);
+    final dateStr = '${now.month}月${now.day}日 $weekday';
+    final greeting = _getGreeting();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 日期标签 — 小字但有辨识度
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            dateStr,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary,
+              letterSpacing: 0.5,
             ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        // 主问候语 — 大字，bold，是视觉锚点
+        Text(
+          greeting,
+          style: const TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+            height: 1.2,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 4),
+        // 副标题 — 连续打卡信息
+        Row(
+          children: [
+            if (_stats.streak > 0) ...[
+              Icon(Icons.bolt, size: 14, color: const Color(0xFFFFA500)),
+              const SizedBox(width: 4),
+              Text(
+                '已连续 ${_stats.streak} 天',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ] else ...[
+              Text(
+                '今天开始你的第一步',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ],
         ),
-        child: child,
-      ),
+      ],
     );
   }
 
@@ -2490,7 +2577,8 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  // 长期计划 标题
+                  const Text(
                     '长期计划',
                     style: TextStyle(
                       fontSize: 16,

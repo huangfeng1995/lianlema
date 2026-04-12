@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../models/pet_models.dart';
 import '../theme/app_theme.dart';
 import '../utils/pet_service.dart';
-import '../services/pet_push_service.dart';
 
 /// 宠物浮动气泡
 /// 悬浮在首页右下角，点击展开对话/功能面板
@@ -22,7 +21,6 @@ class PetBubbleState extends State<PetBubble>
   bool _isSending = false;
   String _petMessage = '';
   String? _proactiveInsight; // 主动洞察（未读）
-  List<PetPush> _pushes = [];
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<ChatMessage> _messages = [];
@@ -65,18 +63,11 @@ class PetBubbleState extends State<PetBubble>
       insight = PetService.instance.generateProactiveInsight(ctx);
     }
 
-    // 加载宠物主动推送
-    List<PetPush> pushes = [];
-    try {
-      pushes = await PetPushService.instance.generateDailyPushes(ctx);
-    } catch (_) {}
-
     setState(() {
       _context = ctx;
       _mood = moodState.mood;
       _petMessage = '$greeting $suggestion';
       _proactiveInsight = insight;
-      _pushes = pushes;
     });
   }
 
@@ -271,13 +262,6 @@ class PetBubbleState extends State<PetBubble>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (_petMessage.isNotEmpty) _buildPetBubble(_petMessage),
-            if (_pushes.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              ..._pushes.map((push) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _buildPushCard(push),
-                  )),
-            ],
             if (_proactiveInsight != null) ...[
               const SizedBox(height: 8),
               _buildInsightCard(_proactiveInsight!),
@@ -324,91 +308,6 @@ class PetBubbleState extends State<PetBubble>
     );
   }
 
-  Widget _buildPushCard(PetPush push) {
-    return GestureDetector(
-      onTap: () {
-        // 点击推送：收起面板并跳转到宠物页面
-        setState(() => _isExpanded = false);
-        Navigator.of(context).pushNamed('/pet');
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF3E0),
-          borderRadius: BorderRadius.circular(12),
-          border:
-              Border.all(color: const Color(0xFFFF9800).withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF9800).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Text(
-                  _pushEmoji(push.type),
-                  style: const TextStyle(fontSize: 16),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    push.title,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFFE65100),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    push.body,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textPrimary,
-                      height: 1.4,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right, size: 16, color: Color(0xFFFF9800)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _pushEmoji(PushType type) {
-    switch (type) {
-      case PushType.streakReminder:
-        return '☀️';
-      case PushType.milestoneApproaching:
-        return '🎯';
-      case PushType.idleWarning:
-        return '💪';
-      case PushType.weeklySummary:
-        return '📋';
-      case PushType.challengeProgress:
-        return '🏃';
-      case PushType.obstacleGuidance:
-        return '🧭';
-      case PushType.annualPlanGuide:
-        return '🌟';
-    }
-  }
 
   Widget _buildInsightCard(String text) {
     return Container(
