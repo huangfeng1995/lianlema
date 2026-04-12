@@ -620,7 +620,25 @@ class _BagSheet extends StatelessWidget {
                       .where((o) => PetShopConfig.getById(o.itemId)?.category == PetShopCategory.snack)
                       .map((o) {
                     final item = PetShopConfig.getById(o.itemId)!;
-                    return _BagItemChip(item: item, isEquipped: false, onTap: () {});
+                    return _BagItemChip(
+                      item: item,
+                      isEquipped: false,
+                      onTap: () async {
+                        final currentMood = storage.getPetMoodValue();
+                        final newMood = (currentMood + item.effect).clamp(0, 100);
+                        await storage.savePetMoodValue(newMood);
+                        await storage.removePetOwnedItem(item.id);
+                        onRefresh();
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('${item.icon} ${item.name} 吃掉了！心情+${item.effect}'),
+                            backgroundColor: AppColors.primary,
+                          ),
+                        );
+                        Navigator.pop(context);
+                      },
+                    );
                   }).toList(),
                 ),
               ],

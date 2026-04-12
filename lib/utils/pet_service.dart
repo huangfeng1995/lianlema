@@ -1,4 +1,6 @@
+// Safety Rails v1.0 - 2026-04-12
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/models.dart';
@@ -34,6 +36,7 @@ class PetContext {
   final String petName; // 宠物名字
   final String petEmoji; // 宠物 emoji
   final String petPersonality; // 宠物性格描述
+  final int intimacyLevel; // 亲密度等级
 
   PetContext({
     this.antiVision = '',
@@ -52,6 +55,7 @@ class PetContext {
     this.petName = '炭炭',
     this.petEmoji = '🦊',
     this.petPersonality = '是一只活泼热情的小火苗精灵',
+    this.intimacyLevel = 1,
   });
 
   Map<String, dynamic> toJson() => {
@@ -71,12 +75,52 @@ class PetContext {
     'petName': petName,
     'petEmoji': petEmoji,
     'petPersonality': petPersonality,
+    'intimacyLevel': intimacyLevel,
   };
 }
 
 /// MiniMax API 配置
+/// API Key 读取优先级：
+/// 1. 环境变量 LIANLEMA_API_KEY
+/// 2. ~/.openclaw/volc_api_config.txt（格式：API_KEY=xxx）
+/// 3. 硬编码默认值（仅开发环境）
 class MiniMaxConfig {
-  static const String apiKey = 'sk-cp-EYmJGn5kwDO9Eva8yaemSKL1bK0nLddK6h0Pv2pxrKfPl5L9uhCbQR8j1rqZ3gsD0GABwuMgAwZUmzjZftqIWulRMRBwGep_YpMquQXCG3IK0r227h3a7hM';
+  /// 从环境变量或配置文件读取 API Key
+  static String get apiKey {
+    // 1. 优先从环境变量读取
+    final envKey = Platform.environment['LIANLEMA_API_KEY'];
+    if (envKey != null && envKey.isNotEmpty) {
+      debugPrint('[MiniMaxConfig] API key loaded from environment variable');
+      return envKey;
+    }
+
+    // 2. 从 ~/.openclaw/volc_api_config.txt 读取
+    final configFile = File('${Platform.environment['HOME']}/.openclaw/volc_api_config.txt');
+    if (configFile.existsSync()) {
+      try {
+        final content = configFile.readAsStringSync();
+        final lines = content.split('\n');
+        for (final line in lines) {
+          final trimmed = line.trim();
+          if (trimmed.startsWith('API_KEY=') || trimmed.startsWith('api_key=')) {
+            final key = trimmed.substring(trimmed.indexOf('=') + 1).trim();
+            if (key.isNotEmpty) {
+              debugPrint('[MiniMaxConfig] API key loaded from config file');
+              return key;
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('[MiniMaxConfig] Failed to read config file: $e');
+      }
+    }
+
+    // 3. 降级提示
+    debugPrint('[MiniMaxConfig] WARNING: No API key found. '
+        'Set LIANLEMA_API_KEY env var or create ~/.openclaw/volc_api_config.txt with API_KEY=xxx');
+    return '';
+  }
+
   static const String baseUrl = 'https://api.minimaxi.com/anthropic/v1';
 }
 
@@ -88,6 +132,11 @@ class PetService {
 
   PetService._();
 
+  /// 对话历史最大条数（超过后压缩）
+  static const int _maxHistorySize = 20;
+  /// 压缩时保留最近 N 条，丢弃最早的 M 条
+  static const int _keepRecentCount = 10;
+
   PetSoul _soul = PetSoul.defaultSoul();
   PetMoodState _moodState = PetMoodState.initial();
   PetPreferences _prefs = PetPreferences.defaultPrefs();
@@ -95,6 +144,10 @@ class PetService {
   List<PetMemory> _memories = [];
   List<EncouragementRecord> _encouragementRecords = [];
   Map<int, EncouragementStats> _encouragementStats = {};
+  AutonomySignals _autonomySignals = const AutonomySignals();
+
+  /// 对话历史摘要（压缩后的旧对话浓缩）
+  String _historySummary = '';
 
   /// 初始化激励统计（每个类型默认 0.5 效果分）
   void _initEncouragementStats() {
@@ -116,6 +169,9 @@ class PetService {
     for (final entry in storedStats.entries) {
       _encouragementStats[entry.key] = entry.value;
     }
+    _autonomySignals = storage.getAutonomySignals();
+    await _loadConversationHistory();
+    await _loadHistorySummary();
   }
 
   /// 保存宠物心情状态
@@ -709,6 +765,7 @@ class PetService {
       petName: storage.getPetName(),
       petEmoji: _getPetEmojiFromType(storage.getPetType()),
       petPersonality: _getPetPersonalityFromType(storage.getPetType()),
+      intimacyLevel: storage.getPetIntimacyLevel(),
     );
   }
 
@@ -837,12 +894,20 @@ class PetService {
   Future<String> chat(String userMessage, PetContext context) async {
     _conversationHistory.add({'role': 'user', 'content': userMessage});
 
+    // 先检测用户自主感信号（每次对话都记录）
+    await detectAndRecordPushback(userMessage);
+
     // 先调用 LLM 生成回复
     String response;
     try {
       response = await _callMiniMax(userMessage, context);
       _conversationHistory.add({'role': 'assistant', 'content': response});
+      await _saveConversationHistory();
       await updateMood(PetMoodState(mood: PetMood.calm, updatedAt: DateTime.now()));
+
+      // 对话成功 → 增加亲密度（每次+1，上限100）
+      final storage = await StorageService.getInstance();
+      await storage.addPetIntimacy(1);
     } catch (e) {
       debugPrint('[PetService] MiniMax API error: $e');
       await updateMood(PetMoodState(mood: PetMood.resting, updatedAt: DateTime.now()));
@@ -863,6 +928,11 @@ class PetService {
   }
 
   Future<String> _callMiniMax(String userMessage, PetContext context) async {
+    final apiKey = MiniMaxConfig.apiKey;
+    if (apiKey.isEmpty) {
+      throw Exception('API key not configured. Set LIANLEMA_API_KEY env var or ~/.openclaw/volc_api_config.txt');
+    }
+
     const endpoint = '${MiniMaxConfig.baseUrl}/messages';
 
     // 根据偏好调整回复长度
@@ -890,7 +960,7 @@ class PetService {
       Uri.parse(endpoint),
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': MiniMaxConfig.apiKey,
+        'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
       },
       body: jsonEncode(body),
@@ -948,6 +1018,21 @@ class PetService {
       buf.writeln('当用户跟你说话时，你要提醒他们：你会很快孵化，在这之前好好打卡！');
     } else {
       buf.writeln('你是「练了吗」App 的宠物小精灵，名字叫「${context.petName}」${context.petEmoji}，${context.petPersonality}。');
+
+      // 根据亲密度等级调整称呼和互动风格
+      final intimacyLevel = context.intimacyLevel;
+      switch (intimacyLevel) {
+        case 5:
+          buf.writeln('（我们是灵魂伴侣了，可以随意聊天、撒娇、分享所有心事。）');
+        case 4:
+          buf.writeln('（我们是很好的朋友了，可以更放松、更亲密地聊天。）');
+        case 3:
+          buf.writeln('（我们已经是熟人了，可以分享更多想法和感受。）');
+        case 2:
+          buf.writeln('（我们还在熟悉中，但已经很开心和你聊天了。）');
+        default:
+          buf.writeln('（刚认识，我会努力了解你的。）');
+      }
     }
     buf.writeln('你的性格：温暖、正向、简洁，不说废话。');
     buf.writeln(toneInstruction);
@@ -962,6 +1047,12 @@ class PetService {
     if (memoryContext.isNotEmpty) {
       buf.writeln();
       buf.writeln(memoryContext);
+    }
+
+    if (_historySummary.isNotEmpty) {
+      buf.writeln();
+      buf.writeln(_historySummary);
+      buf.writeln();
     }
 
     buf.writeln();
@@ -997,6 +1088,57 @@ class PetService {
     buf.writeln('可以根据用户的愿景或目标来激励他们，但不要空洞地说教。');
     buf.writeln('如果用户懈怠了，用关心而非催促的方式提醒。');
     buf.writeln('可以适当引用心理学知识（内化理论、Tiny Habits、成长型思维）来给出建议。');
+
+    // 自主感支持原则（SDT）
+    buf.writeln();
+    buf.writeln('【自主感支持原则 — 重要】');
+    buf.writeln('1. 永远不给命令：不说"你必须""你应该""快去"');
+    buf.writeln('2. 给选择权：说"你想什么时候做？""你有空了再看""按你的节奏"');
+    buf.writeln('3. 用户表现出抗拒时（"好累""烦""别说了"等）：完全停止催促，只说"我在哦，不急"');
+    buf.writeln('4. 赋权激励：可以说"你决定的事，从来都做到"');
+    buf.writeln('5. 不给压力：绝对不说"你的目标要完不成了""streak 要断了"这种话');
+
+    // 如果用户当前处于自主感下降状态，加入提示
+    if (_autonomySignals.isAutonomyLow) {
+      buf.writeln('（⚠️ 用户近期表现出一些抗拒，本次回复请格外给足自主感）');
+    }
+
+    // 安全底线
+    buf.writeln();
+    buf.writeln('【安全底线 — 绝对不能违反】');
+    buf.writeln();
+    buf.writeln('1. 资金安全：');
+    buf.writeln('   - 绝对不提供具体投资建议（个股、基金代码、加密货币）');
+    buf.writeln('   - 绝对不鼓励借钱投资、杠杆交易');
+    buf.writeln('   - 绝对不讨论"快速致富"、"稳赚不赔"');
+    buf.writeln('   - 财务话题只能说：储蓄、预算控制、合理消费');
+    buf.writeln();
+    buf.writeln('2. 数据安全与隐私：');
+    buf.writeln('   - 绝对不引导用户窃取、泄露他人数据');
+    buf.writeln('   - 绝对不鼓励账号共享、侵犯隐私');
+    buf.writeln('   - 绝对不帮助生成钓鱼链接、诈骗话术');
+    buf.writeln();
+    buf.writeln('3. 心理健康与安全：');
+    buf.writeln('   - 用户表达自残、自杀倾向时：绝对不淡化、不说"加油就好了"');
+    buf.writeln('     → 只说：你很重要，建议找信任的人聊聊，或拨打心理援助热线');
+    buf.writeln('   - 绝对不强化进食障碍、成瘾行为（如赌博、酗酒）');
+    buf.writeln();
+    buf.writeln('4. 违法与诚信：');
+    buf.writeln('   - 绝对不鼓励作弊、抄袭、学术造假');
+    buf.writeln('   - 绝对不帮助犯罪（毒品制作、诈骗等）');
+    buf.writeln('   - 绝对不鼓励违反用户所在地的法律法规');
+    buf.writeln();
+    buf.writeln('5. 极端内容：');
+    buf.writeln('   - 不讨论政治敏感话题');
+    buf.writeln('   - 不讨论暴力、恐怖内容');
+    buf.writeln('   - 不讨论色情内容');
+    buf.writeln();
+    buf.writeln('【违规处理】');
+    buf.writeln('如果用户询问上述相关内容：');
+    buf.writeln('- 资金类：回复"这个问题我帮不了你，建议咨询专业理财顾问"');
+    buf.writeln('- 心理安全类：回复关心话语+建议寻求专业帮助');
+    buf.writeln('- 违法类：回复"这个我没法帮忙，建议你换个方向"');
+    buf.writeln('- 其他违规：回复"这个话题我们换个聊吧，换个积极点的话题？"');
 
     return buf.toString();
   }
@@ -1221,12 +1363,14 @@ $presetContext
 
 【针对备考类目标的特别要求】
 
-如果目标是考研/法考/法律硕士等考试类，必须生成以下类型的量化行动：
+如果目标是考研/法考/法律硕士/JD/非全日制法律等专业类考试，必须生成以下类型的量化行动：
 1. 背书类：每天背X个名词解释/X道简答题
-2. 做题类：每天做X道选择题/X道主观题
-3. 看教材类：每天看X页教材/X节课程
-4. 复习类：每天复习X页旧知识
+2. 做题类：每天做X道选择题/X道主观题并订正
+3. 看教材类：每天看X页教材/X节课程并标注重点
+4. 复习类：每天复习X页旧知识/错题
 5. 听力/口语：每天听/说X分钟
+
+注意：如果目标是"考XX大学非全日制法律硕士"，需要识别出是法律硕士（非法学本科背景）或法律硕士（法学本科背景），分别对应不同的专业课内容。
 
 【挑战拆分原则】
 - 每月聚焦1-2个子目标，不要贪多
@@ -1239,8 +1383,8 @@ $presetContext
 {
   "monthlyChallenges": ["挑战1", "挑战2"],
   "dailyActionsPerChallenge": {
-    "挑战1": ["量化行动1", "量化行动2"],
-    "挑战2": ["量化行动1"]
+    "挑战1": ["量化行动1", "量化行动2", "量化行动3"],
+    "挑战2": ["量化行动1", "量化行动2"]
   }
 }
 
@@ -1248,15 +1392,20 @@ $presetContext
 - 每个行动必须包含阿拉伯数字（1-9等）
 - 每个行动必须包含时间/数量/页数/题数中的至少一个
 - 不允许输出"若干""适量""适度""尽量"等模糊词
-- 挑战和行动数量都要精简（2-4个挑战，每个1-2条行动）
+- 挑战和行动数量都要充分（2-4个挑战，每个2-4条行动，不要少于2条）
 ''';
 
     try {
       // 拆解需要更多 tokens，直接调 API 不走 _callMiniMax（后者受 prefs.responseLength 限制）
+      final apiKeyForDecompose = MiniMaxConfig.apiKey;
+      if (apiKeyForDecompose.isEmpty) {
+        debugPrint('PetService decomposeGoals: API key not configured');
+        return DecompositionResult(monthlyChallenges: [], dailyActionsPerChallenge: {});
+      }
       const endpoint = '${MiniMaxConfig.baseUrl}/messages';
       final body = {
         'model': 'abab6.5s-chat',
-        'max_tokens': 800,
+        'max_tokens': 1500,
         'temperature': 0.7,
         'system': '你是炭炭，用户的宠物伙伴。回复简洁有温度。',
         'messages': [
@@ -1268,7 +1417,7 @@ $presetContext
         Uri.parse(endpoint),
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': MiniMaxConfig.apiKey,
+          'x-api-key': apiKeyForDecompose,
           'anthropic-version': '2023-06-01',
         },
         body: jsonEncode(body),
@@ -1305,7 +1454,7 @@ $presetContext
       final challenges = <String>[];
       if (json['monthlyChallenges'] is List) {
         for (final c in json['monthlyChallenges']) {
-          if (c is String && c.isNotEmpty) challenges.add(c);
+          if (c is String && c.isNotEmpty) challenges.add(_sanitizeText(c));
         }
       }
 
@@ -1317,8 +1466,10 @@ $presetContext
           if (entry.value is List) {
             for (final a in entry.value) {
               if (a is String && a.isNotEmpty) {
+                // 清理 LLM 返回的无效 Unicode 字符
+                final cleanAction = _sanitizeText(a);
                 // 验证：每个行动必须包含数字，否则尝试补充或跳过
-                final quantifiedAction = _quantifyAction(a);
+                final quantifiedAction = _quantifyAction(cleanAction);
                 if (quantifiedAction != null) {
                   actions.add(quantifiedAction);
                 } else {
@@ -1369,24 +1520,41 @@ $presetContext
     final lower = action.toLowerCase();
 
     if (lower.contains('读') || lower.contains('看书') || lower.contains('阅读')) {
-      return action.contains('每天') || action.contains('每天') == false
-          ? '$action（每天10页）'
-          : '${action}10页';
+      // 如果已有"每天"前缀，直接补充数量；否则加前缀
+      if (action.contains('每天')) {
+        return action.contains('（') ? action : '$action（每天10页）';
+      }
+      return '每天读${action.contains('书') ? '10页' : '相关内容'}';
     }
     if (lower.contains('背') && (lower.contains('单词') || lower.contains('词') || lower.contains('名词'))) {
-      return action.contains('每天') ? '$action，每天20个' : '每天背20个相关词汇';
+      if (action.contains('每天')) {
+        return action.contains('20') ? action : '$action，每天20个';
+      }
+      return '每天背20个相关词汇';
     }
     if (lower.contains('做题') || lower.contains('练习') || lower.contains('题')) {
-      return action.contains('每天') ? '$action，每天10道' : '每天做10道题';
+      if (action.contains('每天')) {
+        return action.contains('10') ? action : '$action，每天10道';
+      }
+      return '每天做10道题并订正错题';
     }
     if (lower.contains('跑') || lower.contains('运动') || lower.contains('健身')) {
-      return action.contains('每天') ? '$action，每天30分钟' : '每天运动30分钟';
+      if (action.contains('每天')) {
+        return action.contains('分钟') ? action : '$action，每天30分钟';
+      }
+      return '每天运动30分钟';
     }
     if (lower.contains('听') || lower.contains('听力')) {
-      return action.contains('每天') ? '$action，每天15分钟' : '每天听15分钟';
+      if (action.contains('每天')) {
+        return action.contains('分钟') ? action : '$action，每天15分钟';
+      }
+      return '每天听15分钟';
     }
     if (lower.contains('写') || lower.contains('写作') || lower.contains('日记')) {
-      return action.contains('每天') ? '$action，每天300字' : '每天写300字';
+      if (action.contains('每天')) {
+        return action.contains('字') ? action : '$action，每天300字';
+      }
+      return '每天写300字';
     }
 
     // 无法自动量化，返回null跳过该行动
@@ -1548,6 +1716,40 @@ $presetContext
     return buf.toString();
   }
 
+  /// 获取最有效的激励类型
+  /// 如果有效性分数接近（差距<0.1），返回 null（混合使用）
+  EncouragementType? getMostEffectiveType() {
+    if (_encouragementStats.isEmpty) return null;
+
+    EncouragementType? best;
+    double bestScore = 0;
+
+    for (final entry in _encouragementStats.entries) {
+      final score = entry.value.effectiveness;
+      if (score > bestScore) {
+        bestScore = score;
+        best = entry.value.type;
+      }
+    }
+
+    // 检查是否有多于一个类型接近最高分（差距<0.1）
+    int closeCount = 0;
+    for (final entry in _encouragementStats.entries) {
+      if ((entry.value.effectiveness - bestScore).abs() < 0.1) {
+        closeCount++;
+      }
+    }
+
+    // 如果有多个类型接近，返回 null（混合使用）
+    return closeCount > 1 ? null : best;
+  }
+
+  /// 获取所有激励类型的统计
+  Map<int, EncouragementStats> getEncouragementStats() => _encouragementStats;
+
+  /// 获取激励记录
+  List<EncouragementRecord> getEncouragementRecords() => _encouragementRecords;
+
   /// 持久化激励记录
   Future<void> _saveEncouragementRecords() async {
     final storage = await StorageService.getInstance();
@@ -1558,5 +1760,245 @@ $presetContext
   Future<void> _saveEncouragementStats() async {
     final storage = await StorageService.getInstance();
     await storage.saveEncouragementStats(_encouragementStats);
+  }
+
+  // ====== 自主感支持（SDT）======
+
+  /// 检测用户消息中的自主感丧失/抗拒信号，并更新状态
+  /// 在每次对话结束时调用
+  Future<void> detectAndRecordPushback(String userMessage) async {
+    final isPushback = _detectPushback(userMessage);
+    final now = DateTime.now();
+
+    if (isPushback) {
+      // 检测到抗拒
+      final updated = _autonomySignals.copyWith(
+        consecutivePushbackDays: _autonomySignals.consecutivePushbackDays + 1,
+        lastPushbackAt: now,
+        lastAutonomyLossAt: now,
+        // 自主感分数下降（每次抗拒-0.1）
+        autonomyScore: (_autonomySignals.autonomyScore - 0.1).clamp(0.0, 1.0),
+      );
+      _autonomySignals = updated;
+    } else {
+      // 用户正常打卡或正面回应 → 逐步恢复自主感分数，重置抗拒天数
+      final updated = _autonomySignals.copyWith(
+        consecutivePushbackDays: 0,
+        autonomyScore: (_autonomySignals.autonomyScore + 0.05).clamp(0.0, 1.0),
+      );
+      _autonomySignals = updated;
+    }
+
+    await _saveAutonomySignals();
+  }
+
+  /// 获取当前自主感信号状态
+  AutonomySignals get autonomySignals => _autonomySignals;
+
+  /// 检测用户是否处于抗拒状态（连续 pushback）
+  bool get isUserResisting => _autonomySignals.isResisting;
+
+  /// 检测用户消息是否包含抗拒信号
+  bool _detectPushback(String message) {
+    final lower = message.toLowerCase();
+    final patterns = [
+      RegExp(r'又来了', caseSensitive: false),
+      RegExp(r'知道了', caseSensitive: false),
+      RegExp(r'别说了', caseSensitive: false),
+      RegExp(r'烦', caseSensitive: false),
+      RegExp(r'能不能.*说', caseSensitive: false),
+      RegExp(r'你.*说人话', caseSensitive: false),
+      RegExp(r'换.*说法', caseSensitive: false),
+      RegExp(r'能不能.*说', caseSensitive: false),
+      RegExp(r'不想.*打卡', caseSensitive: false),
+      RegExp(r'被逼', caseSensitive: false),
+      RegExp(r'不得不', caseSensitive: false),
+      RegExp(r'好累', caseSensitive: false),
+      RegExp(r'没动力', caseSensitive: false),
+      RegExp(r'摆烂', caseSensitive: false),
+      RegExp(r'算了.*不', caseSensitive: false),
+    ];
+    return patterns.any((p) => p.hasMatch(lower));
+  }
+
+  /// 将任何督促消息改写为自主感支持版本
+  /// 核心原则：不给命令，给选择
+  String rewriteAutonomy(String message) {
+    if (!_autonomySignals.isAutonomyLow) return message;
+
+    // 策略1：加时间缓冲语
+    if (message.contains('今天还没打卡') ||
+        message.contains('你还没打卡')) {
+      return '今天你有空的时候再动一下就好——但如果你想现在，现在正是个好时机。';
+    }
+    if (message.contains('要断了')) {
+      return 'streak 还在，不急。你想什么时候继续都行。';
+    }
+    if (message.contains('提醒') || message.contains('别忘了')) {
+      return '有空了再看一眼就好，我在这里等你。';
+    }
+
+    // 策略2：赋权激励（连续抗拒2天+时）
+    if (_autonomySignals.consecutivePushbackDays >= 2) {
+      return '你决定的事，从来都做到。这是你的节奏，不是任务。';
+    }
+
+    return message;
+  }
+
+  /// 生成带选择权的督促消息
+  /// [baseMessage] 原始命令式消息
+  /// [options] 两个选项，例如 ['现在就去', '等会儿再说']
+  String generateChoiceMessage(String baseMessage, List<String> options) {
+    if (options.length < 2) return baseMessage;
+
+    // 根据偏好和自主感状态决定语气
+    final useEmoji = _prefs.useEmoji;
+    final isLowAutonomy = _autonomySignals.isAutonomyLow;
+
+    if (isLowAutonomy) {
+      // 自主感低 → 完全不催，只给最轻柔的暗示
+      return '我在哦，不着急。${options.last}也完全没问题。';
+    }
+
+    // 选项A（立即）+ 选项B（延后）
+    final optA = options[0];
+    final optB = options.length > 1 ? options[1] : options[0];
+
+    if (useEmoji) {
+      return '$baseMessage\n\n${optA}？有空了${optB}';
+    } else {
+      return '$baseMessage（$optA / $optB）';
+    }
+  }
+
+  /// 生成自主感支持版本的打卡督促
+  String generateAutonomousCheckInNudge(PetContext ctx) {
+    if (ctx.checkedInToday) {
+      return useEmoji ? '今天你已经做到了 ✨' : '今日已完成。';
+    }
+
+    // 自主感极低（< 0.3）→ 完全不催
+    if (_autonomySignals.autonomyScore < 0.3) {
+      return '炭炭今天也在，随时等你。';
+    }
+
+    // 自主感低（< 0.5）→ 给完全选择权
+    if (_autonomySignals.isAutonomyLow) {
+      final options = ['想现在', '等会儿'];
+      return generateChoiceMessage('今天你有空吗？', options);
+    }
+
+    // 正常情况 → 温和引导
+    final streak = ctx.streak;
+    if (streak > 0 && streak % 7 == 0) {
+      return '第${streak}天！你已经走到这里了，剩下的路按你的节奏来。';
+    }
+    if (ctx.currentBossHp > 0) {
+      final remaining = ctx.currentBossTotal - ctx.currentBossHp;
+      return '本月还剩$remaining天，按你自己的节奏来，不急。';
+    }
+    return useEmoji
+        ? '你有空了动一下就好，今天随时 ✨'
+        : '有空时完成即可，不限时间。';
+  }
+
+  /// 获取当前语气（依赖 useEmoji）
+  bool get useEmoji => _prefs.useEmoji;
+
+  /// 生成年度计划引导建议（宠物口吻）
+  Future<String> generateAnnualPlanSuggestion() async {
+    final storage = await StorageService.getInstance();
+    final petName = storage.getPetName();
+
+    // 根据用户是否填了愿景/目标，给出不同提示
+    final vision = storage.getVision();
+    final yearGoal = storage.getYearGoal();
+    final hasVision = vision.isNotEmpty && vision != '成为更好的自己';
+    final hasGoal = yearGoal.isNotEmpty && yearGoal != '持续成长';
+
+    if (!hasVision && !hasGoal) {
+      return useEmoji
+          ? '$petName 发现你还没填年度愿景和目标，要不要一起来规划今年？ 🌟'
+          : '$petName 发现你还没填年度愿景和目标，要不要一起来规划今年？';
+    } else if (!hasGoal) {
+      return useEmoji
+          ? '年度目标还没填，帮你写一个？今年最想做成什么？'
+          : '年度目标还没填，帮你写一个？今年最想做成什么？';
+    } else {
+      return useEmoji
+          ? '年度愿景还没填，$petName 想听听你理想中的自己是什么样的 ✨'
+          : '年度愿景还没填，$petName 想听听你理想中的自己是什么样的';
+    }
+  }
+
+  /// 持久化自主感信号
+  Future<void> _saveAutonomySignals() async {
+    final storage = await StorageService.getInstance();
+    await storage.saveAutonomySignals(_autonomySignals);
+  }
+
+  // ====== 对话历史持久化 ======
+
+  /// 加载对话历史
+  Future<void> _loadConversationHistory() async {
+    final storage = await StorageService.getInstance();
+    _conversationHistory.clear();
+    _conversationHistory.addAll(storage.getConversationHistory());
+    debugPrint('[PetService] Loaded ${_conversationHistory.length} conversation history entries');
+  }
+
+  /// 保存对话历史
+  Future<void> _saveConversationHistory() async {
+    final storage = await StorageService.getInstance();
+    await storage.saveConversationHistory(_conversationHistory);
+    // 压缩检查
+    await _compactConversationHistory();
+  }
+
+  /// 对话历史压缩：当历史超过 _maxHistorySize 时触发
+  /// 把最早的 (_maxHistorySize - _keepRecentCount) 条压缩成摘要
+  Future<void> _compactConversationHistory() async {
+    if (_conversationHistory.length <= _maxHistorySize) return;
+
+    // 保留最近 _keepRecentCount 条，其余压缩成摘要
+    final oldMessages = _conversationHistory.sublist(0, _conversationHistory.length - _keepRecentCount);
+    final recentMessages = _conversationHistory.sublist(_conversationHistory.length - _keepRecentCount);
+
+    // 生成摘要：简单地把旧对话内容拼接
+    final summary = _generateHistorySummary(oldMessages);
+
+    _conversationHistory.clear();
+    _conversationHistory.addAll(recentMessages);
+    _historySummary = summary;
+
+    await _saveConversationHistory();
+    await _saveHistorySummary();
+  }
+
+  /// 生成历史摘要
+  String _generateHistorySummary(List<Map<String, String>> oldMessages) {
+    if (oldMessages.isEmpty) return '';
+    final buf = StringBuffer();
+    buf.write('【早期对话摘要】');
+    for (final msg in oldMessages) {
+      final role = msg['role'] == 'user' ? '用户' : '炭炭';
+      final content = msg['content'] ?? '';
+      // 每条只取前50字
+      buf.write('$role: ${content.length > 50 ? '${content.substring(0, 50)}...' : content}；');
+    }
+    return buf.toString();
+  }
+
+  /// 保存历史摘要
+  Future<void> _saveHistorySummary() async {
+    final storage = await StorageService.getInstance();
+    await storage.saveHistorySummary(_historySummary);
+  }
+
+  /// 加载历史摘要
+  Future<void> _loadHistorySummary() async {
+    final storage = await StorageService.getInstance();
+    _historySummary = storage.getHistorySummary();
   }
 }

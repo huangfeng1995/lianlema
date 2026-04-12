@@ -7,6 +7,15 @@ class StorageService {
   static StorageService? _instance;
   late SharedPreferences _prefs;
 
+  /// 清理文本中的无效 Unicode 字符，防止出现「�」问号框
+  static String _sanitizeText(String text) {
+    return text
+        .replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]'), '')
+        .replaceAll('\uFFFD', '~')
+        .replaceAll('\u{FFFD}', '~')
+        .trim();
+  }
+
   StorageService._();
 
   /// 重置单例（用于数据清除后重新初始化）
@@ -68,6 +77,7 @@ class StorageService {
   static const String _keyConstraints = 'constraints';
   static const String _keyCheckIns = 'check_ins';
   static const String _keyBadges = 'badges';
+  static const String _keyBadgeUnlockedAt = 'badge_unlocked_at';
   static const String _keyMinimalMode = 'minimal_mode';
   static const String _keyTemptingBundling = 'tempting_bundling';
   static const String _keyLastReviewMonth = 'last_review_month';
@@ -93,9 +103,16 @@ class StorageService {
   static const String _keyPetType = 'pet_type'; // 宠物类型 id
   static const String _keyPetAppearanceLevel = 'pet_appearance_level'; // 外观等级 1-5
   static const String _keyPetMoodValue = 'pet_mood_value'; // 心情数值 0-100
+  static const String _keyLastMoodUpdate = 'last_mood_update'; // 上次心情更新时间
   static const String _keyPetPersonality = 'pet_personality'; // 大五人格
   static const String _keyEncouragementRecords = 'encouragement_records'; // 激励记录
   static const String _keyEncouragementStats = 'encouragement_stats'; // 激励有效性统计
+  static const String _keyAutonomySignals = 'autonomy_signals'; // 自主感信号
+  static const String _keyConversationHistory = 'conversation_history'; // 对话历史
+  static const String _keyHistorySummary = 'history_summary'; // 对话历史摘要
+  static const String _keyPetIntimacy = 'pet_intimacy'; // 亲密度 0-100
+  static const String _keyLastIntimacyUpdate = 'last_intimacy_update'; // 上次互动时间
+  static const String _keyPetMemoryHighlights = 'pet_memory_highlights'; // 宠物记忆亮点
 
   // ====== 宠物名字 ======
   static const String defaultPetName = '炭炭';
@@ -241,6 +258,41 @@ class StorageService {
 
   Future<void> savePetMoodValue(int value) async {
     await _prefs.setInt(_keyPetMoodValue, value.clamp(0, 100));
+    await _prefs.setString(_keyLastMoodUpdate, DateTime.now().toIso8601String());
+  }
+
+  /// 获取当前心情值（自动计算衰减）
+  /// 心情每小时衰减 2 点，上限100，最低10
+  int getCurrentMoodValue() {
+    final lastUpdateStr = _prefs.getString(_keyLastMoodUpdate);
+    final lastUpdate = lastUpdateStr != null
+        ? DateTime.parse(lastUpdateStr)
+        : DateTime.now();
+
+    final storedMood = _prefs.getInt(_keyPetMoodValue) ?? 50;
+
+    // 计算小时数
+    final hoursPassed = DateTime.now().difference(lastUpdate).inHours;
+
+    if (hoursPassed <= 0) return storedMood;
+
+    // 每小时衰减 2 点心情（最低到 10）
+    final decay = (hoursPassed * 2).clamp(0, storedMood - 10);
+
+    return (storedMood - decay).clamp(10, 100);
+  }
+
+  /// 获取心情衰减速率描述
+  String getMoodDecayDescription() {
+    final lastUpdateStr = _prefs.getString(_keyLastMoodUpdate);
+    if (lastUpdateStr == null) return '';
+
+    final lastUpdate = DateTime.parse(lastUpdateStr);
+    final hoursPassed = DateTime.now().difference(lastUpdate).inHours;
+
+    if (hoursPassed == 0) return '';
+    if (hoursPassed < 24) return '${hoursPassed}小时没互动了';
+    return '${(hoursPassed / 24).floor()}天没互动了';
   }
 
   // ====== 大五人格 ======
@@ -264,12 +316,10 @@ class StorageService {
     await addPetCoins(-amount, reason);
   }
 
-  /// 判断宠物是否处于蛋阶段（领养后7天内）
+  /// 判断宠物是否处于蛋阶段（累计打卡 < 3天，对应进化阶段1）
   bool isInEggPhase() {
-    final adoptDate = getPetAdoptDate();
-    if (adoptDate == null) return false;
-    final daysSinceAdopt = DateTime.now().difference(adoptDate).inDays;
-    return daysSinceAdopt < 7;
+    final stats = getUserStats();
+    return stats.totalCheckIns < 3;
   }
 
   // ====== 宠物记忆（反思机制） ======
@@ -373,6 +423,169 @@ class StorageService {
     return map.map((k, v) => MapEntry(int.parse(k), EncouragementStats.fromJson(v)));
   }
 
+  // ====== 自主感信号 ======
+  Future<void> saveAutonomySignals(AutonomySignals signals) async {
+    await _prefs.setString(_keyAutonomySignals, jsonEncode(signals.toJson()));
+  }
+
+  AutonomySignals getAutonomySignals() {
+    final str = _prefs.getString(_keyAutonomySignals);
+    if (str == null) return const AutonomySignals();
+    return AutonomySignals.fromJson(jsonDecode(str));
+  }
+
+  // ====== 对话历史 ======
+  Future<void> saveConversationHistory(List<Map<String, String>> history) async {
+    await _prefs.setString(_keyConversationHistory, jsonEncode(history));
+  }
+
+  List<Map<String, String>> getConversationHistory() {
+    final str = _prefs.getString(_keyConversationHistory);
+    if (str == null) return [];
+    final List decoded = jsonDecode(str) as List;
+    return decoded.map((e) => Map<String, String>.from(e as Map)).toList();
+  }
+
+  // ====== 对话历史摘要 ======
+  Future<void> saveHistorySummary(String summary) async {
+    await _prefs.setString(_keyHistorySummary, summary);
+  }
+
+  String getHistorySummary() {
+    return _prefs.getString(_keyHistorySummary) ?? '';
+  }
+
+  // ====== 宠物记忆亮点 ======
+  /// 获取宠物记忆亮点列表
+  List<PetMemoryHighlight> getPetMemoryHighlights() {
+    final str = _prefs.getString(_keyPetMemoryHighlights);
+    if (str == null) return [];
+    final list = jsonDecode(str) as List;
+    return list.map((e) => PetMemoryHighlight.fromJson(e)).toList();
+  }
+
+  /// 添加宠物记忆亮点（同类只添加一次）
+  Future<void> addPetMemoryHighlight(PetMemoryHighlight highlight) async {
+    final list = getPetMemoryHighlights();
+    // 检查是否已存在同类记忆
+    if (list.any((m) => m.type == highlight.type)) return;
+    list.add(highlight);
+    await _prefs.setString(
+      _keyPetMemoryHighlights,
+      jsonEncode(list.map((e) => e.toJson()).toList()),
+    );
+  }
+
+  /// 检查并添加首次打卡记忆
+  Future<void> checkAndAddFirstCheckInMemory(int totalCheckIns) async {
+    if (totalCheckIns == 1) {
+      await addPetMemoryHighlight(PetMemoryHighlight(
+        id: 'first_checkin_${DateTime.now().millisecondsSinceEpoch}',
+        title: '第一次打卡',
+        emoji: '🎯',
+        createdAt: DateTime.now(),
+        type: 'checkin',
+      ));
+    }
+  }
+
+  /// 检查并添加连续打卡记忆
+  Future<void> checkAndAddStreakMemory(int streak) async {
+    if (streak == 7) {
+      await addPetMemoryHighlight(PetMemoryHighlight(
+        id: 'streak_7_${DateTime.now().millisecondsSinceEpoch}',
+        title: '连续打卡7天',
+        emoji: '🔥',
+        createdAt: DateTime.now(),
+        type: 'milestone',
+      ));
+    } else if (streak == 30) {
+      await addPetMemoryHighlight(PetMemoryHighlight(
+        id: 'streak_30_${DateTime.now().millisecondsSinceEpoch}',
+        title: '连续打卡30天',
+        emoji: '⚡',
+        createdAt: DateTime.now(),
+        type: 'milestone',
+      ));
+    }
+  }
+
+  /// 检查并添加首次聊天记忆
+  Future<void> checkAndAddFirstChatMemory() async {
+    final memories = getPetMemoryHighlights();
+    if (!memories.any((m) => m.type == 'chat')) {
+      await addPetMemoryHighlight(PetMemoryHighlight(
+        id: 'first_chat_${DateTime.now().millisecondsSinceEpoch}',
+        title: '第一次聊天',
+        emoji: '💬',
+        createdAt: DateTime.now(),
+        type: 'chat',
+      ));
+    }
+  }
+
+  /// 检查并添加徽章解锁记忆
+  Future<void> checkAndAddBadgeMemory(String badgeName) async {
+    await addPetMemoryHighlight(PetMemoryHighlight(
+      id: 'badge_${DateTime.now().millisecondsSinceEpoch}',
+      title: '解锁「$badgeName」',
+      emoji: '🏆',
+      createdAt: DateTime.now(),
+      type: 'badge',
+    ));
+  }
+
+  /// 检查并添加外观升级记忆
+  Future<void> checkAndAddLevelUpMemory(int newLevel) async {
+    await addPetMemoryHighlight(PetMemoryHighlight(
+      id: 'levelup_${DateTime.now().millisecondsSinceEpoch}',
+      title: '外观升级 Lv$newLevel',
+      emoji: '⬆️',
+      createdAt: DateTime.now(),
+      type: 'level',
+    ));
+  }
+
+  // ====== 宠物亲密度 ======
+  /// 获取亲密度值（0-100）
+  int getPetIntimacy() {
+    return _prefs.getInt(_keyPetIntimacy) ?? 0;
+  }
+
+  /// 获取亲密度等级数字（1-5）
+  int getPetIntimacyLevel() {
+    final intimacy = getPetIntimacy();
+    if (intimacy >= 80) return 5;
+    if (intimacy >= 60) return 4;
+    if (intimacy >= 40) return 3;
+    if (intimacy >= 20) return 2;
+    return 1;
+  }
+
+  /// 计算亲密度等级名称
+  String getPetIntimacyLevelName() {
+    final level = getPetIntimacyLevel();
+    switch (level) {
+      case 5: return '灵魂伴侣';
+      case 4: return '好友';
+      case 3: return '熟人';
+      case 2: return '点头之交';
+      default: return '初次见面';
+    }
+  }
+
+  /// 增加亲密度
+  /// 返回是否升级了等级
+  Future<bool> addPetIntimacy(int amount) async {
+    final oldLevel = getPetIntimacyLevel();
+    final current = getPetIntimacy();
+    final newIntimacy = (current + amount).clamp(0, 100);
+    await _prefs.setInt(_keyPetIntimacy, newIntimacy);
+    await _prefs.setString(_keyLastIntimacyUpdate, DateTime.now().toIso8601String());
+    final newLevel = getPetIntimacyLevel();
+    return newLevel > oldLevel;
+  }
+
   // ====== Onboarding ======
   bool get isOnboardingComplete => _prefs.getBool(_keyOnboardingComplete) ?? false;
 
@@ -426,6 +639,25 @@ class StorageService {
     return _prefs.getString(_keyYearGoal) ?? '';
   }
 
+  // ====== 年度计划引导 ======
+  bool needsAnnualPlanGuide() {
+    final stats = getUserStats();
+    if (stats.totalCheckIns < 7) return false;
+    final vision = getVision();
+    final yearGoal = getYearGoal();
+    // 用户未填写或使用了默认值
+    return (vision.isEmpty || vision == '成为更好的自己') &&
+           (yearGoal.isEmpty || yearGoal == '持续成长');
+  }
+
+  String getLastAnnualPlanGuideDate() {
+    return _prefs.getString('last_annual_plan_guide') ?? '';
+  }
+
+  Future<void> saveLastAnnualPlanGuideDate(DateTime date) async {
+    await _prefs.setString('last_annual_plan_guide', date.toIso8601String());
+  }
+
   // ====== 月度Boss ======
   Future<void> saveMonthlyBossFromOnboarding(String content) async {
     final now = DateTime.now();
@@ -452,9 +684,13 @@ class StorageService {
     return decoded.map((e) {
       if (e is String) {
         // 兼容旧数据：只有计划文本，没有障碍字段
-        return {'obstacle': '', 'plan': e};
+        return {'obstacle': '', 'plan': _sanitizeText(e)};
       }
-      return Map<String, String>.from(e as Map);
+      final map = Map<String, String>.from(e as Map);
+      return {
+        'obstacle': _sanitizeText(map['obstacle'] ?? ''),
+        'plan': _sanitizeText(map['plan'] ?? ''),
+      };
     }).toList();
   }
 
@@ -467,7 +703,7 @@ class StorageService {
     final str = _prefs.getString(_keyDailyActions);
     if (str == null) return [];
     final List decoded = jsonDecode(str);
-    return decoded.cast<String>();
+    return decoded.cast<String>().map(_sanitizeText).toList();
   }
 
   // ====== 约束条件 ======
@@ -647,6 +883,71 @@ class StorageService {
     return list.map((e) => CheckIn.fromJson(e)).toList();
   }
 
+  // ====== 周复盘数据 ======
+  /// 获取周复盘数据
+  Map<String, dynamic> getWeeklyReview() {
+    final now = DateTime.now();
+    final weekStart = now.subtract(Duration(days: now.weekday - 1));
+    final weekStartDate = DateTime(weekStart.year, weekStart.month, weekStart.day);
+
+    // 获取本周打卡记录
+    final allCheckIns = getCheckIns();
+    final weeklyCheckIns = allCheckIns.where((c) =>
+        c.date.isAfter(weekStartDate.subtract(const Duration(days: 1))) &&
+        c.date.isBefore(weekStartDate.add(const Duration(days: 7)))).toList();
+
+    // 计算本周数据
+    final checkInDays = weeklyCheckIns.length;
+    final totalLeverPlans = getDailyLevers().length;
+
+    // 获取宠物状态
+    final petMood = getCurrentMoodValue();
+    final petIntimacy = getPetIntimacy();
+
+    return {
+      'weekStart': weekStartDate.toIso8601String(),
+      'checkInDays': checkInDays,
+      'totalDays': 7,
+      'completionRate': totalLeverPlans > 0
+          ? ((checkInDays / totalLeverPlans) * 100).round().clamp(0, 100)
+          : 0,
+      'petMood': petMood,
+      'petIntimacy': petIntimacy,
+      'checkIns': weeklyCheckIns.map((c) => c.toJson()).toList(),
+    };
+  }
+
+  /// 获取月复盘数据
+  Map<String, dynamic> getMonthlyReview() {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month, 1);
+
+    // 获取本月打卡记录
+    final allCheckIns = getCheckIns();
+    final monthlyCheckIns = allCheckIns.where((c) =>
+        c.date.isAfter(monthStart.subtract(const Duration(days: 1)))).toList();
+
+    // 获取本月Boss状态
+    final boss = getMonthlyBoss();
+
+    // 计算本月数据
+    final checkInDays = monthlyCheckIns.length;
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    final daysPassed = now.day;
+
+    return {
+      'monthStart': monthStart.toIso8601String(),
+      'checkInDays': checkInDays,
+      'totalDays': daysPassed,
+      'completionRate': daysPassed > 0
+          ? ((checkInDays / daysPassed) * 100).round().clamp(0, 100)
+          : 0,
+      'bossHp': boss?.hp ?? 0,
+      'bossTotal': boss?.totalDays ?? 0,
+      'bossName': boss?.content ?? '本月挑战',
+    };
+  }
+
   // ====== 徽章 ======
   Future<void> saveBadges(List<AppBadge> badges) async {
     final list = badges.map((b) => b.toJson()).toList();
@@ -654,12 +955,121 @@ class StorageService {
   }
 
   List<AppBadge> getBadges() {
-    final str = _prefs.getString(_keyBadges);
-    if (str == null) {
-      return _defaultBadges;
+    // 获取已解锁的徽章
+    final unlockedIds = _prefs.getStringList(_keyBadges) ?? [];
+    final unlockedSet = unlockedIds.toSet();
+
+    // 返回所有定义 + 解锁状态
+    return AchievementDefinitions.all.map((def) {
+      if (unlockedSet.contains(def.id)) {
+        final unlockedAtStr = _prefs.getString('${_keyBadgeUnlockedAt}_${def.id}');
+        return AppBadge(
+          id: def.id,
+          name: def.name,
+          description: def.description,
+          icon: 'emoji:${def.emoji}',
+          isUnlocked: true,
+          unlockedAt: unlockedAtStr != null ? DateTime.parse(unlockedAtStr) : null,
+        );
+      }
+      return AppBadge(
+        id: def.id,
+        name: def.name,
+        description: def.description,
+        icon: 'emoji:${def.emoji}',
+        isUnlocked: false,
+      );
+    }).toList();
+  }
+
+  /// 解锁成就
+  /// 返回解锁的成就，如果没有则返回null
+  Future<Badge?> unlockBadge(String badgeId) async {
+    final unlockedIds = _prefs.getStringList(_keyBadges) ?? [];
+    if (unlockedIds.contains(badgeId)) return null; // 已经解锁
+
+    final def = AchievementDefinitions.all.firstWhere(
+      (d) => d.id == badgeId,
+      orElse: () => AchievementDefinitions.all.first,
+    );
+
+    if (def.id == AchievementDefinitions.all.first.id && def.id != badgeId) return null; // 没找到
+
+    unlockedIds.add(badgeId);
+    await _prefs.setStringList(_keyBadges, unlockedIds);
+    await _prefs.setString('${_keyBadgeUnlockedAt}_$badgeId', DateTime.now().toIso8601String());
+
+    // 发放奖励
+    if (def.reward > 0) {
+      await addPetCoins(def.reward, PetCoinReason.badgeUnlock);
     }
-    final list = jsonDecode(str) as List;
-    return list.map((e) => AppBadge.fromJson(e)).toList();
+
+    return Badge(
+      id: def.id,
+      name: def.name,
+      description: def.description,
+      emoji: def.emoji,
+      isUnlocked: true,
+      unlockedAt: DateTime.now(),
+      isHidden: def.isHidden,
+      reward: def.reward,
+    );
+  }
+
+  /// 检查并解锁成就
+  /// 返回刚解锁的成就列表
+  Future<List<Badge>> checkAndUnlockAchievements() async {
+    final newlyUnlocked = <Badge>[];
+    final stats = getUserStats();
+    final unlockedIds = _prefs.getStringList(_keyBadges) ?? [];
+    final unlockedSet = unlockedIds.toSet();
+
+    // 首次打卡
+    if (stats.totalCheckIns >= 1 && !unlockedSet.contains('first_checkin')) {
+      final badge = await unlockBadge('first_checkin');
+      if (badge != null) newlyUnlocked.add(badge);
+    }
+
+    // 连续打卡
+    if (stats.streak >= 3 && !unlockedSet.contains('streak_3')) {
+      final badge = await unlockBadge('streak_3');
+      if (badge != null) newlyUnlocked.add(badge);
+    }
+    if (stats.streak >= 7 && !unlockedSet.contains('streak_7')) {
+      final badge = await unlockBadge('streak_7');
+      if (badge != null) newlyUnlocked.add(badge);
+    }
+    if (stats.streak >= 30 && !unlockedSet.contains('streak_30')) {
+      final badge = await unlockBadge('streak_30');
+      if (badge != null) newlyUnlocked.add(badge);
+    }
+    if (stats.streak >= 100 && !unlockedSet.contains('streak_100')) {
+      final badge = await unlockBadge('streak_100');
+      if (badge != null) newlyUnlocked.add(badge);
+    }
+
+    // 累计打卡
+    if (stats.totalCheckIns >= 100 && !unlockedSet.contains('centurion')) {
+      final badge = await unlockBadge('centurion');
+      if (badge != null) newlyUnlocked.add(badge);
+    }
+
+    // 检查隐藏成就 - 时间相关
+    final now = DateTime.now();
+    if (now.hour >= 1 && now.hour < 5 && !unlockedSet.contains('night_owl')) {
+      final badge = await unlockBadge('night_owl');
+      if (badge != null) newlyUnlocked.add(badge);
+    }
+    if (now.hour >= 5 && now.hour < 6 && !unlockedSet.contains('early_bird')) {
+      final badge = await unlockBadge('early_bird');
+      if (badge != null) newlyUnlocked.add(badge);
+    }
+    if (now.hour >= 23 && now.hour < 24 && !unlockedSet.contains('late_night')) {
+      final badge = await unlockBadge('late_night');
+      if (badge != null) newlyUnlocked.add(badge);
+    }
+
+    return newlyUnlocked;
   }
 
   List<AppBadge> get _defaultBadges => [
@@ -779,7 +1189,21 @@ class StorageService {
   MonthlyBoss? getMonthlyBoss() {
     final str = _prefs.getString(_keyMonthlyBoss);
     if (str == null) return null;
-    return MonthlyBoss.fromJson(jsonDecode(str));
+    final json = jsonDecode(str) as Map<String, dynamic>;
+
+    // 从 bossTasks 重建干净的 content（避免 content 字段乱码）
+    final bossTasks = getBossTasks();
+    final cleanContent = bossTasks.isNotEmpty
+        ? bossTasks.values.map((actions) => actions.isNotEmpty ? actions.first : '').where((s) => s.isNotEmpty).join('；')
+        : _sanitizeText(json['content'] ?? '');
+
+    return MonthlyBoss(
+      content: cleanContent,
+      month: json['month'],
+      year: json['year'],
+      totalDays: json['totalDays'],
+      hp: json['hp'],
+    );
   }
 
   // Per-boss 存储（v2 扩展）
@@ -881,10 +1305,6 @@ Future<void> saveOnboardingData({
     await saveYearGoal(yearGoal);
     await saveMonthlyBoss(boss);
     await saveDailyLevers(dailyLevers);
-    // 自动生成每日行动（基于 Boss 类型）
-    if (dailyActions.isEmpty && monthlyBoss.isNotEmpty) {
-      dailyActions = _generateDailyActionsFromBoss(monthlyBoss);
-    }
     await saveDailyActions(dailyActions);
     await saveConstraints(constraints);
     await saveTemptingBundling(temptingBundling);
@@ -1016,16 +1436,13 @@ Future<void> saveOnboardingData({
     return badges;
   }
 
-  // ====== 根据打卡天数更新外观等级 ======
-  Future<void> updateAppearanceLevelFromStreak(int streakDays) async {
-    int level = 1;
-    if (streakDays >= 100) level = 5;
-    else if (streakDays >= 60) level = 4;
-    else if (streakDays >= 30) level = 3;
-    else if (streakDays >= 14) level = 2;
+  // ====== 根据累计打卡天数更新外观等级（6阶段进化体系）======
+  /// 设计：🥚蛋(0天) → 🐣孵化(3天) → 🔥初级(7天) → ⚡中级(30天) → 👑高级(100天) → 🌟终极(365天)
+  Future<void> updateAppearanceLevelFromStreak(int totalDays) async {
+    final newLevel = PetAppearanceLevel.calculateStage(totalDays);
     // 只有升级才更新，不降级
-    if (level > getPetAppearanceLevel()) {
-      await savePetAppearanceLevel(level);
+    if (newLevel > getPetAppearanceLevel()) {
+      await savePetAppearanceLevel(newLevel);
     }
   }
 
@@ -1033,5 +1450,40 @@ Future<void> saveOnboardingData({
   Future<void> resetAll() async {
     await _prefs.clear();
     _instance = null;
+  }
+
+  // ====== 数据导出 ======
+  /// 导出所有用户数据为 JSON 格式
+  Map<String, dynamic> exportAllData() {
+    return {
+      'exportTime': DateTime.now().toIso8601String(),
+      'version': '1.0',
+      'userStats': getUserStats().toJson(),
+      'checkIns': getCheckIns().map((c) => c.toJson()).toList(),
+      'badges': getBadges().map((b) => b.toJson()).toList(),
+      'antiVision': getAntiVision(),
+      'vision': getVision(),
+      'yearGoal': getYearGoal(),
+      'constraints': getConstraints(),
+      'monthlyBoss': getMonthlyBoss()?.toJson(),
+      'dailyLevers': getDailyLevers(),
+      'pet': {
+        'name': getPetName(),
+        'type': getPetType(),
+        'adoptDate': getPetAdoptDate()?.toIso8601String(),
+        'appearanceLevel': getPetAppearanceLevel(),
+        'moodValue': getPetMoodValue(),
+        'coins': getPetCoins(),
+        'equippedCostume': getEquippedCostume(),
+        'equippedDecorations': getEquippedDecorations(),
+        'ownedItems': getPetOwnedItems().map((o) => o.toJson()).toList(),
+        'personality': getPetPersonality()?.toJson(),
+        'memories': getPetMemories().map((m) => m.toJson()).toList(),
+        'encouragementStats': getEncouragementStats().map(
+          (k, v) => MapEntry(k.toString(), v.toJson()),
+        ),
+      },
+      'encouragementRecords': getEncouragementRecords().map((r) => r.toJson()).toList(),
+    };
   }
 }

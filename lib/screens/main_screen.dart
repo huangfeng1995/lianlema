@@ -3,7 +3,7 @@ import '../theme/app_theme.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
-import 'pet_screen.dart';
+import 'pet_home_screen.dart';
 import 'daily_report_screen.dart';
 import 'weekly_report_screen.dart';
 import 'monthly_report_screen.dart';
@@ -23,7 +23,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _pages = [
     const HomeScreen(),
-    const PetScreen(),
+    const PetHomeScreen(),
     const ProfileScreen(),
   ];
 

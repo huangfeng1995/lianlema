@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/pet_models.dart';
 import '../theme/app_theme.dart';
 import '../utils/pet_service.dart';
+import '../services/pet_push_service.dart';
 
 /// 宠物浮动气泡
 /// 悬浮在首页右下角，点击展开对话/功能面板
@@ -14,12 +15,14 @@ class PetBubble extends StatefulWidget {
   State<PetBubble> createState() => PetBubbleState();
 }
 
-class PetBubbleState extends State<PetBubble> with SingleTickerProviderStateMixin {
+class PetBubbleState extends State<PetBubble>
+    with SingleTickerProviderStateMixin {
   bool _isExpanded = false;
   bool _isLoading = false;
   bool _isSending = false;
   String _petMessage = '';
   String? _proactiveInsight; // 主动洞察（未读）
+  List<PetPush> _pushes = [];
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<ChatMessage> _messages = [];
@@ -62,11 +65,18 @@ class PetBubbleState extends State<PetBubble> with SingleTickerProviderStateMixi
       insight = PetService.instance.generateProactiveInsight(ctx);
     }
 
+    // 加载宠物主动推送
+    List<PetPush> pushes = [];
+    try {
+      pushes = await PetPushService.instance.generateDailyPushes(ctx);
+    } catch (_) {}
+
     setState(() {
       _context = ctx;
       _mood = moodState.mood;
       _petMessage = '$greeting $suggestion';
       _proactiveInsight = insight;
+      _pushes = pushes;
     });
   }
 
@@ -130,7 +140,9 @@ class PetBubbleState extends State<PetBubble> with SingleTickerProviderStateMixi
                     width: 12,
                     height: 12,
                     decoration: BoxDecoration(
-                      color: _proactiveInsight != null ? Colors.amber : AppColors.primary,
+                      color: _proactiveInsight != null
+                          ? Colors.amber
+                          : AppColors.primary,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -145,7 +157,8 @@ class PetBubbleState extends State<PetBubble> with SingleTickerProviderStateMixi
   Widget _buildMoodIcon(PetMood mood) {
     switch (mood) {
       case PetMood.happy:
-        return const Icon(Icons.sentiment_very_satisfied, color: Colors.white, size: 32);
+        return const Icon(Icons.sentiment_very_satisfied,
+            color: Colors.white, size: 32);
       case PetMood.sleepy:
         return const Icon(Icons.nightlight, color: Colors.white70, size: 32);
       case PetMood.excited:
@@ -153,7 +166,8 @@ class PetBubbleState extends State<PetBubble> with SingleTickerProviderStateMixi
       case PetMood.thinking:
         return const Icon(Icons.psychology, color: Colors.white, size: 32);
       case PetMood.calm:
-        return const Icon(Icons.local_fire_department, color: Colors.white, size: 32);
+        return const Icon(Icons.local_fire_department,
+            color: Colors.white, size: 32);
       case PetMood.resting:
         return const Icon(Icons.bedtime, color: Colors.white70, size: 32);
     }
@@ -257,8 +271,15 @@ class PetBubbleState extends State<PetBubble> with SingleTickerProviderStateMixi
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (_petMessage.isNotEmpty) _buildPetBubble(_petMessage),
-            if (_proactiveInsight != null) ...[
+            if (_pushes.isNotEmpty) ...[
               const SizedBox(height: 12),
+              ..._pushes.map((push) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _buildPushCard(push),
+                  )),
+            ],
+            if (_proactiveInsight != null) ...[
+              const SizedBox(height: 8),
               _buildInsightCard(_proactiveInsight!),
             ],
           ],
@@ -294,12 +315,99 @@ class PetBubbleState extends State<PetBubble> with SingleTickerProviderStateMixi
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, height: 1.5),
+              style: const TextStyle(
+                  fontSize: 14, color: AppColors.textPrimary, height: 1.5),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildPushCard(PetPush push) {
+    return GestureDetector(
+      onTap: () {
+        // 点击推送：收起面板并跳转到宠物页面
+        setState(() => _isExpanded = false);
+        Navigator.of(context).pushNamed('/pet');
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF3E0),
+          borderRadius: BorderRadius.circular(12),
+          border:
+              Border.all(color: const Color(0xFFFF9800).withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF9800).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Text(
+                  _pushEmoji(push.type),
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    push.title,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFE65100),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    push.body,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textPrimary,
+                      height: 1.4,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, size: 16, color: Color(0xFFFF9800)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _pushEmoji(PushType type) {
+    switch (type) {
+      case PushType.streakReminder:
+        return '☀️';
+      case PushType.milestoneApproaching:
+        return '🎯';
+      case PushType.idleWarning:
+        return '💪';
+      case PushType.weeklySummary:
+        return '📋';
+      case PushType.challengeProgress:
+        return '🏃';
+      case PushType.obstacleGuidance:
+        return '🧭';
+      case PushType.annualPlanGuide:
+        return '🌟';
+    }
   }
 
   Widget _buildInsightCard(String text) {
@@ -331,7 +439,8 @@ class PetBubbleState extends State<PetBubble> with SingleTickerProviderStateMixi
           const SizedBox(height: 6),
           Text(
             text,
-            style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, height: 1.5),
+            style: const TextStyle(
+                fontSize: 13, color: AppColors.textPrimary, height: 1.5),
           ),
         ],
       ),
@@ -343,7 +452,8 @@ class PetBubbleState extends State<PetBubble> with SingleTickerProviderStateMixi
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isUser) ...[
@@ -355,7 +465,8 @@ class PetBubbleState extends State<PetBubble> with SingleTickerProviderStateMixi
                 shape: BoxShape.circle,
               ),
               child: const Center(
-                child: Icon(Icons.local_fire_department, size: 16, color: AppColors.primary),
+                child: Icon(Icons.local_fire_department,
+                    size: 16, color: AppColors.primary),
               ),
             ),
             const SizedBox(width: 8),
@@ -373,7 +484,10 @@ class PetBubbleState extends State<PetBubble> with SingleTickerProviderStateMixi
                   bottomLeft: Radius.circular(isUser ? 12 : 4),
                   bottomRight: Radius.circular(isUser ? 4 : 12),
                 ),
-                border: isUser ? null : Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                border: isUser
+                    ? null
+                    : Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.2)),
               ),
               child: Text(
                 msg.text,
@@ -403,7 +517,8 @@ class PetBubbleState extends State<PetBubble> with SingleTickerProviderStateMixi
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+              border:
+                  Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
             ),
             child: Row(
               children: [
@@ -416,7 +531,9 @@ class PetBubbleState extends State<PetBubble> with SingleTickerProviderStateMixi
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Text('炭炭在思考...', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                const Text('炭炭在思考...',
+                    style: TextStyle(
+                        fontSize: 13, color: AppColors.textSecondary)),
               ],
             ),
           ),
@@ -429,7 +546,8 @@ class PetBubbleState extends State<PetBubble> with SingleTickerProviderStateMixi
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.primary.withValues(alpha: 0.1))),
+        border: Border(
+            top: BorderSide(color: AppColors.primary.withValues(alpha: 0.1))),
       ),
       child: Row(
         children: [
@@ -439,17 +557,21 @@ class PetBubbleState extends State<PetBubble> with SingleTickerProviderStateMixi
               decoration: BoxDecoration(
                 color: AppColors.background,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.textLight.withValues(alpha: 0.3)),
+                border: Border.all(
+                    color: AppColors.textLight.withValues(alpha: 0.3)),
               ),
               child: TextField(
                 controller: _inputController,
                 decoration: const InputDecoration(
                   hintText: '问炭炭...',
-                  hintStyle: TextStyle(fontSize: 14, color: AppColors.textLight),
+                  hintStyle:
+                      TextStyle(fontSize: 14, color: AppColors.textLight),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 ),
-                style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                style:
+                    const TextStyle(fontSize: 14, color: AppColors.textPrimary),
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _sendMessage(),
               ),
@@ -486,11 +608,13 @@ class PetBubbleState extends State<PetBubble> with SingleTickerProviderStateMixi
             child: GestureDetector(
               onTap: () => _handleCommand(cmd.command),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                  border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -499,7 +623,10 @@ class PetBubbleState extends State<PetBubble> with SingleTickerProviderStateMixi
                     const SizedBox(width: 4),
                     Text(
                       cmd.label,
-                      style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500),
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),

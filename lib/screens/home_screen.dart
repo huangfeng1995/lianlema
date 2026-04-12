@@ -13,12 +13,17 @@ import '../widgets/level_up_celebration.dart';
 import '../widgets/boss_hp_bar.dart';
 import '../widgets/boss_victory_celebration.dart';
 import '../widgets/streak_broken_overlay.dart';
+import '../widgets/evolution_celebration.dart';
+import '../widgets/pet_bubble.dart';
 import '../controllers/pet_mood_controller.dart';
+import '../services/share_service.dart';
 import 'package:get/get.dart';
 
 import 'profile_screen.dart';
 import 'monthly_review_screen.dart';
+import 'pet_screen.dart';
 import 'monthly_boss_edit_screen.dart';
+import 'annual_plan_screen.dart';
 
 /// 蛋形Painter（绘制椭圆形的蛋轮廓）
 class _EggPainter extends CustomPainter {
@@ -93,8 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hasLongTermPlanning = false; // 是否有长期规划
   PetContext? _context; // 宠物上下文
   String _petName = StorageService.defaultPetName; // 宠物名字
-  List<PetPush> _pushes = [];
-  Set<String> _dismissedPushIds = {};
+  final GlobalKey<PetBubbleState> _petBubbleKey = GlobalKey<PetBubbleState>();
 
   @override
   void initState() {
@@ -136,13 +140,16 @@ class _HomeScreenState extends State<HomeScreen> {
     // 检查今天是否已打卡
     final today = DateTime.now();
     final todayStr = app_date.AppDateUtils.formatDate(today);
-    final checkedIn = checkIns.any((c) => app_date.AppDateUtils.formatDate(c.date) == todayStr);
+    final checkedIn = checkIns
+        .any((c) => app_date.AppDateUtils.formatDate(c.date) == todayStr);
 
     // 检查昨天是否漏打卡（streak断裂但今天还没打卡）
     final yesterday = today.subtract(const Duration(days: 1));
     final yesterdayStr = app_date.AppDateUtils.formatDate(yesterday);
-    final yesterdayCheckedIn = checkIns.any((c) => app_date.AppDateUtils.formatDate(c.date) == yesterdayStr);
-    final streakBroken = !checkedIn && !yesterdayCheckedIn && checkIns.isNotEmpty;
+    final yesterdayCheckedIn = checkIns
+        .any((c) => app_date.AppDateUtils.formatDate(c.date) == yesterdayStr);
+    final streakBroken =
+        !checkedIn && !yesterdayCheckedIn && checkIns.isNotEmpty;
 
     // 计算连续打卡天数
     final checkInDates = checkIns.map((c) => c.date).toList();
@@ -171,21 +178,14 @@ class _HomeScreenState extends State<HomeScreen> {
       _isCheckedInToday = checkedIn;
       _streakBroken = streakBroken;
       _canUseRemedy = _storage.canUseStreakRemedy();
-      _hasLongTermPlanning = antiVision.isNotEmpty || vision.isNotEmpty || yearGoal.isNotEmpty || constraints.isNotEmpty;
+      _hasLongTermPlanning = antiVision.isNotEmpty ||
+          vision.isNotEmpty ||
+          yearGoal.isNotEmpty ||
+          constraints.isNotEmpty;
       _minimalMode = minimalMode;
       _temptingBundling = temptingBundling;
       _isLoading = false;
     });
-
-    // 生成今日推送
-    if (_context != null) {
-      final pushes = await PetPushService.instance.generateDailyPushes(_context!);
-      if (mounted) {
-        setState(() {
-          _pushes = pushes.where((p) => !_dismissedPushIds.contains(p.id)).toList();
-        });
-      }
-    }
 
     // 月末/月初检查：显示月度复盘
     if (_storage.shouldShowMonthlyReview()) {
@@ -222,7 +222,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _checkIn() async {
     final today = DateTime.now();
-    final completedIds = _todayLevers.where((l) => l.isCompleted).map((l) => l.id).toList();
+    final completedIds =
+        _todayLevers.where((l) => l.isCompleted).map((l) => l.id).toList();
 
     // 保存打卡记录
     final checkIn = CheckIn(date: today, leverIds: completedIds);
@@ -238,6 +239,9 @@ class _HomeScreenState extends State<HomeScreen> {
     // 打卡后心情+3
     final currentMood = _storage.getPetMoodValue();
     await _storage.savePetMoodValue(currentMood + 3);
+
+    // 打卡后亲密度+3
+    await _storage.addPetIntimacy(3);
 
     // 更新 GetX 心情控制器
     if (Get.isRegistered<PetMoodController>()) {
@@ -281,8 +285,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // 检查 Boss 是否被击败（在徽章检查之前）
-    final bool bossWasAlreadyDefeated = _monthlyBoss != null && _monthlyBoss!.hp >= _monthlyBoss!.totalDays;
-    final bool bossDefeatedNow = updatedBoss != null && updatedBoss.hp >= updatedBoss.totalDays;
+    final bool bossWasAlreadyDefeated =
+        _monthlyBoss != null && _monthlyBoss!.hp >= _monthlyBoss!.totalDays;
+    final bool bossDefeatedNow =
+        updatedBoss != null && updatedBoss.hp >= updatedBoss.totalDays;
     final bool bossJustDefeated = bossDefeatedNow && !bossWasAlreadyDefeated;
 
     // Boss 击败奖励宠物币
@@ -307,7 +313,8 @@ class _HomeScreenState extends State<HomeScreen> {
       yearGoalAchieved: false,
       bossDefeated: bossDefeatedNow,
     );
-    final newUnlockedBadges = XpService.getNewlyUnlockedBadges(badges, updatedBadges);
+    final newUnlockedBadges =
+        XpService.getNewlyUnlockedBadges(badges, updatedBadges);
 
     final finalStats = UserStats(
       level: newStats.level,
@@ -319,7 +326,61 @@ class _HomeScreenState extends State<HomeScreen> {
 
     await _storage.saveUserStats(finalStats);
     await _storage.saveBadges(updatedBadges);
+
+    // 检查外观等级是否升级，播放进化动画
+    final oldAppearanceLevel = _storage.getPetAppearanceLevel();
     await _storage.updateAppearanceLevelFromStreak(newStreak);
+    final newAppearanceLevel = _storage.getPetAppearanceLevel();
+    if (newAppearanceLevel > oldAppearanceLevel) {
+      final petType = _storage.getPetType();
+      final petEmoji = getPetTypeConfig(petType)?.emoji ?? '🦊';
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        EvolutionOverlay.show(context, newAppearanceLevel, petEmoji);
+      });
+      // 记录外观升级记忆
+      await _storage.checkAndAddLevelUpMemory(newAppearanceLevel);
+    }
+
+    // 检查并添加记忆亮点
+    await _storage.checkAndAddFirstCheckInMemory(_stats.totalCheckIns + 1);
+    await _storage.checkAndAddStreakMemory(newStreak);
+
+    // 检查成就解锁
+    final newBadges = await _storage.checkAndUnlockAchievements();
+    if (newBadges.isNotEmpty && mounted) {
+      for (final badge in newBadges) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Text(badge.emoji, style: TextStyle(fontSize: 20)),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('成就解锁！', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text(badge.name, style: TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ),
+                if (badge.reward > 0)
+                  Text('+${badge.reward}币', style: TextStyle(color: Colors.yellow)),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () => ShareService.shareAchievement(badge.name, badge.emoji),
+                  child: Icon(Icons.share, size: 18, color: Colors.white.withValues(alpha: 0.8)),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
 
     // 微妙成功反馈（非极简模式）
     if (!_minimalMode) {
@@ -327,6 +388,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     // 彩纸庆祝动画
     ConfettiOverlay.show(context);
+
+    // 显示打卡成功后分享按钮（非极简模式）
+    if (!_minimalMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showShareButton();
+      });
+    }
 
     setState(() {
       _stats = finalStats;
@@ -392,7 +460,8 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.whatshot, size: 32, color: AppColors.primary),
+                  const Icon(Icons.whatshot,
+                      size: 32, color: AppColors.primary),
                   const Text(
                     ' VICTORY ',
                     style: TextStyle(
@@ -401,7 +470,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: AppColors.primary,
                     ),
                   ),
-                  const Icon(Icons.whatshot, size: 32, color: AppColors.primary),
+                  const Icon(Icons.whatshot,
+                      size: 32, color: AppColors.primary),
                 ],
               ),
               const SizedBox(height: 12),
@@ -415,7 +485,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: AppColors.success.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
@@ -423,7 +494,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.emoji_events, size: 16, color: Color(0xFFFFD700)),
+                    const Icon(Icons.emoji_events,
+                        size: 16, color: Color(0xFFFFD700)),
                     const SizedBox(width: 6),
                     const Text(
                       '月度挑战已完成！',
@@ -521,7 +593,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         child: Icon(
-                          _archetypeIconMap[petReaction.iconName] ?? Icons.whatshot,
+                          _archetypeIconMap[petReaction.iconName] ??
+                              Icons.whatshot,
                           size: 22,
                           color: AppColors.primary,
                         ),
@@ -557,7 +630,8 @@ class _HomeScreenState extends State<HomeScreen> {
               if (_temptingBundling.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(12),
@@ -568,7 +642,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.military_tech, size: 22, color: Color(0xFFFFD700)),
+                      const Icon(Icons.military_tech,
+                          size: 22, color: Color(0xFFFFD700)),
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
@@ -586,7 +661,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
               const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
@@ -603,7 +679,8 @@ class _HomeScreenState extends State<HomeScreen> {
               if (didLevelUp) ...[
                 const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [AppColors.primary, AppColors.primaryLight],
@@ -632,7 +709,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
-                  children: newBadges.map((b) => Icon(getBadgeIcon(b.icon), size: 36, color: getBadgeColor(b.icon, isUnlocked: b.isUnlocked))).toList(),
+                  children: newBadges
+                      .map((b) => Icon(getBadgeIcon(b.icon),
+                          size: 36,
+                          color:
+                              getBadgeColor(b.icon, isUnlocked: b.isUnlocked)))
+                      .toList(),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -673,7 +755,8 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.cardBackground,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('添加今日行动', style: TextStyle(color: AppColors.textPrimary)),
+        title: const Text('添加今日行动',
+            style: TextStyle(color: AppColors.textPrimary)),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -691,12 +774,14 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消', style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text('取消',
+                style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () async {
               final text = controller.text.trim();
@@ -713,7 +798,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 });
                 final storage = await StorageService.getInstance();
                 // 保存到 storage
-                final leverMaps = _todayLevers.map((l) => {'obstacle': l.obstacle, 'plan': l.plan}).toList();
+                final leverMaps = _todayLevers
+                    .map((l) => {'obstacle': l.obstacle, 'plan': l.plan})
+                    .toList();
                 await storage.saveDailyLevers(leverMaps);
               }
               if (ctx.mounted) Navigator.pop(ctx);
@@ -728,7 +815,8 @@ class _HomeScreenState extends State<HomeScreen> {
   /// 导航到宠物页面，带上障碍引导初始消息
   void _navigateToPetWithObstacleGuidance(DailyLever lever) async {
     final ctx = _context ?? await PetService.instance.buildContext();
-    final guidance = PetService.instance.generateObstacleExploration(lever.plan, ctx);
+    final guidance =
+        PetService.instance.generateObstacleExploration(lever.plan, ctx);
     if (mounted) {
       Navigator.of(context).pushNamed(
         '/pet',
@@ -840,92 +928,113 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: AppColors.background,
       body: Stack(
         children: [
-          // 宠物主动推送 Banner
-          if (_pushes.isNotEmpty)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: SafeArea(
-                bottom: false,
-                child: Column(
-                  children: _pushes.take(2).map((push) => Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: PetPushBanner(
-                      key: ValueKey(push.id),
-                      push: push,
-                      onClicked: () {
-                        PetPushService.instance.recordFeedback(push.type, true);
-                      },
-                      onDismissed: () {
-                        PetPushService.instance.recordFeedback(push.type, false);
-                        setState(() {
-                          _dismissedPushIds.add(push.id);
-                          _pushes.removeWhere((p) => p.id == push.id);
-                        });
-                      },
-                    ),
-                  )).toList(),
-                ),
-              ),
-            ),
           SafeArea(
             child: SingleChildScrollView(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 简洁顶部栏
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          '练了吗',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                            letterSpacing: 2,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            'Lv${_stats.level}',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  const SizedBox(height: 12),
+                  // 长期计划
+                  _buildCardWrapper(
+                    child: _buildVisionCard(),
                   ),
-                  _buildStreakCard(),
+                  const SizedBox(height: 12),
+                  // 本月挑战
                   if (_monthlyBoss != null &&
                       _monthlyBoss!.month == DateTime.now().month &&
                       _monthlyBoss!.year == DateTime.now().year)
-                    BossHpBar(
-                      currentHp: _monthlyBoss!.hp,
-                      maxHp: _monthlyBoss!.totalDays,
-                      bossName: _monthlyBoss!.content,
-                      currentMonth: _monthlyBoss!.month,
+                    _buildCardWrapper(
+                      child: BossHpBar(
+                        currentHp: _monthlyBoss!.hp,
+                        maxHp: _monthlyBoss!.totalDays,
+                        bossName: _monthlyBoss!.content,
+                        currentMonth: _monthlyBoss!.month,
+                        onTap: () {
+                          if (mounted) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const MonthlyBossEditScreen()),
+                            );
+                          }
+                        },
+                      ),
                     ),
-                  _buildMonthlyBossCard(),
-                  if (_todayLevers.isNotEmpty) _buildDailyCheckIn(),
+                  const SizedBox(height: 12),
+                  // 今日行动
+                  if (_todayLevers.isNotEmpty)
+                    _buildCardWrapper(
+                      child: _buildDailyCheckIn(),
+                    ),
                   const SizedBox(height: 20),
                 ],
               ),
             ),
           ),
-          if (_showSuccessFeedback) _buildSuccessFeedback(),
+          PetBubble(key: _petBubbleKey),
         ],
+      ),
+    );
+  }
+
+  void _showShareButton() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isDismissible: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.textLight.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              '分享你的坚持',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '第 ${_stats.streak} 天连续打卡，继续加油！',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  ShareService.shareCheckIn();
+                },
+                icon: const Icon(Icons.share),
+                label: const Text('分享到社交媒体'),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('稍后再说'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1125,7 +1234,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: LinearProgressIndicator(
                     value: XpService.levelProgress(_stats.totalXP),
                     backgroundColor: Colors.white.withValues(alpha: 0.3),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor:
+                        const AlwaysStoppedAnimation<Color>(Colors.white),
                     minHeight: 6,
                   ),
                 ),
@@ -1189,7 +1299,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Center(child: Icon(Icons.shield, size: 26, color: AppColors.primary)),
+                    child: const Center(
+                        child: Icon(Icons.shield,
+                            size: 26, color: AppColors.primary)),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1218,23 +1330,30 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               // 所有任务列表，不跳过第一个
               const SizedBox(height: 8),
-              ...boss.content.split('；').where((task) => task.trim().isNotEmpty).map((task) => Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('• ', style: TextStyle(fontSize: 12, color: AppColors.primary)),
-                    Expanded(
-                      child: Text(
-                        task.trim(),
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              )),
+              ...boss.content
+                  .split('；')
+                  .where((task) => task.trim().isNotEmpty)
+                  .map((task) => Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('• ',
+                                style: TextStyle(
+                                    fontSize: 12, color: AppColors.primary)),
+                            Expanded(
+                              child: Text(
+                                task.trim(),
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )),
             ],
           ),
         ),
@@ -1308,7 +1427,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Center(
-                  child: Icon(Icons.auto_awesome, size: 20, color: AppColors.primary),
+                  child: Icon(Icons.auto_awesome,
+                      size: 20, color: AppColors.primary),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1335,7 +1455,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, size: 20, color: AppColors.primary),
+              const Icon(Icons.chevron_right,
+                  size: 20, color: AppColors.primary),
             ],
           ),
         ),
@@ -1394,7 +1515,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   _streakBroken ? '重新开始' : '连续打卡',
                   style: TextStyle(
                     fontSize: 12,
-                    color: _streakBroken ? AppColors.primary : AppColors.textSecondary,
+                    color: _streakBroken
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
                   ),
                 ),
               ],
@@ -1404,7 +1527,8 @@ class _HomeScreenState extends State<HomeScreen> {
               GestureDetector(
                 onTap: _showRemedyDialog,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.amber.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -1428,7 +1552,8 @@ class _HomeScreenState extends State<HomeScreen> {
               )
             else
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: _isCheckedInToday
                       ? AppColors.success.withValues(alpha: 0.1)
@@ -1440,7 +1565,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: _isCheckedInToday ? AppColors.success : AppColors.primary,
+                    color: _isCheckedInToday
+                        ? AppColors.success
+                        : AppColors.primary,
                   ),
                 ),
               ),
@@ -1450,13 +1577,101 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildEvolutionBar() {
+    final totalDays = _stats.totalCheckIns;
+    final currentLevel = PetAppearanceLevel.calculateStage(totalDays);
+    final maxLevel = PetAppearanceLevel.stages.length;
+    final progress = currentLevel / maxLevel;
+    // 找当前阶段和下一阶段
+    final currentStage = PetAppearanceLevel.getStage(currentLevel);
+    final nextStage = PetAppearanceLevel.stages
+        .where((s) => s.level == currentLevel + 1)
+        .firstOrNull;
+
+    return Row(
+      children: [
+        // 当前阶段 emoji
+        if (currentStage != null)
+          Text(currentStage.evolutionEmoji, style: TextStyle(fontSize: 16)),
+        const SizedBox(width: 8),
+        // 进度条
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 标签行
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    currentStage?.name ?? '',
+                    style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary),
+                  ),
+                  if (nextStage != null)
+                    Text(
+                      '$totalDays/${nextStage.requiredDays}天 → ${nextStage.evolutionEmoji}${nextStage.name}',
+                      style: TextStyle(
+                          fontSize: 10, color: AppColors.textSecondary),
+                    )
+                  else
+                    Text('已到终极阶段 ${currentStage?.evolutionEmoji ?? ''}',
+                        style:
+                            TextStyle(fontSize: 10, color: AppColors.primary)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              // 进度条
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 6,
+                  backgroundColor: AppColors.textLight.withValues(alpha: 0.1),
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _deleteLever(int index) async {
+    final removed = _todayLevers.removeAt(index);
+    setState(() {});
+    await _storage.saveDailyLevers(_todayLevers
+        .map((l) => {
+              'plan': l.plan,
+              'obstacle': l.obstacle,
+              'isCompleted': l.isCompleted.toString()
+            })
+        .toList());
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              '已删除：${removed.plan.length > 20 ? '${removed.plan.substring(0, 20)}...' : removed.plan}'),
+          backgroundColor: AppColors.textSecondary,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   Widget _buildPetCard() {
     final mood = PetService.instance.moodState.mood;
     final greeting = PetService.instance.generateGreeting();
-    final suggestion = PetService.instance.generateSuggestion(_context ?? PetContext());
+    final suggestion =
+        PetService.instance.generateSuggestion(_context ?? PetContext());
     // 检查蛋阶段：领养后7天内显示🥚
     // 未领养或领养7天内都显示蛋
-    final bool isEggPhase = _storage.getPetAdoptDate() == null || _storage.isInEggPhase();
+    final bool isEggPhase =
+        _storage.getPetAdoptDate() == null || _storage.isInEggPhase();
 
     return GestureDetector(
       onTap: () {
@@ -1530,7 +1745,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      isEggPhase ? '再等${7 - DateTime.now().difference(_storage.getPetAdoptDate() ?? DateTime.now()).inDays}天就孵化了 🥚'
+                      isEggPhase
+                          ? '再等${7 - DateTime.now().difference(_storage.getPetAdoptDate() ?? DateTime.now()).inDays}天就孵化了 🥚'
                           : '$greeting $suggestion',
                       style: const TextStyle(
                         fontSize: 12,
@@ -1546,11 +1762,14 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildPetCmdBtn('查打卡', Icons.checklist_rounded, PetCommand.checkInRecord),
+                  _buildPetCmdBtn(
+                      '查打卡', Icons.checklist_rounded, PetCommand.checkInRecord),
                   const SizedBox(width: 6),
-                  _buildPetCmdBtn('提醒', Icons.notifications_outlined, PetCommand.setReminder),
+                  _buildPetCmdBtn('提醒', Icons.notifications_outlined,
+                      PetCommand.setReminder),
                   const SizedBox(width: 6),
-                  _buildPetCmdBtn('成长', Icons.lightbulb_outline, PetCommand.askGrowth),
+                  _buildPetCmdBtn(
+                      '成长', Icons.lightbulb_outline, PetCommand.askGrowth),
                 ],
               ),
             ],
@@ -1562,34 +1781,53 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildMoodIcon(PetMood mood, {double size = 26}) {
     switch (mood) {
-      case PetMood.happy: return Icon(Icons.emoji_emotions, color: Colors.white, size: size);
-      case PetMood.sleepy: return Icon(Icons.nightlight, color: Colors.white70, size: size);
-      case PetMood.excited: return Icon(Icons.bolt, color: Colors.yellow, size: size);
-      case PetMood.thinking: return Icon(Icons.psychology, color: Colors.white, size: size);
-      case PetMood.calm: return Icon(Icons.local_fire_department, color: Colors.white, size: size);
-      case PetMood.resting: return Icon(Icons.bedtime, color: Colors.white70, size: size);
+      case PetMood.happy:
+        return Icon(Icons.emoji_emotions, color: Colors.white, size: size);
+      case PetMood.sleepy:
+        return Icon(Icons.nightlight, color: Colors.white70, size: size);
+      case PetMood.excited:
+        return Icon(Icons.bolt, color: Colors.yellow, size: size);
+      case PetMood.thinking:
+        return Icon(Icons.psychology, color: Colors.white, size: size);
+      case PetMood.calm:
+        return Icon(Icons.local_fire_department,
+            color: Colors.white, size: size);
+      case PetMood.resting:
+        return Icon(Icons.bedtime, color: Colors.white70, size: size);
     }
   }
 
   String _getMoodText(PetMood mood) {
     switch (mood) {
-      case PetMood.happy: return '开心';
-      case PetMood.sleepy: return '困了';
-      case PetMood.excited: return '兴奋';
-      case PetMood.thinking: return '思考中';
-      case PetMood.calm: return '平静';
-      case PetMood.resting: return '休息中';
+      case PetMood.happy:
+        return '开心';
+      case PetMood.sleepy:
+        return '困了';
+      case PetMood.excited:
+        return '兴奋';
+      case PetMood.thinking:
+        return '思考中';
+      case PetMood.calm:
+        return '平静';
+      case PetMood.resting:
+        return '休息中';
     }
   }
 
   String _getMoodEmoji(PetMood mood) {
     switch (mood) {
-      case PetMood.happy: return '😊';
-      case PetMood.sleepy: return '😴';
-      case PetMood.excited: return '🤩';
-      case PetMood.thinking: return '🤔';
-      case PetMood.calm: return '😌';
-      case PetMood.resting: return '💤';
+      case PetMood.happy:
+        return '😊';
+      case PetMood.sleepy:
+        return '😴';
+      case PetMood.excited:
+        return '🤩';
+      case PetMood.thinking:
+        return '🤔';
+      case PetMood.calm:
+        return '😌';
+      case PetMood.resting:
+        return '💤';
     }
   }
 
@@ -1615,7 +1853,10 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 2),
             Text(
               label,
-              style: const TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.w500),
+              style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w500),
             ),
           ],
         ),
@@ -1625,115 +1866,84 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildDailyCheckIn() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 今日行动标题
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
                 '今日行动',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
                 ),
               ),
-              Row(
-                children: [
-                  if (_todayLevers.isNotEmpty)
-                    Text(
-                      '${_todayLevers.where((l) => l.isCompleted).length}/${_todayLevers.length}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  GestureDetector(
-                    onTap: _showAddLeverDialog,
-                    child: Container(
-                      margin: const EdgeInsets.only(left: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.add, size: 14, color: AppColors.primary),
-                          SizedBox(width: 2),
-                          Text(
-                            '添加',
-                            style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500),
-                          ),
-                        ],
-                      ),
-                    ),
+              const Spacer(),
+              if (_todayLevers.isNotEmpty)
+                Text(
+                  '${_todayLevers.where((l) => l.isCompleted).length}/${_todayLevers.length}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
                   ),
-                ],
+                ),
+              GestureDetector(
+                onTap: _showAddLeverDialog,
+                child: Container(
+                  margin: const EdgeInsets.only(left: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add, size: 14, color: AppColors.primary),
+                      SizedBox(width: 2),
+                      Text(
+                        '添加',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          // IF-THEN 解释（obstacle 非空时隐藏，用卡片本身说明）
-          if (_todayLevers.isEmpty || _todayLevers.every((l) => l.obstacle.isEmpty))
-            Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF6B35).withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: const Color(0xFFFF6B35).withValues(alpha: 0.12),
-                ),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.psychology_outlined,
-                    size: 14,
-                    color: const Color(0xFFFF6B35).withValues(alpha: 0.7),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '点击下方「添加障碍预案」，设置「如果...我就...」的触发计划，让行动在障碍出现时自动执行。',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: const Color(0xFFFF6B35).withValues(alpha: 0.8),
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           if (_todayLevers.isEmpty) _buildEmptyLeversCard(),
           ...List.generate(_todayLevers.length, (index) {
             final lever = _todayLevers[index];
             return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.only(bottom: 10),
               child: GestureDetector(
                 onTap: () => _toggleLever(lever),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: lever.isCompleted
                         ? AppColors.primary.withValues(alpha: 0.08)
                         : AppColors.cardBackground,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: lever.isCompleted ? AppColors.primary : Colors.transparent,
+                      color: lever.isCompleted
+                          ? AppColors.primary
+                          : Colors.transparent,
                     ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
@@ -1745,53 +1955,69 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
-                            width: 26,
-                            height: 26,
+                            width: 22,
+                            height: 22,
                             decoration: BoxDecoration(
-                              color: lever.isCompleted ? AppColors.primary : Colors.transparent,
+                              color: lever.isCompleted
+                                  ? AppColors.primary
+                                  : Colors.transparent,
                               border: Border.all(
-                                color: lever.isCompleted ? AppColors.primary : AppColors.textLight.withValues(alpha: 0.4),
+                                color: lever.isCompleted
+                                    ? AppColors.primary
+                                    : AppColors.textLight
+                                        .withValues(alpha: 0.4),
                                 width: 1.5,
                               ),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(6),
                               boxShadow: lever.isCompleted
                                   ? [
                                       BoxShadow(
-                                        color: AppColors.primary.withValues(alpha: 0.3),
-                                        blurRadius: 8,
-                                        spreadRadius: 1,
-                                      ),
+                                          color: AppColors.primary
+                                              .withValues(alpha: 0.3),
+                                          blurRadius: 6,
+                                          spreadRadius: 1)
                                     ]
                                   : null,
                             ),
-                            child: lever.isCompleted
-                                ? const Icon(Icons.check, size: 17, color: Colors.white)
-                                : Icon(Icons.check, size: 17, color: AppColors.textLight.withValues(alpha: 0.3)),
+                            child: Icon(
+                              Icons.check,
+                              size: 14,
+                              color: lever.isCompleted
+                                  ? Colors.white
+                                  : AppColors.textLight.withValues(alpha: 0.3),
+                            ),
                           ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: _buildLeverText(lever),
+                          const SizedBox(width: 12),
+                          Expanded(child: _buildLeverText(lever)),
+                          GestureDetector(
+                            onTap: () => _deleteLever(index),
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Icon(Icons.close,
+                                  size: 16,
+                                  color: AppColors.textLight
+                                      .withValues(alpha: 0.35)),
+                            ),
                           ),
                         ],
                       ),
-                      // 障碍引导入口（obstacle 为空时显示）
                       if (lever.obstacle.isEmpty) ...[
                         const SizedBox(height: 8),
                         GestureDetector(
                           onTap: () => _showObstacleDialog(lever, index),
                           child: Row(
                             children: [
-                              Icon(
-                                Icons.psychology_outlined,
-                                size: 12,
-                                color: const Color(0xFFFF6B35).withValues(alpha: 0.6),
-                              ),
+                              Icon(Icons.psychology_outlined,
+                                  size: 12,
+                                  color: const Color(0xFFFF6B35)
+                                      .withValues(alpha: 0.6)),
                               const SizedBox(width: 4),
                               Text(
-                                '添加障碍预案',
+                                '预设应对方案',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: const Color(0xFFFF6B35).withValues(alpha: 0.6),
+                                  color: const Color(0xFFFF6B35)
+                                      .withValues(alpha: 0.6),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -1805,34 +2031,106 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             );
           }),
-          const SizedBox(height: 8),
           if (_todayLevers.every((l) => l.isCompleted) && !_isCheckedInToday)
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _checkIn,
-                child: const Text('完成打卡 ✨'),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _checkIn,
+                  child: const Text('完成打卡'),
+                ),
               ),
             ),
           if (_isCheckedInToday)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                color: AppColors.success.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Center(
-                child: Text(
-                  '✓ 今日已打卡，明天继续加油！',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.success,
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Text(
+                    '今日已打卡，明天继续加油！',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.success),
                   ),
                 ),
               ),
             ),
+          const SizedBox(height: 14),
+          // 打卡状态条：连续打卡 + 累计打卡（移到底部）
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.bolt, size: 20, color: const Color(0xFFFFA500)),
+                const SizedBox(width: 8),
+                Text(
+                  '${_stats.streak}',
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary),
+                ),
+                const SizedBox(width: 4),
+                const Text('天',
+                    style: TextStyle(
+                        fontSize: 12, color: AppColors.textSecondary)),
+                const SizedBox(width: 12),
+                Container(
+                    width: 1,
+                    height: 12,
+                    color: AppColors.textLight.withValues(alpha: 0.12)),
+                const SizedBox(width: 12),
+                Text(
+                  '${_stats.totalCheckIns}',
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary),
+                ),
+                const SizedBox(width: 4),
+                const Text('累计',
+                    style: TextStyle(fontSize: 11, color: AppColors.primary)),
+                const Spacer(),
+                if (_streakBroken && _canUseRemedy && !_isCheckedInToday)
+                  GestureDetector(
+                    onTap: _showRemedyDialog,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.settings,
+                              size: 12, color: Colors.amber[700]),
+                          const SizedBox(width: 3),
+                          Text('补救',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.amber[700])),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -1884,7 +2182,8 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.lightbulb_outline, size: 16, color: AppColors.primary),
+                Icon(Icons.lightbulb_outline,
+                    size: 16, color: AppColors.primary),
                 SizedBox(width: 6),
                 Text(
                   'IF-THEN格式效果更好',
@@ -2027,7 +2326,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.textLight.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
@@ -2067,7 +2367,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildVisionCard() {
+  /// 显示用户愿景的卡片（原 _buildVisionCard，尚未集成到 build()）
+  Widget _buildVisionDisplay() {
     if (_vision.isEmpty) return const SizedBox.shrink();
 
     return Padding(
@@ -2099,7 +2400,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
@@ -2135,6 +2437,152 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// 统一卡片包装
+  Widget _buildCardWrapper({required Widget child}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: child,
+      ),
+    );
+  }
+
+  /// 长期计划卡片
+  Widget _buildVisionCard() {
+    final vision = _vision;
+    final antiVision = _antiVision;
+    final yearGoal = _storage.getYearGoal();
+    final hasVision = vision.isNotEmpty && vision != '成为更好的自己';
+    final hasAntiVision = antiVision.isNotEmpty;
+    final hasYearGoal = yearGoal.isNotEmpty && yearGoal != '持续成长';
+    if (!hasVision && !hasAntiVision && !hasYearGoal) {
+      return const SizedBox.shrink();
+    }
+    return GestureDetector(
+      onTap: () {
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AnnualPlanScreen()),
+          );
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '长期计划',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  if (hasYearGoal)
+                    ...yearGoal
+                        .split('；')
+                        .where((s) => s.trim().isNotEmpty)
+                        .map((goal) => Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    margin:
+                                        const EdgeInsets.only(top: 6, right: 8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary,
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      goal.trim(),
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w500,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )),
+                  if (hasVision) ...[
+                    const SizedBox(height: 6),
+                    ...vision
+                        .split('；')
+                        .where((s) => s.trim().isNotEmpty)
+                        .map((v) => Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 5,
+                                    height: 5,
+                                    margin:
+                                        const EdgeInsets.only(top: 6, right: 8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.textSecondary,
+                                      borderRadius: BorderRadius.circular(2.5),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      v.trim(),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: AppColors.textSecondary,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )),
+                  ],
+                  if (hasAntiVision) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '不想成为：$antiVision',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, size: 18, color: AppColors.textLight),
+          ],
+        ),
       ),
     );
   }
@@ -2220,7 +2668,9 @@ class _HomeScreenState extends State<HomeScreen> {
     // 没有障碍时，显示 IF-THEN 计划（兼容旧格式或无障碍的情况）
     if (plan.isNotEmpty) {
       // 尝试解析 IF-THEN 格式
-      final ifThenPattern = RegExp(r'^(如果[，,].*?[，,]|如果[^\n]{2,30}[,，]\s*)(.*)$', caseSensitive: false);
+      final ifThenPattern = RegExp(
+          r'^(如果[，,].*?[，,]|如果[^\n]{2,30}[,，]\s*)(.*)$',
+          caseSensitive: false);
       final match = ifThenPattern.firstMatch(plan);
       if (match != null) {
         final ifPart = match.group(1) ?? '';
@@ -2264,128 +2714,5 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // 完全无内容时显示空
     return const SizedBox.shrink();
-  }
-}
-
-// ===== 宠物主动推送气泡 =====
-class PetPushBanner extends StatefulWidget {
-  final PetPush push;
-  final VoidCallback onClicked;
-  final VoidCallback onDismissed;
-
-  const PetPushBanner({
-    super.key,
-    required this.push,
-    required this.onClicked,
-    required this.onDismissed,
-  });
-
-  @override
-  State<PetPushBanner> createState() => _PetPushBannerState();
-}
-
-class _PetPushBannerState extends State<PetPushBanner>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _slideAnimation;
-  late Animation<double> _fadeAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
-    _slideAnimation = Tween<double>(begin: -0.1, end: 0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _dismiss() {
-    _controller.reverse().then((_) => widget.onDismissed());
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: SlideTransition(
-        position: Tween<Offset>(
-          begin: Offset(0, _slideAnimation.value),
-          end: Offset.zero,
-        ).animate(_controller),
-        child: GestureDetector(
-          onTap: widget.onClicked,
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  const Color(0xFFFF6B35).withValues(alpha: 0.12),
-                  const Color(0xFFE85D2D).withValues(alpha: 0.06),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: const Color(0xFFFF6B35).withValues(alpha: 0.2),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.push.title,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFFE85D2D),
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        widget.push.body,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textPrimary.withValues(alpha: 0.7),
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                GestureDetector(
-                  onTap: _dismiss,
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Icon(
-                      Icons.close,
-                      size: 16,
-                      color: AppColors.textSecondary.withValues(alpha: 0.4),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

@@ -217,12 +217,3 @@ class PetActionService {
     return keywords.any((k) => m.contains(k.toLowerCase()));
   }
 }
-
-/// 宠物执行动作的结果
-class PetActionResult {
-  final bool success;
-  final String message;
-  final String? summary; // 用于显示给用户
-
-  PetActionResult({required this.success, required this.message, this.summary});
-}

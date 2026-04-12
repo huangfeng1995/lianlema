@@ -1,3 +1,5 @@
+export 'goal_templates.dart';
+
 class AntiVision {
   final String content;
   final DateTime createdAt;

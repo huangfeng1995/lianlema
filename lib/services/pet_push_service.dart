@@ -17,6 +17,8 @@ enum PushType {
   challengeProgress,
   /// 障碍引导（Day2 或 streak 断了后，WOOP 探索）
   obstacleGuidance,
+  /// 年度计划引导（使用7天后，未填写愿景/目标）
+  annualPlanGuide,
 }
 
 /// 一条推送
@@ -85,6 +87,8 @@ class PetPushService {
         return EncouragementType.dataDriven;
       case PushType.obstacleGuidance:
         return EncouragementType.warmCompanion;
+      case PushType.annualPlanGuide:
+        return EncouragementType.warmCompanion;
     }
   }
 
@@ -99,6 +103,11 @@ class PetPushService {
     await PetService.instance.evaluateEncouragementEffectiveness(
       checkedInToday: checkedInToday,
     );
+  }
+
+  /// 生成自主感支持版本的打卡督促（用于推送和 UI 展示）
+  String generateAutonomousNudge(PetContext ctx) {
+    return PetService.instance.generateAutonomousCheckInNudge(ctx);
   }
 
   /// 生成今日推送队列（基于用户上下文）
@@ -117,25 +126,27 @@ class PetPushService {
       ));
     }
 
-    // 2. 懈怠关怀
+    // 2. 懈怠关怀（根据用户激励偏好定制）
     if (!ctx.checkedInToday && ctx.streak > 3) {
+      final bestType = PetService.instance.getMostEffectiveType();
       pushes.add(PetPush(
         id: 'i${DateTime.now().millisecondsSinceEpoch}',
         type: PushType.idleWarning,
-        title: '炭炭想你了 🥺',
-        body: '今天还没打卡，streak 要断了哦，要不要现在就动一下？',
+        title: _getIdleWarningTitle(bestType),
+        body: _generatePersonalizedIdleWarning(bestType, ctx),
         createdAt: DateTime.now(),
         weight: 1.0,
       ));
     }
 
-    // 3. 打卡提醒（仅前14天）
+    // 3. 打卡提醒（仅前14天，根据激励偏好定制）
     if (ctx.totalCheckIns < 14) {
+      final bestType = PetService.instance.getMostEffectiveType();
       pushes.add(PetPush(
         id: 's${DateTime.now().millisecondsSinceEpoch}',
         type: PushType.streakReminder,
-        title: '每日打卡提醒 ☀️',
-        body: '今天的行动完成了吗？哪怕只做一点点也是进步 💪',
+        title: _getStreakReminderTitle(bestType),
+        body: _generatePersonalizedReminder(bestType, ctx),
         createdAt: DateTime.now(),
         weight: 1.0,
       ));
@@ -181,6 +192,28 @@ class PetPushService {
           createdAt: DateTime.now(),
           weight: 0.7,
         ));
+      }
+    }
+
+    // 7. 年度计划引导（使用7天后，未填写愿景/目标）
+    final storage = await StorageService.getInstance();
+    if (storage.needsAnnualPlanGuide()) {
+      final lastGuideStr = storage.getLastAnnualPlanGuideDate();
+      final lastGuide = lastGuideStr.isEmpty
+          ? DateTime.fromMillisecondsSinceEpoch(0)
+          : DateTime.tryParse(lastGuideStr) ?? DateTime.fromMillisecondsSinceEpoch(0);
+      // 每7天最多触发一次
+      if (DateTime.now().difference(lastGuide).inDays >= 7) {
+        final body = await PetService.instance.generateAnnualPlanSuggestion();
+        pushes.add(PetPush(
+          id: 'a${DateTime.now().millisecondsSinceEpoch}',
+          type: PushType.annualPlanGuide,
+          title: '一起规划今年？ 🌟',
+          body: body,
+          createdAt: DateTime.now(),
+          weight: 0.5,
+        ));
+        await storage.saveLastAnnualPlanGuideDate(DateTime.now());
       }
     }
 
@@ -268,5 +301,84 @@ class PetPushService {
     final isStreakBroken = ctx.streak > 0 && !ctx.checkedInToday && idleDays >= 1;
 
     return isDay2 || isStreakBroken;
+  }
+
+  // ===== 个性化推送内容生成 =====
+
+  /// 根据用户激励偏好获取懈怠关怀标题
+  String _getIdleWarningTitle(EncouragementType? bestType) {
+    if (bestType == EncouragementType.toughLove) return '别找借口 😏';
+    if (bestType == EncouragementType.encouragement) return '炭炭想你了 🥺';
+    if (bestType == EncouragementType.humor) return '打卡小助手上线 😄';
+    if (bestType == EncouragementType.warmCompanion) return '我在这里等你 🤗';
+    if (bestType == EncouragementType.dataDriven) return '数据在等你 📊';
+    return '炭炭想你了 🥺';
+  }
+
+  /// 生成个性化懈怠关怀内容
+  String _generatePersonalizedIdleWarning(EncouragementType? bestType, PetContext ctx) {
+    final streak = ctx.streak;
+
+    if (bestType == EncouragementType.toughLove) {
+      return '都${streak}天了，别告诉我你要在这里放弃？';
+    }
+    if (bestType == EncouragementType.encouragement) {
+      return '今天还没打卡，但我知道你有你的理由。准备好了随时动一下～';
+    }
+    if (bestType == EncouragementType.humor) {
+      return '今日份的打卡还没完成哦，是被什么绊住了？🦘';
+    }
+    if (bestType == EncouragementType.warmCompanion) {
+      return '今天有点累？没关系的，我陪你，不急。';
+    }
+    if (bestType == EncouragementType.dataDriven) {
+      return '你的坚持率${_calcSuccessRate(ctx)}%，今天动一下就保持在高位了 📈';
+    }
+    if (bestType == EncouragementType.silentSupport) {
+      return '......（炭炭安静地看着你，不催）';
+    }
+
+    // 默认：温暖陪伴
+    return '今天还没打卡，不着急，我陪着你 🌱';
+  }
+
+  /// 计算坚持率
+  String _calcSuccessRate(PetContext ctx) {
+    if (ctx.totalCheckIns == 0) return '100';
+    final rate = (ctx.streak / ctx.totalCheckIns * 100).round();
+    return '$rate';
+  }
+
+  /// 根据用户激励偏好获取打卡提醒标题
+  String _getStreakReminderTitle(EncouragementType? bestType) {
+    if (bestType == EncouragementType.toughLove) return '起床干活 💪';
+    if (bestType == EncouragementType.encouragement) return '每日打卡 ☀️';
+    if (bestType == EncouragementType.humor) return '今日任务待领取 🎁';
+    if (bestType == EncouragementType.warmCompanion) return '新的一天 🌱';
+    if (bestType == EncouragementType.dataDriven) return '今日数据 📊';
+    return '每日打卡提醒 ☀️';
+  }
+
+  /// 生成个性化打卡提醒内容
+  String _generatePersonalizedReminder(EncouragementType? bestType, PetContext ctx) {
+    if (bestType == EncouragementType.toughLove) {
+      return '别躺了，就差今天这一步。动起来！';
+    }
+    if (bestType == EncouragementType.encouragement) {
+      return '今天的行动完成了吗？哪怕只做一点点也是进步 💪';
+    }
+    if (bestType == EncouragementType.humor) {
+      return '今日打卡任务还没领哦，再不来就要被扣分了 🏃';
+    }
+    if (bestType == EncouragementType.warmCompanion) {
+      return '今天打算什么时候动一下？不急，我在这里等你。';
+    }
+    if (bestType == EncouragementType.dataDriven) {
+      return '今日打卡率待更新，你来完成今天这 1% 📈';
+    }
+    if (bestType == EncouragementType.silentSupport) {
+      return '......（你什么时候方便就什么时候来）';
+    }
+    return '今天的行动完成了吗？哪怕只做一点点也是进步 💪';
   }
 }

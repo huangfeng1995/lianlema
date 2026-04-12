@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../models/models.dart';
 import '../utils/storage_service.dart';
+import '../utils/pet_service.dart';
 import '../widgets/boss_hp_bar.dart';
 
 class MonthlyBossEditScreen extends StatefulWidget {
@@ -15,6 +16,7 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
   late StorageService _storage;
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _isDecomposing = false;
 
   // 所有 Boss keys（template name 或 custom_0, custom_1...）
   late List<String> _bossKeys = [];
@@ -114,7 +116,14 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
     // 加载 boss 内容（从 monthlyBoss.content 解析，或从 customBosses）
     _bossContents = {};
     if (_boss != null) {
-      final parts = _boss!.content.split('；');
+      final parts = _boss!.content.split('；').where((s) => s.trim().isNotEmpty).toList();
+      // 如果 _bossKeys 只有 'default' 但 content 有多个任务，展开为多个 key
+      if (_bossKeys.length == 1 && _bossKeys.first == 'default' && parts.length > 1) {
+        _bossKeys = List.generate(parts.length, (i) => 'task_$i');
+        for (final key in _bossKeys) {
+          _actionControllers[key] = [TextEditingController()];
+        }
+      }
       for (var i = 0; i < _bossKeys.length && i < parts.length; i++) {
         _bossContents[_bossKeys[i]] = parts[i].trim();
       }
@@ -123,6 +132,69 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
     setState(() {
       _isLoading = false;
     });
+
+    // 自动触发 AI 拆解：有 Boss 内容但任务为空
+    if (_boss != null && _boss!.content.isNotEmpty && _bossKeys.isNotEmpty) {
+      final hasAnyAction = _actionControllers.values.any(
+        (controllers) => controllers.any((c) => c.text.trim().isNotEmpty),
+      );
+      if (!hasAnyAction) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _decomposeWithAI());
+      }
+    }
+  }
+
+  /// 调用 AI 智能拆解：根据 Boss 内容自动生成每日行动
+  Future<void> _decomposeWithAI() async {
+    if (_isDecomposing) return;
+    if (_boss == null || _boss!.content.trim().isEmpty) return;
+
+    setState(() => _isDecomposing = true);
+    try {
+      final result = await PetService.instance
+          .decomposeGoals([_boss!.content])
+          .timeout(const Duration(seconds: 15));
+
+      if (!mounted) return;
+
+      // 将结果填充到控制器（按顺序取前 N 个 Boss key）
+      int bossIdx = 0;
+      for (final key in _bossKeys) {
+        if (bossIdx >= result.dailyActionsPerChallenge.length) break;
+        final actions = result.dailyActionsPerChallenge.values.toList()[bossIdx];
+        if (actions.isNotEmpty) {
+          setState(() {
+            _actionControllers[key] = actions
+                .take(5)
+                .map((a) => TextEditingController(text: a))
+                .toList();
+          });
+        }
+        bossIdx++;
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('AI 已生成 ${result.dailyActionsPerChallenge.values.expand((a) => a).length} 条每日行动 ✨'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('AI 拆解失败: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDecomposing = false);
+    }
   }
 
   void _addAction(String bossKey) {
@@ -275,8 +347,53 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
                       bossName: _boss!.content,
                       currentMonth: _boss!.month,
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                   ],
+
+                  // AI 智能拆解按钮
+                  if (_boss != null && _boss!.content.isNotEmpty)
+                    GestureDetector(
+                      onTap: _isDecomposing ? null : _decomposeWithAI,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.primary.withValues(alpha: 0.15),
+                              AppColors.primaryLight.withValues(alpha: 0.08),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (_isDecomposing)
+                              const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                              )
+                            else
+                              const Icon(Icons.auto_awesome, size: 18, color: AppColors.primary),
+                            const SizedBox(width: 8),
+                            Text(
+                              _isDecomposing ? 'AI 拆解中...' : 'AI 智能拆解',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  if (_boss != null && _boss!.content.isNotEmpty)
+                    const SizedBox(height: 24),
 
                   // 每个 Boss 的编辑区块
                   if (_bossKeys.isEmpty)

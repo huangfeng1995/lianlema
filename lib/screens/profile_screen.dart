@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -8,8 +10,12 @@ import '../utils/storage_service.dart';
 import '../utils/xp_service.dart';
 import '../utils/date_utils.dart' as app_date;
 import '../utils/badge_icon.dart';
+import '../utils/pet_service.dart';
+import '../widgets/encouragement_stats_card.dart';
+import '../services/share_service.dart';
 import 'settings_screen.dart';
 import 'report_center_screen.dart';
+import 'weekly_review_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -48,6 +54,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadData() async {
     _storage = await StorageService.getInstance();
+    await PetService.instance.loadState();
 
     final stats = _storage.getUserStats();
     final badges = _storage.getBadges();
@@ -134,8 +141,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildCalendarSection(),
                   const SizedBox(height: 24),
                   _buildBadgesSection(),
+                  const SizedBox(height: 12),
+                  _buildEncouragementStatsSection(),
                   const SizedBox(height: 24),
                   _buildLongTermPlanningSection(),
+                  const SizedBox(height: 12),
+                  _buildReviewSection(),
+                  const SizedBox(height: 12),
+                  _buildShareSection(),
+                  const SizedBox(height: 12),
+                  _buildDataExportSection(),
                   const SizedBox(height: 24),
                   _buildAntiVisionSection(),
                 ],
@@ -634,12 +649,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildEncouragementStatsSection() {
+    return const EncouragementStatsCard();
+  }
+
   Widget _buildLongTermPlanningSection() {
     final hasAntiVision = _antiVision.isNotEmpty;
     final hasVision = _vision.isNotEmpty;
     final hasYearGoal = _annualIdentity.isNotEmpty;
     final constraints = _storage.getConstraints();
-    // 只有当约束不是默认的「每天进步一点点」时才计数
+    // 排除默认值「每天进步一点点」，只有用户真实填写才算已完成
     final hasConstraints = constraints.isNotEmpty && constraints != '每天进步一点点';
 
     final completedCount = [hasAntiVision, hasVision, hasYearGoal, hasConstraints].where((b) => b).length;
@@ -801,64 +820,267 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return const SizedBox.shrink();
   }
 
-  /// 导出数据到剪贴板
+  /// 导出数据到剪贴板（JSON 格式）
   Future<void> _exportData() async {
-    final now = DateTime.now();
-    final unlockedBadges = _badges.where((b) => b.isUnlocked).toList();
+    final data = _storage.exportAllData();
+    final jsonStr = const JsonEncoder.withIndent('  ').convert(data);
 
-    // 计算每月出勤
-    final monthlyStats = <String>[];
-    for (int m = 1; m <= 12; m++) {
-      final monthCheckIns = _checkIns.where((c) => c.date.year == now.year && c.date.month == m).length;
-      final totalDays = DateTime(now.year, m + 1, 0).day;
-      final actualDays = (m == now.month) ? now.day : totalDays;
-      if (monthCheckIns > 0 || m <= now.month) {
-        monthlyStats.add('${m}月：$monthCheckIns/$actualDays天');
-      }
-    }
-
-    final report = StringBuffer();
-    report.writeln('=== 练了吗 数据导出 ===');
-    report.writeln('导出时间：${DateFormat('yyyy-MM-dd HH:mm').format(now)}');
-    report.writeln('');
-    report.writeln('【基本信息】');
-    report.writeln('连续打卡：${_stats.streak}天');
-    report.writeln('总打卡次数：${_stats.totalCheckIns}天');
-    report.writeln('等级：Lv${_stats.level}');
-    report.writeln('总经验值：${_stats.totalXP} XP');
-    if (unlockedBadges.isNotEmpty) {
-      report.writeln('徽章：${unlockedBadges.map((b) => b.name).join(' / ')}');
-    }
-    report.writeln('');
-    report.writeln('【愿景】');
-    report.writeln('反愿景：${_antiVision.isNotEmpty ? _antiVision : '未设置'}');
-    report.writeln('愿景：${_vision.isNotEmpty ? _vision : '未设置'}');
-    if (_annualIdentity.isNotEmpty) {
-      report.writeln('年度身份：我是${_annualIdentity}的行动派');
-    }
-    report.writeln('');
-    report.writeln('【${now.year}年打卡日历】');
-    for (final stat in monthlyStats) {
-      report.writeln(stat);
-    }
-    report.writeln('');
-    report.writeln('【约束条件】');
-    final constraints = _storage.getConstraints();
-    report.writeln(constraints.isNotEmpty ? constraints : '未设置');
-
-    final text = report.toString();
-
-    await Clipboard.setData(ClipboardData(text: text));
+    await Clipboard.setData(ClipboardData(text: jsonStr));
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('数据已复制到剪贴板'),
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 8),
+              Text('数据已复制到剪贴板'),
+            ],
+          ),
           backgroundColor: AppColors.success,
-          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
         ),
       );
     }
+  }
+
+  Widget _buildReviewSection() {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const WeeklyReviewScreen()),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Center(
+                child: Icon(Icons.calendar_today, size: 18, color: AppColors.primary),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '定期回顾',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const Text(
+                    '查看周/月复盘',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.textLight),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShareSection() {
+    return GestureDetector(
+      onTap: () => ShareService.shareStreak(_stats.streak),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Center(
+                child: Icon(Icons.share, size: 18, color: AppColors.primary),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '分享坚持',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    '已连续打卡 ${_stats.streak} 天',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.textLight),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDataExportSection() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: GestureDetector(
+        onTap: _showExportDialog,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Icon(Icons.download, size: 18, color: AppColors.primary),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '导出数据',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const Text(
+                      '备份你的所有打卡记录和宠物数据',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: AppColors.textLight),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showExportDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.download, color: AppColors.primary),
+            SizedBox(width: 8),
+            Text('导出数据'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '将导出以下数据：',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            _buildExportItem(Icons.check_circle, '打卡记录'),
+            _buildExportItem(Icons.check_circle, '宠物状态'),
+            _buildExportItem(Icons.check_circle, '徽章与成就'),
+            _buildExportItem(Icons.check_circle, '激励统计'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                '数据格式为 JSON，可用于备份或在网页端查看详细统计',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _exportData();
+            },
+            icon: const Icon(Icons.copy, size: 18),
+            label: const Text('复制数据'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExportItem(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppColors.primary),
+          const SizedBox(width: 8),
+          Text(text, style: const TextStyle(fontSize: 14)),
+        ],
+      ),
+    );
   }
 
   /// 分享给朋友（复制到剪贴板）

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/pet_models.dart';
 import '../theme/app_theme.dart';
 import '../utils/storage_service.dart';
+import 'pet_evolution_screen.dart';
 
 /// 宠物主页 — 淘宝AI助手卡片风格
 /// 顶部标题 + 宠物大卡片（站立平台光效） + 底部横向滑动互动按钮
@@ -23,13 +24,51 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
   String _petEmoji = '🦊';
   int _appearanceLevel = 1;
   int _moodValue = 50;
+  int _intimacy = 0;
+  int _intimacyLevel = 1;
+  String _intimacyName = '初次见面';
   int _streakDays = 0;
   PetPersonality? _personality;
+  List<PetMemoryHighlight> _memoryHighlights = [];
 
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  /// 显示宠物领养对话框
+  void _showAdoptionDialog() {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _PetAdoptionDialog(
+        onAdopted: _onPetAdopted,
+      ),
+    );
+  }
+
+  Future<void> _onPetAdopted(String petType, String petName) async {
+    final petConfig = getPetTypeConfig(petType);
+    if (petConfig == null) return;
+    final currentSoul = _storage.getPetSoul();
+    await _storage.savePetAdoptDate(DateTime.now());
+    await _storage.savePetType(petType);
+    await _storage.savePetName(petName);
+    final personality = PetPersonality.random();
+    await _storage.savePetPersonality(personality);
+    await _storage.savePetSoul(PetSoul(
+      name: petName,
+      personality: personality.archetype, // PetPersonality.archetype is a String
+      speakingStyle: currentSoul.speakingStyle,
+      tone: currentSoul.tone,
+      useEmoji: currentSoul.useEmoji,
+      defaultGreeting: petConfig.greeting,
+      type: petConfig.type,
+      petEmoji: petConfig.emoji,
+    ));
+    await _loadData();
   }
 
   Future<void> _loadData() async {
@@ -39,6 +78,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     final petConfig = getPetTypeConfig(petType);
     final soul = _storage.getPetSoul();
 
+    final needsAdoption = adoptDate == null;
     setState(() {
       _petName = _storage.getPetName();
       _coins = _storage.getPetCoins();
@@ -52,11 +92,20 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
         _petEmoji = petConfig?.emoji ?? soul.petEmoji;
         _appearanceLevel = _storage.getPetAppearanceLevel();
       }
-      _moodValue = _storage.getPetMoodValue();
+      _moodValue = _storage.getCurrentMoodValue();
       _personality = _storage.getPetPersonality();
+      _intimacy = _storage.getPetIntimacy();
+      _intimacyLevel = _storage.getPetIntimacyLevel();
+      _intimacyName = _storage.getPetIntimacyLevelName();
       _streakDays = _storage.getUserStats().streak;
+      _memoryHighlights = _storage.getPetMemoryHighlights();
       _initialized = true;
     });
+
+    // 首次进入且未领养 → 弹出领养对话框
+    if (needsAdoption) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showAdoptionDialog());
+    }
   }
 
   List<PetOwnedItem> get _ownedSnacks => _ownedItems
@@ -102,6 +151,8 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
                         _buildStatsRow(),
                         const SizedBox(height: 16),
                         _buildMoodBar(),
+                        const SizedBox(height: 16),
+                        _buildIntimacyBar(),
                         const SizedBox(height: 16),
                         _buildPersonalityRow(),
                         const SizedBox(height: 24),
@@ -310,6 +361,8 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
                 ),
               ),
             ),
+          // 记忆亮点
+          _buildMemoryHighlights(),
         ],
       ),
     );
@@ -363,9 +416,87 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     );
   }
 
+  // ====== 亲密度进度条 ======
+  Widget _buildIntimacyBar() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.favorite, size: 14, color: Color(0xFFFF6B6B)),
+              const SizedBox(width: 6),
+              Text(
+                '亲密度: $_intimacyName',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'Lv$_intimacyLevel',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFFFF6B6B),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Stack(
+            children: [
+              Container(
+                height: 6,
+                decoration: BoxDecoration(
+                  color: AppColors.textLight.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              FractionallySizedBox(
+                widthFactor: (_intimacy / 100).clamp(0.0, 1.0),
+                child: Container(
+                  height: 6,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF6B6B), Color(0xFFFF8E8E)],
+                    ),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _getIntimacyHint(),
+            style: const TextStyle(fontSize: 11, color: AppColors.textLight),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getIntimacyHint() {
+    if (_intimacy >= 80) return '我们心意相通 💕';
+    if (_intimacy >= 60) return '已经成为好朋友啦 🌟';
+    if (_intimacy >= 40) return '越来越了解彼此了 😊';
+    if (_intimacy >= 20) return '慢慢熟悉中... 🤝';
+    return '初次见面，请多关照 👋';
+  }
+
   // ====== 心情进度条 ======
   Widget _buildMoodBar() {
     final moodColor = _getMoodColor();
+    final moodDecayDesc = _storage.getMoodDecayDescription();
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -407,6 +538,13 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
               minHeight: 6,
             ),
           ),
+          if (moodDecayDesc.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              '💤 $moodDecayDesc',
+              style: const TextStyle(fontSize: 12, color: AppColors.textLight),
+            ),
+          ],
         ],
       ),
     );
@@ -426,6 +564,64 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
         const SizedBox(width: 8),
         _buildTraitBadge('情绪', '${(p.emotionalVolatility * 100).round()}', Colors.purple),
       ],
+    );
+  }
+
+  // ====== 记忆亮点区域 ======
+  Widget _buildMemoryHighlights() {
+    if (_memoryHighlights.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.auto_awesome, size: 14, color: AppColors.primary),
+              const SizedBox(width: 4),
+              Text(
+                '我们的记忆',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: _memoryHighlights.take(5).map((m) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(m.emoji, style: const TextStyle(fontSize: 12)),
+                    const SizedBox(width: 4),
+                    Text(
+                      m.title,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -492,6 +688,8 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
               _buildActionChip(Icons.store, '商店', '🛒', _openShop),
               const SizedBox(width: 10),
               _buildActionChip(Icons.chat_bubble, '聊天', '💬', _openChat),
+              const SizedBox(width: 10),
+              _buildActionChip(Icons.local_fire_department, '进化', '🔥', _openEvolution),
               const SizedBox(width: 20),
             ],
           ),
@@ -564,6 +762,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
 
   // ====== Bottom Sheet 入口 ======
   void _openSnackSheet() {
+    if (!_initialized || _storage.getPetAdoptDate() == null) return;
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.background,
@@ -580,6 +779,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
   }
 
   void _openCostumeSheet() {
+    if (!_initialized || _storage.getPetAdoptDate() == null) return;
     final costumes = _ownedItems
         .where((o) => PetShopConfig.getById(o.itemId)?.category == PetShopCategory.costume)
         .toList();
@@ -599,6 +799,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
   }
 
   void _openDecorationSheet() {
+    if (!_initialized || _storage.getPetAdoptDate() == null) return;
     final decorations = _ownedItems
         .where((o) => PetShopConfig.getById(o.itemId)?.category == PetShopCategory.decoration)
         .toList();
@@ -622,7 +823,24 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
   }
 
   void _openChat() {
+    if (!_initialized || _storage.getPetAdoptDate() == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('先领养你的宠物吧 🐾'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
     Navigator.pushNamed(context, '/pet');
+  }
+
+  void _openEvolution() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const PetEvolutionScreen()),
+    );
   }
 
   void _openSettings() {
@@ -898,6 +1116,150 @@ class _ItemChip extends StatelessWidget {
               const SizedBox(width: 4),
               Icon(Icons.check_circle, size: 14, color: Colors.white.withValues(alpha: 0.8)),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 首次领养宠物对话框
+class _PetAdoptionDialog extends StatefulWidget {
+  final void Function(String petType, String petName) onAdopted;
+
+  const _PetAdoptionDialog({required this.onAdopted});
+
+  @override
+  State<_PetAdoptionDialog> createState() => _PetAdoptionDialogState();
+}
+
+class _PetAdoptionDialogState extends State<_PetAdoptionDialog> {
+  int _selectedIndex = 0;
+  final _nameController = TextEditingController(text: '炭炭');
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final allPets = petTypes;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: const BoxConstraints(maxHeight: 520),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 标题
+            const Text(
+              '🐾 领养你的宠物',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '选择一个陪伴你的伙伴',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            // 宠物选择横向滚动
+            SizedBox(
+              height: 110,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: allPets.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final pet = allPets[index];
+                  final isSelected = index == _selectedIndex;
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedIndex = index),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 80,
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primary.withValues(alpha: 0.12)
+                            : AppColors.background,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isSelected ? AppColors.primary : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(pet.emoji, style: const TextStyle(fontSize: 36)),
+                          const SizedBox(height: 4),
+                          Text(
+                            pet.name,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 14),
+            // 名字输入
+            TextField(
+              controller: _nameController,
+              decoration: InputDecoration(
+                labelText: '给TA取个名字',
+                labelStyle: const TextStyle(fontSize: 13),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                isDense: true,
+              ),
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            // 确认按钮
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                onPressed: () {
+                  final name = _nameController.text.trim().isNotEmpty
+                      ? _nameController.text.trim()
+                      : allPets[_selectedIndex].name;
+                  widget.onAdopted(allPets[_selectedIndex].type, name);
+                  Navigator.pop(context);
+                },
+                child: Text(
+                  '领养 ${allPets[_selectedIndex].emoji} ${allPets[_selectedIndex].name}',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
           ],
         ),
       ),

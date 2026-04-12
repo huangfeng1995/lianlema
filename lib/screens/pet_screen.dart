@@ -3,6 +3,7 @@ import '../models/pet_models.dart';
 import '../theme/app_theme.dart';
 import '../utils/storage_service.dart';
 import '../utils/pet_service.dart';
+import '../services/pet_action_service.dart';
 import '../services/pet_push_service.dart';
 import 'pet_shop_screen.dart';
 import 'pet_home_screen.dart';
@@ -20,6 +21,7 @@ class PetScreen extends StatefulWidget {
 class _PetScreenState extends State<PetScreen> {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final PetActionService _actionService = PetActionService();
   final List<ChatMessage> _messages = [];
   bool _isLoading = false;
   bool _isSending = false;
@@ -67,12 +69,18 @@ class _PetScreenState extends State<PetScreen> {
 
   /// 宠物主动引导用户思考长期愿景
   Future<void> _sendVisionGuidance() async {
-    final guidance = '嗨，我是炭炭 ✨\n\n我注意到你还没有设置长期愿景。我想帮你想清楚一件事：\n\n1年后，你想要成为什么样的人？\n\n不用急着回答，慢慢想。可以是任何方向——\n比如你想做成什么事、你想变成什么状态、你想过上什么样的生活。\n\n想到了就告诉我，我们一起把它写下来。';
-    setState(() {
-      _messages.add(ChatMessage(text: guidance, isUser: false));
-      _isLoading = false;
-    });
-    _scrollToBottom();
+    if (_isSending) return;
+    _isSending = true;
+    try {
+      final guidance = '嗨，我是炭炭 ✨\n\n我注意到你还没有设置长期愿景。我想帮你想清楚一件事：\n\n1年后，你想要成为什么样的人？\n\n不用急着回答，慢慢想。可以是任何方向——\n比如你想做成什么事、你想变成什么状态、你想过上什么样的生活。\n\n想到了就告诉我，我们一起把它写下来。';
+      setState(() {
+        _messages.add(ChatMessage(text: guidance, isUser: false));
+        _isLoading = false;
+      });
+      _scrollToBottom();
+    } finally {
+      _isSending = false;
+    }
   }
 
   @override
@@ -543,11 +551,36 @@ class _PetScreenState extends State<PetScreen> {
 
       try {
         final ctx = _context ?? await PetService.instance.buildContext();
+
+        // 先尝试执行动作（把"说"变成"做"）
+        final actionResult = await _actionService.handleUserRequest(text, ctx.toJson());
+        if (actionResult != null) {
+          setState(() {
+            _messages.add(ChatMessage(text: actionResult.message, isUser: false));
+            _isLoading = false;
+          });
+          _scrollToBottom();
+          // 对话后心情轻微恢复
+          final currentMood = _storage.getCurrentMoodValue();
+          if (currentMood < 80) {
+            await _storage.savePetMoodValue(currentMood + 1);
+          }
+          return;
+        }
+
+        // 没有动作，正常聊天
         final response = await PetService.instance.chat(text, ctx);
         setState(() {
           _messages.add(ChatMessage(text: response, isUser: false));
           _isLoading = false;
         });
+        // 检查并添加首次聊天记忆
+        await _storage.checkAndAddFirstChatMemory();
+        // 对话后心情轻微恢复
+        final currentMood = _storage.getCurrentMoodValue();
+        if (currentMood < 80) {
+          await _storage.savePetMoodValue(currentMood + 1);
+        }
       } catch (e) {
         setState(() {
           _messages.add(ChatMessage(text: '网络有点问题，稍后再试试吧 😅', isUser: false));

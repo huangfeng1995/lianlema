@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../utils/storage_service.dart';
 import '../utils/notification_service.dart';
 import '../utils/pet_service.dart';
+import '../models/goal_templates.dart';
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
@@ -55,6 +56,14 @@ class _GoalsScreenState extends State<GoalsScreen> {
     _focusReminders = _storage.getFocusReminders();
 
     setState(() => _isLoading = false);
+
+    // 自动触发 AI 拆解：有月度挑战但行动为空或只有占位符
+    if (_monthlyBoss != null && _monthlyBoss!.content.isNotEmpty) {
+      final hasUserAction = _dailyLevers.any((l) => (l['plan'] ?? '').trim().isNotEmpty);
+      if (!hasUserAction) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _decomposeBossWithAI());
+      }
+    }
   }
 
   Future<void> _saveChanges() async {
@@ -145,6 +154,10 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildAntiVisionCard(),
+                  if (!_isEditing && _antiVision.isEmpty && _vision.isEmpty) ...[
+                    const SizedBox(height: 4),
+                    _buildTemplateSelector(),
+                  ],
                   const SizedBox(height: 16),
                   _buildVisionCard(),
                   const SizedBox(height: 16),
@@ -636,17 +649,38 @@ class _GoalsScreenState extends State<GoalsScreen> {
                     ),
                     if (hasContent && !_isEditing) ...[
                       const SizedBox(width: 8),
-                      Icon(
-                        hasReminder ? Icons.notifications_active : Icons.notifications_none,
-                        size: 20,
-                        color: hasReminder ? AppColors.primary : AppColors.textLight,
+                      GestureDetector(
+                        onTap: () => _showObstacleDialog(index),
+                        child: Icon(
+                          (_dailyLevers[index]['obstacle'] ?? '').isNotEmpty
+                              ? Icons.psychology
+                              : Icons.psychology_outlined,
+                          size: 20,
+                          color: (_dailyLevers[index]['obstacle'] ?? '').isNotEmpty
+                              ? AppColors.primary
+                              : AppColors.textLight,
+                        ),
                       ),
                     ],
-                  ],
-                ),
-              ),
-            );
-          }),
+                    // 显示障碍内容（如果有）
+                    if ((_dailyLevers[index]['obstacle'] ?? '').isNotEmpty && !_isEditing) ...[
+                      const SizedBox(height: 4),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 34),
+                        child: Row(
+                          children: [
+                            Icon(Icons.warning_amber, size: 12, color: AppColors.textLight),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                '障碍：${_dailyLevers[index]['obstacle']}',
+                                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
           // AI 智能拆解按钮
           if (!_isEditing && _monthlyBoss != null && _monthlyBoss!.content.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -826,6 +860,95 @@ class _GoalsScreenState extends State<GoalsScreen> {
                   ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTemplateSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '💡 不知道定什么目标？试试模板',
+          style: TextStyle(
+            fontSize: 13,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 90,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: GoalTemplates.all.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (ctx, index) {
+              final template = GoalTemplates.all[index];
+              return _buildTemplateCard(template);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTemplateCard(GoalTemplate template) {
+    return GestureDetector(
+      onTap: () => _applyTemplate(template),
+      child: Container(
+        width: 110,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(template.emoji, style: const TextStyle(fontSize: 24)),
+            const SizedBox(height: 4),
+            Text(
+              template.name,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            Text(
+              template.description,
+              style: const TextStyle(
+                fontSize: 10,
+                color: AppColors.textSecondary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _applyTemplate(GoalTemplate template) {
+    setState(() {
+      _antiVision = template.antiVision;
+      _vision = template.vision;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Text(template.emoji),
+            const SizedBox(width: 8),
+            Text('已选择「${template.name}」模板，可点击编辑完善'),
+          ],
+        ),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -1040,6 +1163,77 @@ class _GoalsScreenState extends State<GoalsScreen> {
           backgroundColor: AppColors.primary,
         ),
       );
+    }
+  }
+
+  /// 显示障碍设置对话框
+  Future<void> _showObstacleDialog(int index) async {
+    if (index >= _dailyLevers.length || (_dailyLevers[index]['plan'] ?? '').isEmpty) {
+      return;
+    }
+
+    final controller = TextEditingController(text: _dailyLevers[index]['obstacle'] ?? '');
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.psychology, color: AppColors.primary),
+            SizedBox(width: 8),
+            Text('设置障碍', style: TextStyle(fontSize: 18)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '计划：${_dailyLevers[index]['plan']}',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            ),
+            SizedBox(height: 12),
+            Text('阻碍你行动的内心障碍是什么？', style: TextStyle(fontSize: 14)),
+            SizedBox(height: 8),
+            TextField(
+              controller: controller,
+              maxLines: 2,
+              decoration: InputDecoration(
+                hintText: '例如：太累了、没时间、觉得没意义...',
+                hintStyle: TextStyle(color: AppColors.textLight),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.primary),
+                ),
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              '说不清楚也可以不填～',
+              style: TextStyle(color: AppColors.textLight, fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: Text('保存'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null) {
+      _dailyLevers[index]['obstacle'] = result;
+      await _storage.saveDailyLevers(_dailyLevers);
+      setState(() {});
     }
   }
 

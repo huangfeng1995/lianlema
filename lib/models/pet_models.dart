@@ -1,5 +1,39 @@
 import 'dart:math';
 
+/// 宠物记忆亮点
+class PetMemoryHighlight {
+  final String id;
+  final String title;       // 记忆标题
+  final String emoji;      // 记忆图标
+  final DateTime createdAt; // 创建时间
+  final String type;        // 类型：checkin/chat/badge/level/milestone
+
+  PetMemoryHighlight({
+    required this.id,
+    required this.title,
+    required this.emoji,
+    required this.createdAt,
+    required this.type,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'emoji': emoji,
+    'createdAt': createdAt.toIso8601String(),
+    'type': type,
+  };
+
+  factory PetMemoryHighlight.fromJson(Map<String, dynamic> json) =>
+      PetMemoryHighlight(
+        id: json['id'],
+        title: json['title'],
+        emoji: json['emoji'],
+        createdAt: DateTime.parse(json['createdAt']),
+        type: json['type'],
+      );
+}
+
 /// 宠物心情状态枚举
 enum PetMood {
   /// 开心 — 打卡后或刚互动
@@ -911,12 +945,78 @@ class EncouragementStats {
       );
 }
 
+/// ====== 自主感支持（SDT - Self-Determination Theory）======
+
+/// 自主感丧失信号
+class AutonomySignals {
+  /// 连续几天用户对督促表示抗拒
+  final int consecutivePushbackDays;
+  /// 用户无视提醒的比例（0.0-1.0）
+  final double ignoreRate;
+  /// 最后一次用户表达抗拒的时间
+  final DateTime? lastPushbackAt;
+  /// 最后一次检测到自主感下降信号的时间
+  final DateTime? lastAutonomyLossAt;
+  /// EMA 自主感分数（越高=用户越感觉自主，1.0=满分）
+  final double autonomyScore;
+
+  const AutonomySignals({
+    this.consecutivePushbackDays = 0,
+    this.ignoreRate = 0.0,
+    this.lastPushbackAt,
+    this.lastAutonomyLossAt,
+    this.autonomyScore = 1.0,
+  });
+
+  /// 是否处于自主感下降状态
+  bool get isAutonomyLow =>
+      autonomyScore < 0.5 || consecutivePushbackDays >= 2;
+
+  /// 是否处于抗拒状态
+  bool get isResisting => consecutivePushbackDays >= 1;
+
+  AutonomySignals copyWith({
+    int? consecutivePushbackDays,
+    double? ignoreRate,
+    DateTime? lastPushbackAt,
+    DateTime? lastAutonomyLossAt,
+    double? autonomyScore,
+  }) => AutonomySignals(
+    consecutivePushbackDays: consecutivePushbackDays ?? this.consecutivePushbackDays,
+    ignoreRate: ignoreRate ?? this.ignoreRate,
+    lastPushbackAt: lastPushbackAt ?? this.lastPushbackAt,
+    lastAutonomyLossAt: lastAutonomyLossAt ?? this.lastAutonomyLossAt,
+    autonomyScore: autonomyScore ?? this.autonomyScore,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'consecutivePushbackDays': consecutivePushbackDays,
+    'ignoreRate': ignoreRate,
+    'lastPushbackAt': lastPushbackAt?.toIso8601String(),
+    'lastAutonomyLossAt': lastAutonomyLossAt?.toIso8601String(),
+    'autonomyScore': autonomyScore,
+  };
+
+  factory AutonomySignals.fromJson(Map<String, dynamic> json) => AutonomySignals(
+    consecutivePushbackDays: json['consecutivePushbackDays'] ?? 0,
+    ignoreRate: (json['ignoreRate'] ?? 0.0).toDouble(),
+    lastPushbackAt: json['lastPushbackAt'] != null
+        ? DateTime.parse(json['lastPushbackAt'])
+        : null,
+    lastAutonomyLossAt: json['lastAutonomyLossAt'] != null
+        ? DateTime.parse(json['lastAutonomyLossAt'])
+        : null,
+    autonomyScore: (json['autonomyScore'] ?? 1.0).toDouble(),
+  );
+}
+
 /// ====== 宠物币交易记录原因
 enum PetCoinReason {
   dailyCheckIn,   // 每日打卡
   streak7,        // 连续7天
   streak30,       // 连续30天
   bossComplete,   // 完成月度Boss
+  badgeUnlock,    // 解锁成就
   buySnack,       // 购买零食
   buyCostume,     // 购买外观
   buyDecoration,  // 购买家居
@@ -1228,46 +1328,63 @@ PetTypeConfig? getPetTypeConfig(String type) {
   }
 }
 
-/// 外观等级配置
+/// 外观等级配置（对齐 PET_SYSTEM.md 设计：6阶段进化）
 class PetAppearanceLevel {
-  final int level; // 1-5
+  /// 等级 1-6
+  final int level;
   final String name;
-  final String emoji;
-  final int requiredDays; // 累计或连续天数要求
+  /// 显示 emoji（进化光效叠加在宠物本体 emoji 上）
+  final String evolutionEmoji;
+  /// 解锁天数（累计打卡天数）
+  final int requiredDays;
 
   const PetAppearanceLevel({
     required this.level,
     required this.name,
-    required this.emoji,
+    required this.evolutionEmoji,
     required this.requiredDays,
   });
 
-  static const List<PetAppearanceLevel> levels = [
-    PetAppearanceLevel(level: 1, name: '初始', emoji: '🌱', requiredDays: 0),
-    PetAppearanceLevel(level: 2, name: '成长', emoji: '🌿', requiredDays: 14),
-    PetAppearanceLevel(level: 3, name: '进化', emoji: '🌳', requiredDays: 30),
-    PetAppearanceLevel(level: 4, name: '绽放', emoji: '💐', requiredDays: 60),
-    PetAppearanceLevel(level: 5, name: '传说', emoji: '✨', requiredDays: 100),
+  /// 6阶段进化体系（PET_SYSTEM.md 设计）
+  static const List<PetAppearanceLevel> stages = [
+    PetAppearanceLevel(level: 1, name: '蛋',       evolutionEmoji: '🥚', requiredDays: 0),
+    PetAppearanceLevel(level: 2, name: '孵化',     evolutionEmoji: '🐣', requiredDays: 3),
+    PetAppearanceLevel(level: 3, name: '初级',   evolutionEmoji: '🔥', requiredDays: 7),
+    PetAppearanceLevel(level: 4, name: '中级',   evolutionEmoji: '⚡', requiredDays: 30),
+    PetAppearanceLevel(level: 5, name: '高级',   evolutionEmoji: '👑', requiredDays: 100),
+    PetAppearanceLevel(level: 6, name: '终极',   evolutionEmoji: '🌟', requiredDays: 365),
   ];
 
-  /// 根据连续天数计算外观等级（取最高满足条件的等级）
-  static int calculateLevel(int consecutiveDays) {
+  /// 根据累计打卡天数计算进化阶段
+  static int calculateStage(int totalDays) {
     int result = 1;
-    for (final lv in levels) {
-      if (consecutiveDays >= lv.requiredDays) {
-        result = lv.level;
+    for (final stage in stages) {
+      if (totalDays >= stage.requiredDays) {
+        result = stage.level;
       }
     }
     return result;
   }
 
-  static PetAppearanceLevel? getLevel(int level) {
+  static PetAppearanceLevel? getStage(int level) {
     try {
-      return levels.firstWhere((l) => l.level == level);
+      return stages.firstWhere((l) => l.level == level);
     } catch (_) {
       return null;
     }
   }
+
+  /// 获取当前阶段到下一阶段还差多少天
+  static int? daysToNextStage(int currentLevel, int totalDays) {
+    final nextStage = stages.where((s) => s.level == currentLevel + 1).firstOrNull;
+    if (nextStage == null) return null; // 已到终极
+    return nextStage.requiredDays - totalDays;
+  }
+
+  // ====== 向后兼容（代码里 level 字段仍用 1-5，增量到 1-6）======
+  static const List<PetAppearanceLevel> levels = stages;
+
+  static PetAppearanceLevel? getLevel(int level) => getStage(level);
 }
 
 // ====== 宠物商店商品配置 ======
@@ -1674,4 +1791,88 @@ class PresetGoalLibrary {
   static List<String> get categories {
     return _presets.map((p) => p.category).toSet().toList();
   }
+}
+
+/// 宠物执行动作的结果
+class PetActionResult {
+  final bool success;
+  final String message;
+  final String? summary; // 用于显示给用户
+
+  PetActionResult({required this.success, required this.message, this.summary});
+}
+
+// ====== 成就系统扩展 ======
+
+/// 成就/徽章数据模型
+class Badge {
+  final String id;
+  final String name;
+  final String description;
+  final String emoji;
+  final bool isUnlocked;
+  final DateTime? unlockedAt;
+  final bool isHidden; // 是否是隐藏成就
+  final int reward; // 解锁奖励金币
+
+  Badge({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.emoji,
+    this.isUnlocked = false,
+    this.unlockedAt,
+    this.isHidden = false,
+    this.reward = 0,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'description': description,
+    'emoji': emoji,
+    'isUnlocked': isUnlocked,
+    'unlockedAt': unlockedAt?.toIso8601String(),
+    'isHidden': isHidden,
+    'reward': reward,
+  };
+
+  factory Badge.fromJson(Map<String, dynamic> json) => Badge(
+    id: json['id'],
+    name: json['name'],
+    description: json['description'],
+    emoji: json['emoji'],
+    isUnlocked: json['isUnlocked'] ?? false,
+    unlockedAt: json['unlockedAt'] != null ? DateTime.parse(json['unlockedAt']) : null,
+    isHidden: json['isHidden'] ?? false,
+    reward: json['reward'] ?? 0,
+  );
+}
+
+/// 所有成就列表（包括隐藏成就）
+class AchievementDefinitions {
+  static final List<Badge> all = [
+    // 基础徽章
+    Badge(id: 'first_checkin', name: '首次打卡', description: '完成第一次打卡', emoji: '🎯', reward: 5),
+    Badge(id: 'streak_3', name: '初露头角', description: '连续打卡3天', emoji: '🔥', reward: 5),
+    Badge(id: 'streak_7', name: '坚持一周', description: '连续打卡7天', emoji: '🔥', reward: 10),
+    Badge(id: 'streak_30', name: '月度达人', description: '连续打卡30天', emoji: '⚡', reward: 20),
+    Badge(id: 'streak_100', name: '百日大师', description: '连续打卡100天', emoji: '🏅', reward: 50),
+    Badge(id: 'first_annual', name: '年度规划', description: '设置年度目标', emoji: '📅', reward: 5),
+    Badge(id: 'first_boss', name: '挑战开始', description: '创建第一个月度Boss', emoji: '⚔️', reward: 5),
+    Badge(id: 'boss_complete', name: 'Boss克星', description: '完成一个月的Boss挑战', emoji: '🏆', reward: 15),
+    Badge(id: 'pet_adopt', name: '初次相遇', description: '领养你的宠物', emoji: '🐾', reward: 5),
+    Badge(id: 'pet_evo', name: '共同成长', description: '宠物外观升级', emoji: '⬆️', reward: 10),
+    // 隐藏成就
+    Badge(id: 'night_owl', name: '夜猫子', description: '凌晨1点后打卡', emoji: '🦉', reward: 5, isHidden: true),
+    Badge(id: 'early_bird', name: '早起鸟', description: '早上6点前打卡', emoji: '🐦', reward: 5, isHidden: true),
+    Badge(id: 'perfect_week', name: '完美一周', description: '连续7天每天完成所有杠杆', emoji: '✨', reward: 10, isHidden: true),
+    Badge(id: 'streak_master', name: '连续大师', description: '连续打卡30天', emoji: '💪', reward: 20, isHidden: true),
+    Badge(id: 'late_night', name: '深夜党', description: '23点后打卡', emoji: '🌙', reward: 5, isHidden: true),
+    Badge(id: 'first_chat', name: '首次对话', description: '和宠物聊第一次天', emoji: '💬', reward: 5, isHidden: true),
+    Badge(id: 'template_user', name: '模板用户', description: '使用模板创建目标', emoji: '📋', reward: 5, isHidden: true),
+    Badge(id: 'weekend_warrior', name: '周末战士', description: '连续4周周末都打卡', emoji: '🏔️', reward: 15, isHidden: true),
+    Badge(id: 'centurion', name: '累计百日', description: '累计打卡100天', emoji: '🛡️', reward: 30, isHidden: true),
+    Badge(id: 'comeback', name: '王者归来', description: 'streak断了后重新连续7天', emoji: '🔄', reward: 15, isHidden: true),
+  ];
 }

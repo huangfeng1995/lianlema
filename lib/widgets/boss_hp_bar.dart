@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
+import '../models/models.dart';
 import '../widgets/confetti_celebration.dart';
 
 class BossHpBar extends StatefulWidget {
@@ -6,6 +8,9 @@ class BossHpBar extends StatefulWidget {
   final int maxHp;
   final String bossName;
   final int currentMonth;
+  final int checkInDays;
+  final List<CheckIn> checkIns;
+  final VoidCallback? onTap;
 
   const BossHpBar({
     super.key,
@@ -13,6 +18,9 @@ class BossHpBar extends StatefulWidget {
     required this.maxHp,
     required this.bossName,
     required this.currentMonth,
+    this.checkInDays = 0,
+    this.checkIns = const [],
+    this.onTap,
   });
 
   @override
@@ -31,7 +39,6 @@ class _BossHpBarState extends State<BossHpBar> with SingleTickerProviderStateMix
       duration: const Duration(seconds: 1),
     )..repeat(reverse: true);
 
-    // 击败时触发彩纸动画
     if (widget.currentHp <= 0 && !_hasShownConfetti) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -45,7 +52,6 @@ class _BossHpBarState extends State<BossHpBar> with SingleTickerProviderStateMix
   @override
   void didUpdateWidget(covariant BossHpBar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // HP 从 >0 变为 0 时触发彩纸
     if (oldWidget.currentHp > 0 && widget.currentHp <= 0 && !_hasShownConfetti && mounted) {
       ConfettiOverlay.show(context);
       _hasShownConfetti = true;
@@ -60,126 +66,83 @@ class _BossHpBarState extends State<BossHpBar> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
-    final double progress = (widget.currentHp / widget.maxHp).clamp(0.0, 1.0);
-    final bool isLowHp = progress <= 0.3 && progress > 0;
-    final bool isDefeated = widget.currentHp <= 0;
+    final now = DateTime.now();
+    final checkedDays = widget.checkIns
+        .where((c) => c.date.year == now.year && c.date.month == widget.currentMonth)
+        .map((c) => c.date.day)
+        .toSet();
 
-    // 进度条颜色
-    final Color hpColor = isDefeated
-        ? const Color(0xFF228B22)
-        : isLowHp
-            ? const Color(0xFFFF4500)
-            : const Color(0xFF8B0000);
-
-    // 边框颜色
-    final Color borderColor = isDefeated
-        ? const Color(0xFF228B22).withValues(alpha: 0.5)
-        : isLowHp
-            ? const Color(0xFFFF4500).withValues(alpha: 0.5)
-            : const Color(0xFF8B0000).withValues(alpha: 0.3);
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor, width: 1.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 标题
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: Text(
-                  widget.bossName.isNotEmpty
-                      ? '${_getMonthName(widget.currentMonth)}：${widget.bossName}'
-                      : '${_getMonthName(widget.currentMonth)}：设置本月挑战',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 标题行
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '本月挑战',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '已打卡 ${checkedDays.length}/${DateTime(now.year, now.month + 1, 0).day} 天',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
                 ),
-              ),
-              Text(
-                isDefeated
-                    ? '✅ 已击败'
-                    : 'HP ${widget.currentHp}/${widget.maxHp}',
-                style: TextStyle(
-                  color: isDefeated
-                      ? const Color(0xFF228B22)
-                      : isLowHp
-                          ? const Color(0xFFFF4500)
-                          : Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // HP 进度条
-          AnimatedBuilder(
-            animation: _blinkController,
-            builder: (context, child) {
-              final double opacity = isLowHp ? (0.6 + 0.4 * _blinkController.value) : 1.0;
-              return Opacity(
-                opacity: opacity,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: Container(
-                    height: 12,
-                    width: double.infinity,
-                    color: const Color(0xFF1A1A1A),
-                    child: TweenAnimationBuilder<double>(
-                      duration: const Duration(milliseconds: 600),
-                      curve: Curves.easeInOut,
-                      tween: Tween<double>(end: progress),
-                      builder: (context, value, child) {
-                        return FractionallySizedBox(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: value,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [hpColor, hpColor.withValues(alpha: 0.8)],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
+                Icon(Icons.chevron_right, size: 20, color: AppColors.primary.withValues(alpha: 0.5)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // 任务列表
+            ...widget.bossName.split('；').where((s) => s.trim().isNotEmpty).map((task) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    margin: const EdgeInsets.only(top: 6, right: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(3),
                     ),
                   ),
-                ),
-              );
-            },
-          ),
-        ],
+                  Expanded(
+                    child: Text(
+                      task.trim(),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w500,
+                        height: 1.4,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            )),
+          ],
+        ),
       ),
     );
-  }
-
-  String _getMonthName(int month) {
-    switch (month) {
-      case 1: return '1月';
-      case 2: return '2月';
-      case 3: return '3月';
-      case 4: return '4月';
-      case 5: return '5月';
-      case 6: return '6月';
-      case 7: return '7月';
-      case 8: return '8月';
-      case 9: return '9月';
-      case 10: return '10月';
-      case 11: return '11月';
-      case 12: return '12月';
-      default: return '$month月';
-    }
   }
 }
