@@ -1896,6 +1896,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: AppColors.textPrimary,
                 ),
               ),
+              const SizedBox(width: 12),
+              // 连续打卡 + 累计打卡
+              Icon(Icons.bolt, size: 13, color: const Color(0xFFFFA500)),
+              const SizedBox(width: 3),
+              Text(
+                '${_stats.streak} 天',
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              const SizedBox(width: 10),
+              Container(width: 1, height: 10, color: AppColors.textLight.withValues(alpha: 0.2)),
+              const SizedBox(width: 10),
+              Text(
+                '${_stats.totalCheckIns} 累计',
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
               const Spacer(),
               if (_todayLevers.isNotEmpty)
                 Text(
@@ -2078,74 +2093,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-          const SizedBox(height: 14),
-          // 打卡状态条：连续打卡 + 累计打卡（移到底部）
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.bolt, size: 20, color: const Color(0xFFFFA500)),
-                const SizedBox(width: 8),
-                Text(
-                  '${_stats.streak}',
-                  style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary),
-                ),
-                const SizedBox(width: 4),
-                const Text('天',
-                    style: TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary)),
-                const SizedBox(width: 12),
-                Container(
-                    width: 1,
-                    height: 12,
-                    color: AppColors.textLight.withValues(alpha: 0.12)),
-                const SizedBox(width: 12),
-                Text(
-                  '${_stats.totalCheckIns}',
-                  style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary),
-                ),
-                const SizedBox(width: 4),
-                const Text('累计',
-                    style: TextStyle(fontSize: 11, color: AppColors.primary)),
-                const Spacer(),
-                if (_streakBroken && _canUseRemedy && !_isCheckedInToday)
-                  GestureDetector(
-                    onTap: _showRemedyDialog,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.settings,
-                              size: 12, color: Colors.amber[700]),
-                          const SizedBox(width: 3),
-                          Text('补救',
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.amber[700])),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -2485,11 +2432,14 @@ class _HomeScreenState extends State<HomeScreen> {
     final weekday = _weekdayZh(now.weekday);
     final dateStr = '${now.month}月${now.day}日 $weekday';
     final greeting = _getGreeting();
+    final subtitle = _context != null
+        ? PetService.instance.generateGreetingSubtitle(_context!)
+        : '';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 日期标签 — 小字但有辨识度
+        // 日期标签
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
@@ -2507,42 +2457,54 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        // 主问候语 — 大字，bold，是视觉锚点
-        Text(
-          greeting,
-          style: const TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-            height: 1.2,
-            letterSpacing: -0.5,
-          ),
-        ),
-        const SizedBox(height: 4),
-        // 副标题 — 连续打卡信息
+        // 主问候语 + 宠物 Logo
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (_stats.streak > 0) ...[
-              Icon(Icons.bolt, size: 14, color: const Color(0xFFFFA500)),
-              const SizedBox(width: 4),
-              Text(
-                '已连续 ${_stats.streak} 天',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    greeting,
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      height: 1.2,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  if (subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            // 宠物 Logo
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  _petName.isNotEmpty ? _petName[0] : '🐾',
+                  style: const TextStyle(fontSize: 18),
                 ),
               ),
-            ] else ...[
-              Text(
-                '今天开始你的第一步',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+            ),
           ],
         ),
       ],
@@ -2577,16 +2539,18 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 长期计划 标题
-                  const Text(
-                    '长期计划',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                  // 长期计划 标题（只在有实际内容时显示）
+                  if (hasYearGoal || hasVision) ...[
+                    const Text(
+                      '长期计划',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
+                    const SizedBox(height: 6),
+                  ],
                   if (hasYearGoal)
                     ...yearGoal
                         .split('；')
@@ -2611,7 +2575,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       goal.trim(),
                                       style: const TextStyle(
                                         fontSize: 14,
-                                        color: AppColors.primary,
+                                        color: AppColors.textPrimary,
                                         fontWeight: FontWeight.w500,
                                         height: 1.4,
                                       ),

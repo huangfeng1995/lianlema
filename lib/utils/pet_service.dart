@@ -844,6 +844,20 @@ class PetService {
     return '今天${lever}完成了吗？';
   }
 
+  /// 生成问候副标题（首页大字下方，限18字内）
+  String generateGreetingSubtitle(PetContext ctx) {
+    if (ctx.checkedInToday) {
+      return '今日已完成，继续保持 ✨';
+    }
+    if (ctx.streak == 0) {
+      return '今天迈出第一步 💪';
+    }
+    if (ctx.streak > 0) {
+      return '已连续 ${ctx.streak} 天，继续加油 🔥';
+    }
+    return '今天也要加油 🌱';
+  }
+
   /// 生成主动洞察（不依赖用户输入，后台默默思考）
   String generateProactiveInsight(PetContext context) {
     final insights = <String>[];
