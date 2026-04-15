@@ -758,46 +758,71 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showAddLeverDialog() {
     final controller = TextEditingController();
+    final obstacleController = TextEditingController();
+    final ifThenController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.cardBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('添加今日行动',
-            style: TextStyle(color: AppColors.textPrimary)),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLines: 2,
-          style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            hintText: _monthlyBoss != null
-                ? '例如：从Boss「${_monthlyBoss!.content.split('；').first}」分解出一个行动'
-                : '写下今天要做的关键行动',
-            hintStyle: TextStyle(color: AppColors.textLight, fontSize: 13),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            contentPadding: const EdgeInsets.all(12),
+        title: const Text('今日行动'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: controller,
+                autofocus: true,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: '每天2-3件高优先级事（如"写500字""联系3个客户"），确保有效推进项目',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('如果...（可选）', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: obstacleController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  hintText: '什么情况下容易放弃？',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('我就...（可选）', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: ifThenController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  hintText: '你会怎么做？',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消',
-                style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text('取消'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
             onPressed: () async {
               final text = controller.text.trim();
               if (text.isNotEmpty) {
+                final obstacle = obstacleController.text.trim();
+                final ifThen = ifThenController.text.trim();
+
                 final newLever = DailyLever(
                   id: '${DateTime.now().millisecondsSinceEpoch}',
-                  obstacle: '',
-                  plan: text,
+                  obstacle: obstacle,
+                  plan: obstacle.isNotEmpty && ifThen.isNotEmpty
+                      ? PetService.instance.formatIfThen(obstacle, ifThen)
+                      : text,
                   isCompleted: false,
                   order: _todayLevers.length,
                 );
@@ -805,7 +830,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   _todayLevers.add(newLever);
                 });
                 final storage = await StorageService.getInstance();
-                // 保存到 storage
                 final leverMaps = _todayLevers
                     .map((l) => {'obstacle': l.obstacle, 'plan': l.plan})
                     .toList();
@@ -813,7 +837,7 @@ class _HomeScreenState extends State<HomeScreen> {
               }
               if (ctx.mounted) Navigator.pop(ctx);
             },
-            child: const Text('添加', style: TextStyle(color: Colors.white)),
+            child: const Text('确定'),
           ),
         ],
       ),
@@ -835,49 +859,54 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// 打开填写障碍的对话框（WOOP 格式：IF-THEN）
   void _showObstacleDialog(DailyLever lever, int leverIndex) {
-    final obstacleController = TextEditingController();
-    final planController = TextEditingController(text: lever.plan);
+    // 解析已有的IF-THEN格式
+    String initialObstacle = lever.obstacle;
+    String initialPlan = '';
+
+    if (lever.obstacle.isNotEmpty && lever.plan.startsWith('如果')) {
+      // 尝试解析IF-THEN格式
+      final planText = lever.plan;
+      final commaIndex = planText.indexOf('，我就');
+      if (commaIndex != -1) {
+        initialObstacle = planText.substring(2, commaIndex);
+        initialPlan = planText.substring(commaIndex + 3);
+      }
+    } else if (lever.obstacle.isEmpty) {
+      initialPlan = lever.plan;
+    }
+
+    final obstacleController = TextEditingController(text: initialObstacle);
+    final planController = TextEditingController(text: initialPlan);
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.cardBackground,
-        title: const Text('添加障碍预案'),
+        title: Text(lever.obstacle.isEmpty ? '添加应对方案' : '编辑应对方案'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '帮「${lever.plan}」找一个触发条件：',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text('如果...（什么情况下容易放弃？）',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
+              const Text('如果...'),
+              const SizedBox(height: 8),
               TextField(
                 controller: obstacleController,
                 decoration: const InputDecoration(
-                  hintText: '例如：下班太累了',
+                  hintText: '什么情况下容易放弃？',
                   border: OutlineInputBorder(),
-                  isDense: true,
                 ),
                 maxLines: 2,
               ),
-              const SizedBox(height: 12),
-              const Text('我就...（你会怎么做？）',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 4),
+              const SizedBox(height: 16),
+              const Text('我就...'),
+              const SizedBox(height: 8),
               TextField(
                 controller: planController,
                 decoration: const InputDecoration(
-                  hintText: '例如：先做5分钟再说',
+                  hintText: '你会怎么做？',
                   border: OutlineInputBorder(),
-                  isDense: true,
                 ),
                 maxLines: 2,
               ),
@@ -889,29 +918,30 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () => Navigator.pop(ctx),
             child: const Text('取消'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () async {
               final obstacle = obstacleController.text.trim();
               final plan = planController.text.trim();
-              if (obstacle.isNotEmpty) {
-                final ifThen = PetService.instance.formatIfThen(obstacle, plan);
-                final old = _todayLevers[leverIndex];
-                final updated = DailyLever(
-                  id: old.id,
-                  obstacle: obstacle,
-                  plan: ifThen,
-                  order: old.order,
-                  isCompleted: old.isCompleted,
-                );
-                setState(() {
-                  _todayLevers[leverIndex] = updated;
-                });
-                final storage = await StorageService.getInstance();
-                final leverMaps = _todayLevers
-                    .map((l) => {'obstacle': l.obstacle, 'plan': l.plan})
-                    .toList();
-                await storage.saveDailyLevers(leverMaps);
-              }
+
+              final old = _todayLevers[leverIndex];
+              final updated = DailyLever(
+                id: old.id,
+                obstacle: obstacle,
+                plan: obstacle.isNotEmpty && plan.isNotEmpty
+                    ? PetService.instance.formatIfThen(obstacle, plan)
+                    : (plan.isNotEmpty ? plan : old.plan),
+                order: old.order,
+                isCompleted: old.isCompleted,
+              );
+              setState(() {
+                _todayLevers[leverIndex] = updated;
+              });
+              final storage = await StorageService.getInstance();
+              final leverMaps = _todayLevers
+                  .map((l) => {'obstacle': l.obstacle, 'plan': l.plan})
+                  .toList();
+              await storage.saveDailyLevers(leverMaps);
+
               if (ctx.mounted) Navigator.pop(ctx);
             },
             child: const Text('保存'),
@@ -2037,30 +2067,34 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                       ),
-                      if (lever.obstacle.isEmpty) ...[
-                        const SizedBox(height: 8),
-                        GestureDetector(
-                          onTap: () => _showObstacleDialog(lever, index),
-                          child: Row(
-                            children: [
-                              Icon(Icons.psychology_outlined,
-                                  size: 12,
-                                  color: const Color(0xFFFF6B35)
-                                      .withValues(alpha: 0.6)),
-                              const SizedBox(width: 4),
-                              Text(
-                                '预设应对方案',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: const Color(0xFFFF6B35)
-                                      .withValues(alpha: 0.6),
-                                  fontWeight: FontWeight.w500,
-                                ),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: () => _showObstacleDialog(lever, index),
+                        child: Row(
+                          children: [
+                            Icon(
+                              lever.obstacle.isEmpty
+                                  ? Icons.psychology_outlined
+                                  : Icons.psychology,
+                              size: 12,
+                              color: lever.obstacle.isEmpty
+                                  ? const Color(0xFFFF6B35).withValues(alpha: 0.6)
+                                  : const Color(0xFFFF6B35),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              lever.obstacle.isEmpty ? '添加应对方案' : '编辑应对方案',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: lever.obstacle.isEmpty
+                                    ? const Color(0xFFFF6B35).withValues(alpha: 0.6)
+                                    : const Color(0xFFFF6B35),
+                                fontWeight: FontWeight.w500,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ],
                   ),
                 ),
