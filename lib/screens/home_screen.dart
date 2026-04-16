@@ -2635,22 +2635,37 @@ class _HomeScreenState extends State<HomeScreen> {
     String mainTask = plan;
     String? note;
 
-    // 格式1：用句号/分号分隔 "主任务。如果..." 或 "主任务；如果..."
-    // 先找句号，再找分号
-    int splitIndex = plan.indexOf(RegExp(r'[.。]'));
-    if (splitIndex < 0) {
-      splitIndex = plan.indexOf(RegExp(r'[;；]'));
+    // 格式1：找"如果"这个词，"如果"前是主任务，"如果"后是备注
+    final ifIndex = plan.indexOf('如果');
+    if (ifIndex > 0) {
+      final beforeIf = plan.substring(0, ifIndex).trim();
+      final afterIf = plan.substring(ifIndex).trim();
+      if (beforeIf.isNotEmpty && afterIf.isNotEmpty) {
+        // 去掉 beforeIf 末尾的标点符号（句号/分号）
+        final cleanBefore = beforeIf.replaceAll(RegExp(r'[.。；;]+$'), '');
+        if (cleanBefore.isNotEmpty) {
+          mainTask = cleanBefore;
+          note = afterIf;
+        }
+      }
     }
-    if (splitIndex > 0 && splitIndex < plan.length - 1) {
-      final beforeSplit = plan.substring(0, splitIndex).trim();
-      final afterSplit = plan.substring(splitIndex + 1).trim();
-      if (beforeSplit.isNotEmpty && afterSplit.isNotEmpty) {
-        mainTask = beforeSplit;
-        note = afterSplit;
+    // 格式2：如果没找到"如果"，找句号/分号分隔
+    else {
+      int splitIndex = plan.indexOf(RegExp(r'[.。]'));
+      if (splitIndex < 0) {
+        splitIndex = plan.indexOf(RegExp(r'[;；]'));
+      }
+      if (splitIndex > 0 && splitIndex < plan.length - 1) {
+        final beforeSplit = plan.substring(0, splitIndex).trim();
+        final afterSplit = plan.substring(splitIndex + 1).trim();
+        if (beforeSplit.isNotEmpty && afterSplit.isNotEmpty) {
+          mainTask = beforeSplit;
+          note = afterSplit;
+        }
       }
     }
 
-    // 如果没找到分隔符，但有 obstacle，用 obstacle 做备注
+    // 如果都没找到，但有 obstacle，用 obstacle 做备注
     if (note == null && obstacle.isNotEmpty) {
       note = obstacle;
     }
