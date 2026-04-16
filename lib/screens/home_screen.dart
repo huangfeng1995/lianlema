@@ -2635,41 +2635,24 @@ class _HomeScreenState extends State<HomeScreen> {
     String mainTask = plan;
     String? note;
 
-    // 格式1：用句号/分号分隔 "主任务。如果...我就..." 或 "主任务；如果...我就..."
-    // 更宽松的匹配：只要包含如果+分隔符
-    if (plan.contains('如果')) {
-      // 先找句号，再找分号
-      int splitIndex = plan.indexOf(RegExp(r'[.。]'));
-      if (splitIndex < 0) {
-        splitIndex = plan.indexOf(RegExp(r'[;；]'));
-      }
-      if (splitIndex > 0 && splitIndex < plan.length - 1) {
-        final beforeSplit = plan.substring(0, splitIndex).trim();
-        final afterSplit = plan.substring(splitIndex + 1).trim();
-        if (beforeSplit.isNotEmpty && afterSplit.isNotEmpty) {
-          mainTask = beforeSplit;
-          note = afterSplit;
-        }
+    // 格式1：用句号/分号分隔 "主任务。如果..." 或 "主任务；如果..."
+    // 先找句号，再找分号
+    int splitIndex = plan.indexOf(RegExp(r'[.。]'));
+    if (splitIndex < 0) {
+      splitIndex = plan.indexOf(RegExp(r'[;；]'));
+    }
+    if (splitIndex > 0 && splitIndex < plan.length - 1) {
+      final beforeSplit = plan.substring(0, splitIndex).trim();
+      final afterSplit = plan.substring(splitIndex + 1).trim();
+      if (beforeSplit.isNotEmpty && afterSplit.isNotEmpty) {
+        mainTask = beforeSplit;
+        note = afterSplit;
       }
     }
 
-    // 如果格式1没匹配，尝试格式2：只有 "如果...我就..." 格式
-    if (note == null) {
-      final ifThenPattern = RegExp(
-          r'^如果(.*?)，我就(.*)$',
-          caseSensitive: false);
-      final match = ifThenPattern.firstMatch(plan);
-
-      if (match != null) {
-        final ifPart = match.group(1) ?? '';
-        final thenPart = match.group(2) ?? '';
-        mainTask = thenPart.isNotEmpty ? thenPart : plan;
-        if (ifPart.isNotEmpty) {
-          note = '如果$ifPart';
-        }
-      } else if (obstacle.isNotEmpty) {
-        note = obstacle;
-      }
+    // 如果没找到分隔符，但有 obstacle，用 obstacle 做备注
+    if (note == null && obstacle.isNotEmpty) {
+      note = obstacle;
     }
 
     return Column(
