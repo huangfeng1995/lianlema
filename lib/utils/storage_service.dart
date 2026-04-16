@@ -1120,19 +1120,58 @@ class StorageService {
 
   // ====== 徽章 ======
   Future<void> saveBadges(List<AppBadge> badges) async {
-    final list = badges.map((b) => b.toJson()).toList();
-    await _prefs.setString(_keyBadges, jsonEncode(list));
+    // 新系统：只保存已解锁的徽章 ID 列表
+    final unlockedIds = badges
+        .where((b) => b.isUnlocked)
+        .map((b) => b.id)
+        .toList();
+    await _prefs.setStringList(_keyBadges, unlockedIds);
+
+    // 同时保存每个徽章的解锁时间
+    for (final badge in badges) {
+      if (badge.isUnlocked && badge.unlockedAt != null) {
+        await _prefs.setString(
+          '${_keyBadgeUnlockedAt}_${badge.id}',
+          badge.unlockedAt!.toIso8601String(),
+        );
+      }
+    }
   }
 
   List<AppBadge> getBadges() {
     // 获取已解锁的徽章
-    List<String> unlockedIds;
+    List<String> unlockedIds = [];
+
+    // 尝试用新格式读取（StringList）
     try {
-      unlockedIds = _prefs.getStringList(_keyBadges) ?? [];
+      final list = _prefs.getStringList(_keyBadges);
+      if (list != null) {
+        unlockedIds = list;
+      }
     } catch (e) {
-      debugPrint('[StorageService] getBadges getStringList error: $e');
-      unlockedIds = [];
+      debugPrint('[StorageService] getBadges getStringList error: $e, trying old format');
     }
+
+    // 如果新格式没读到，尝试旧格式（String JSON）
+    if (unlockedIds.isEmpty) {
+      try {
+        final jsonStr = _prefs.getString(_keyBadges);
+        if (jsonStr != null) {
+          // 旧格式：读取完整的 AppBadge 列表，提取 id
+          final dynamic decoded = jsonDecode(jsonStr);
+          if (decoded is List) {
+            unlockedIds = decoded
+                .map((e) => e is Map ? e['id']?.toString() : null)
+                .whereType<String>()
+                .toList();
+            debugPrint('[StorageService] migrated ${unlockedIds.length} badges from old format');
+          }
+        }
+      } catch (e) {
+        debugPrint('[StorageService] getBadges old format error: $e');
+      }
+    }
+
     final unlockedSet = unlockedIds.toSet();
 
     // 返回所有定义 + 解锁状态
