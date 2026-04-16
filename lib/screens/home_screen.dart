@@ -2636,15 +2636,21 @@ class _HomeScreenState extends State<HomeScreen> {
     String? note;
 
     // 格式1：用句号分隔 "主任务。如果...我就..."
-    final periodPattern = RegExp(r'^(.+?)[.。]\s*(如果.*)$');
-    final periodMatch = periodPattern.firstMatch(plan);
-
-    if (periodMatch != null) {
-      mainTask = periodMatch.group(1)?.trim() ?? plan;
-      note = periodMatch.group(2)?.trim();
+    // 更宽松的匹配：只要包含句号+如果
+    if (plan.contains('如果')) {
+      final periodIndex = plan.indexOf(RegExp(r'[.。]'));
+      if (periodIndex > 0 && periodIndex < plan.length - 1) {
+        final beforePeriod = plan.substring(0, periodIndex).trim();
+        final afterPeriod = plan.substring(periodIndex + 1).trim();
+        if (beforePeriod.isNotEmpty && afterPeriod.isNotEmpty) {
+          mainTask = beforePeriod;
+          note = afterPeriod;
+        }
+      }
     }
-    // 格式2：只有 "如果...我就..." 格式
-    else {
+
+    // 如果格式1没匹配，尝试格式2：只有 "如果...我就..." 格式
+    if (note == null) {
       final ifThenPattern = RegExp(
           r'^如果(.*?)，我就(.*)$',
           caseSensitive: false);
