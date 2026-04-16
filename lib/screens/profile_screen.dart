@@ -53,27 +53,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadData() async {
-    _storage = await StorageService.getInstance();
-    await PetService.instance.loadState();
+    try {
+      _storage = await StorageService.getInstance();
+      await PetService.instance.loadState();
 
-    final stats = _storage.getUserStats();
-    final badges = _storage.getBadges();
-    final antiVision = _storage.getAntiVision();
-    final vision = _storage.getVision();
-    final annualIdentity = _storage.getAnnualIdentity();
-    final checkIns = _storage.getCheckIns();
-    final petName = _storage.getPetName();
+      final stats = _storage.getUserStats();
+      final badges = _storage.getBadges();
+      final antiVision = _storage.getAntiVision();
+      final vision = _storage.getVision();
+      final annualIdentity = _storage.getAnnualIdentity();
+      final checkIns = _storage.getCheckIns();
+      final petName = _storage.getPetName();
 
-    setState(() {
-      _stats = stats;
-      _badges = badges;
-      _antiVision = antiVision;
-      _vision = vision;
-      _annualIdentity = annualIdentity;
-      _checkIns = checkIns;
-      _petName = petName;
-      _isLoading = false;
-    });
+      setState(() {
+        _stats = stats;
+        _badges = badges;
+        _antiVision = antiVision;
+        _vision = vision;
+        _annualIdentity = annualIdentity;
+        _checkIns = checkIns;
+        _petName = petName;
+        _isLoading = false;
+      });
+    } catch (e, stackTrace) {
+      print('ProfileScreen _loadData error: $e');
+      print('Stack trace: $stackTrace');
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   Set<String> get _checkInDates {

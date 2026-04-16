@@ -954,7 +954,13 @@ class StorageService {
   bool isStreakRemedyUsedThisMonth() {
     final now = DateTime.now();
     final monthKey = '${now.year}-${now.month}';
-    final usedMonths = _prefs.getStringList(_keyStreakRemedyUsedMonths) ?? [];
+    List<String> usedMonths;
+    try {
+      usedMonths = _prefs.getStringList(_keyStreakRemedyUsedMonths) ?? [];
+    } catch (e) {
+      debugPrint('[StorageService] isStreakRemedyUsedThisMonth error: $e');
+      usedMonths = [];
+    }
     return usedMonths.contains(monthKey);
   }
 
@@ -962,7 +968,13 @@ class StorageService {
   Future<void> useStreakRemedy() async {
     final now = DateTime.now();
     final monthKey = '${now.year}-${now.month}';
-    final usedMonths = _prefs.getStringList(_keyStreakRemedyUsedMonths) ?? [];
+    List<String> usedMonths;
+    try {
+      usedMonths = _prefs.getStringList(_keyStreakRemedyUsedMonths) ?? [];
+    } catch (e) {
+      debugPrint('[StorageService] useStreakRemedy error: $e');
+      usedMonths = [];
+    }
     if (!usedMonths.contains(monthKey)) {
       usedMonths.add(monthKey);
       await _prefs.setStringList(_keyStreakRemedyUsedMonths, usedMonths);
@@ -1114,7 +1126,13 @@ class StorageService {
 
   List<AppBadge> getBadges() {
     // 获取已解锁的徽章
-    final unlockedIds = _prefs.getStringList(_keyBadges) ?? [];
+    List<String> unlockedIds;
+    try {
+      unlockedIds = _prefs.getStringList(_keyBadges) ?? [];
+    } catch (e) {
+      debugPrint('[StorageService] getBadges getStringList error: $e');
+      unlockedIds = [];
+    }
     final unlockedSet = unlockedIds.toSet();
 
     // 返回所有定义 + 解锁状态
@@ -1143,7 +1161,13 @@ class StorageService {
   /// 解锁成就
   /// 返回解锁的成就，如果没有则返回null
   Future<Badge?> unlockBadge(String badgeId) async {
-    final unlockedIds = _prefs.getStringList(_keyBadges) ?? [];
+    List<String> unlockedIds;
+    try {
+      unlockedIds = _prefs.getStringList(_keyBadges) ?? [];
+    } catch (e) {
+      debugPrint('[StorageService] unlockBadge getStringList error: $e');
+      unlockedIds = [];
+    }
     if (unlockedIds.contains(badgeId)) return null; // 已经解锁
 
     final def = AchievementDefinitions.all.firstWhere(
@@ -1179,7 +1203,13 @@ class StorageService {
   Future<List<Badge>> checkAndUnlockAchievements() async {
     final newlyUnlocked = <Badge>[];
     final stats = getUserStats();
-    final unlockedIds = _prefs.getStringList(_keyBadges) ?? [];
+    List<String> unlockedIds;
+    try {
+      unlockedIds = _prefs.getStringList(_keyBadges) ?? [];
+    } catch (e) {
+      debugPrint('[StorageService] checkAndUnlockAchievements error: $e');
+      unlockedIds = [];
+    }
     final unlockedSet = unlockedIds.toSet();
 
     // 首次打卡
