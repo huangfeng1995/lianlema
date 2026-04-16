@@ -2635,16 +2635,20 @@ class _HomeScreenState extends State<HomeScreen> {
     String mainTask = plan;
     String? note;
 
-    // 格式1：用句号分隔 "主任务。如果...我就..."
-    // 更宽松的匹配：只要包含句号+如果
+    // 格式1：用句号/分号分隔 "主任务。如果...我就..." 或 "主任务；如果...我就..."
+    // 更宽松的匹配：只要包含如果+分隔符
     if (plan.contains('如果')) {
-      final periodIndex = plan.indexOf(RegExp(r'[.。]'));
-      if (periodIndex > 0 && periodIndex < plan.length - 1) {
-        final beforePeriod = plan.substring(0, periodIndex).trim();
-        final afterPeriod = plan.substring(periodIndex + 1).trim();
-        if (beforePeriod.isNotEmpty && afterPeriod.isNotEmpty) {
-          mainTask = beforePeriod;
-          note = afterPeriod;
+      // 先找句号，再找分号
+      int splitIndex = plan.indexOf(RegExp(r'[.。]'));
+      if (splitIndex < 0) {
+        splitIndex = plan.indexOf(RegExp(r'[;；]'));
+      }
+      if (splitIndex > 0 && splitIndex < plan.length - 1) {
+        final beforeSplit = plan.substring(0, splitIndex).trim();
+        final afterSplit = plan.substring(splitIndex + 1).trim();
+        if (beforeSplit.isNotEmpty && afterSplit.isNotEmpty) {
+          mainTask = beforeSplit;
+          note = afterSplit;
         }
       }
     }
