@@ -2631,31 +2631,41 @@ class _HomeScreenState extends State<HomeScreen> {
     final textColor = isCompleted ? AppColors.primary : AppColors.textPrimary;
     final decoration = isCompleted ? TextDecoration.lineThrough : null;
 
-    // 优先展示今日任务
-    // 尝试解析 IF-THEN 格式，提取行动部分
+    // 主任务和备注
     String mainTask = plan;
-    String? ifThenNote;
+    String? note;
 
-    final ifThenPattern = RegExp(
-        r'^如果(.*?)，我就(.*)$',
-        caseSensitive: false);
-    final match = ifThenPattern.firstMatch(plan);
+    // 格式1：用句号分隔 "主任务。如果...我就..."
+    final periodPattern = RegExp(r'^(.+?)[.。]\s*(如果.*)$');
+    final periodMatch = periodPattern.firstMatch(plan);
 
-    if (match != null) {
-      final ifPart = match.group(1) ?? '';
-      final thenPart = match.group(2) ?? '';
-      mainTask = thenPart.isNotEmpty ? thenPart : plan;
-      ifThenNote = '如果$ifPart';
-    } else if (obstacle.isNotEmpty) {
-      // 有obstacle时，优先显示plan
-      mainTask = plan;
-      ifThenNote = obstacle;
+    if (periodMatch != null) {
+      mainTask = periodMatch.group(1)?.trim() ?? plan;
+      note = periodMatch.group(2)?.trim();
+    }
+    // 格式2：只有 "如果...我就..." 格式
+    else {
+      final ifThenPattern = RegExp(
+          r'^如果(.*?)，我就(.*)$',
+          caseSensitive: false);
+      final match = ifThenPattern.firstMatch(plan);
+
+      if (match != null) {
+        final ifPart = match.group(1) ?? '';
+        final thenPart = match.group(2) ?? '';
+        mainTask = thenPart.isNotEmpty ? thenPart : plan;
+        if (ifPart.isNotEmpty) {
+          note = '如果$ifPart';
+        }
+      } else if (obstacle.isNotEmpty) {
+        note = obstacle;
+      }
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 主要任务（优先展示）
+        // 主要任务
         Text(
           mainTask,
           style: TextStyle(
@@ -2666,11 +2676,11 @@ class _HomeScreenState extends State<HomeScreen> {
             height: 1.4,
           ),
         ),
-        // IF-THEN备注（次要展示，淡色小字）
-        if (ifThenNote != null && ifThenNote!.isNotEmpty) ...[
+        // 备注（次要展示，淡色小字）
+        if (note != null && note!.isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(
-            ifThenNote!,
+            note!,
             style: TextStyle(
               fontSize: 12,
               color: textColor.withValues(alpha: 0.5),
