@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../models/pet_models.dart';
+import '../models/behavior_models.dart';
 
 class StorageService {
   static StorageService? _instance;
@@ -105,14 +106,21 @@ class StorageService {
   static const String _keyPetMoodValue = 'pet_mood_value'; // 心情数值 0-100
   static const String _keyLastMoodUpdate = 'last_mood_update'; // 上次心情更新时间
   static const String _keyPetPersonality = 'pet_personality'; // 大五人格
+  static const String _keyPetUnallocatedPoints = 'pet_unallocated_points'; // 未分配属性点
+  static const String _keyPetPersonalityLevel = 'pet_personality_level'; // 宠物性格等级 1-10
   static const String _keyEncouragementRecords = 'encouragement_records'; // 激励记录
   static const String _keyEncouragementStats = 'encouragement_stats'; // 激励有效性统计
   static const String _keyAutonomySignals = 'autonomy_signals'; // 自主感信号
   static const String _keyConversationHistory = 'conversation_history'; // 对话历史
   static const String _keyHistorySummary = 'history_summary'; // 对话历史摘要
-  static const String _keyPetIntimacy = 'pet_intimacy'; // 亲密度 0-100
+  static const String _keyPetIntimacy = 'pet_intimacy'; // 亲密度 0-350
   static const String _keyLastIntimacyUpdate = 'last_intimacy_update'; // 上次互动时间
+  static const String _keyPetIntimacyTransactions = 'pet_intimacy_transactions'; // 亲密度变动记录
   static const String _keyPetMemoryHighlights = 'pet_memory_highlights'; // 宠物记忆亮点
+  static const String _keyLastAnalyticsWeek = 'last_analytics_week'; // 上次生成行为报告的周（格式 YYYY-WW）
+  static const String _keyBehaviorReports = 'behavior_reports'; // 行为分析报告列表
+  static const String _keyBehaviorEvents = 'behavior_events'; // 行为事件埋点记录
+  static const String _keyIntimacyMigrated = 'intimacy_migrated'; // 亲密度是否已迁移到新体系
 
   // ====== 宠物名字 ======
   static const String defaultPetName = '炭炭';
@@ -151,8 +159,29 @@ class StorageService {
   List<PetCoinTransaction> getPetCoinTransactions() {
     final str = _prefs.getString(_keyPetCoinTransactions);
     if (str == null) return [];
-    final list = jsonDecode(str) as List;
-    return list.map((e) => PetCoinTransaction.fromJson(e)).toList();
+    try {
+      final dynamic decoded = jsonDecode(str);
+      if (decoded is List) {
+        return decoded.map((e) {
+          if (e is Map) {
+            return PetCoinTransaction.fromJson(e as Map<String, dynamic>);
+          }
+          return null;
+        }).whereType<PetCoinTransaction>().toList();
+      }
+    } catch (e) {
+      debugPrint('[StorageService] getPetCoinTransactions decode error: $e');
+    }
+    return [];
+  }
+
+  /// 本月获得的宠物币收入
+  int getMonthlyCoinIncome() {
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    return getPetCoinTransactions()
+        .where((t) => t.createdAt.isAfter(startOfMonth) && t.amount > 0)
+        .fold(0, (sum, t) => sum + t.amount);
   }
 
   Future<void> addPetCoinTransaction(PetCoinTransaction tx) async {
@@ -184,8 +213,20 @@ class StorageService {
   List<PetOwnedItem> getPetOwnedItems() {
     final str = _prefs.getString(_keyPetOwnedItems);
     if (str == null) return [];
-    final list = jsonDecode(str) as List;
-    return list.map((e) => PetOwnedItem.fromJson(e)).toList();
+    try {
+      final dynamic decoded = jsonDecode(str);
+      if (decoded is List) {
+        return decoded.map((e) {
+          if (e is Map) {
+            return PetOwnedItem.fromJson(e as Map<String, dynamic>);
+          }
+          return null;
+        }).whereType<PetOwnedItem>().toList();
+      }
+    } catch (e) {
+      debugPrint('[StorageService] getPetOwnedItems decode error: $e');
+    }
+    return [];
   }
 
   Future<void> savePetOwnedItems(List<PetOwnedItem> items) async {
@@ -306,6 +347,101 @@ class StorageService {
     return PetPersonality.fromJson(jsonDecode(str));
   }
 
+  // ====== 未分配属性点 =====
+  int getPetUnallocatedPoints() {
+    return _prefs.getInt(_keyPetUnallocatedPoints) ?? 0;
+  }
+
+  Future<void> savePetUnallocatedPoints(int points) async {
+    await _prefs.setInt(_keyPetUnallocatedPoints, points);
+  }
+
+  /// 升级时增加属性点（基于宠物性格等级）
+  Future<void> addTraitUpgradePoints(int amount) async {
+    await _prefs.setInt(_keyPetUnallocatedPoints, getPetUnallocatedPoints() + amount);
+  }
+
+  /// 消耗1点未分配属性（加到指定维度）
+  Future<bool> allocateTraitPoint(String traitKey) async {
+    final points = getPetUnallocatedPoints();
+    if (points <= 0) return false;
+
+    final personality = getPetPersonality();
+    int openness = personality.openness;
+    int conscientiousness = personality.conscientiousness;
+    int extraversion = personality.extraversion;
+    int agreeableness = personality.agreeableness;
+    int neuroticism = personality.neuroticism;
+
+    switch (traitKey) {
+      case 'openness':
+        if (openness >= 10) return false;
+        openness++;
+        break;
+      case 'conscientiousness':
+        if (conscientiousness >= 10) return false;
+        conscientiousness++;
+        break;
+      case 'extraversion':
+        if (extraversion >= 10) return false;
+        extraversion++;
+        break;
+      case 'agreeableness':
+        if (agreeableness >= 10) return false;
+        agreeableness++;
+        break;
+      case 'neuroticism':
+        if (neuroticism >= 10) return false;
+        neuroticism++;
+        break;
+      default:
+        return false;
+    }
+
+    await savePetPersonality(PetPersonality(
+      openness: openness,
+      conscientiousness: conscientiousness,
+      extraversion: extraversion,
+      agreeableness: agreeableness,
+      neuroticism: neuroticism,
+    ));
+    await savePetUnallocatedPoints(points - 1);
+    return true;
+  }
+
+  // ====== 宠物性格等级 =====
+  /// 根据打卡天数计算性格等级（1-10）
+  static int calculatePersonalityLevel(int totalDays) {
+    const thresholds = [0, 3, 7, 15, 30, 60, 100, 180, 270, 365];
+    int level = 1;
+    for (int i = 0; i < thresholds.length; i++) {
+      if (totalDays >= thresholds[i]) {
+        level = i + 1;
+      }
+    }
+    return level.clamp(1, 10);
+  }
+
+  int getPetPersonalityLevel() {
+    return _prefs.getInt(_keyPetPersonalityLevel) ?? 1;
+  }
+
+  Future<void> savePetPersonalityLevel(int level) async {
+    await _prefs.setInt(_keyPetPersonalityLevel, level.clamp(1, 10));
+  }
+
+  /// 根据打卡天数更新性格等级，每次升级发放1点属性点
+  Future<void> updatePersonalityLevelFromStreak(int totalDays) async {
+    final newLevel = calculatePersonalityLevel(totalDays);
+    final currentLevel = getPetPersonalityLevel();
+    if (newLevel > currentLevel) {
+      final pointsToAdd = newLevel - currentLevel;
+      await savePetPersonalityLevel(newLevel);
+      await addTraitUpgradePoints(pointsToAdd);
+      debugPrint('[PetService] Personality level up: $currentLevel → $newLevel, granted $pointsToAdd trait points');
+    }
+  }
+
   /// 消耗宠物币（余额不足时抛出异常）
   Future<void> spendPetCoins(int amount, PetCoinReason reason) async {
     if (amount <= 0) return;
@@ -333,8 +469,20 @@ class StorageService {
   List<PetMemory> getPetMemories() {
     final str = _prefs.getString(_keyPetMemories);
     if (str == null) return [];
-    final list = jsonDecode(str) as List;
-    return list.map((e) => PetMemory.fromJson(e)).toList();
+    try {
+      final dynamic decoded = jsonDecode(str);
+      if (decoded is List) {
+        return decoded.map((e) {
+          if (e is Map) {
+            return PetMemory.fromJson(e as Map<String, dynamic>);
+          }
+          return null;
+        }).whereType<PetMemory>().toList();
+      }
+    } catch (e) {
+      debugPrint('[StorageService] getPetMemories decode error: $e');
+    }
+    return [];
   }
 
   Future<void> addPetMemory(PetMemory memory) async {
@@ -407,8 +555,20 @@ class StorageService {
   List<EncouragementRecord> getEncouragementRecords() {
     final str = _prefs.getString(_keyEncouragementRecords);
     if (str == null) return [];
-    final list = jsonDecode(str) as List;
-    return list.map((j) => EncouragementRecord.fromJson(j)).toList();
+    try {
+      final dynamic decoded = jsonDecode(str);
+      if (decoded is List) {
+        return decoded.map((e) {
+          if (e is Map) {
+            return EncouragementRecord.fromJson(e as Map<String, dynamic>);
+          }
+          return null;
+        }).whereType<EncouragementRecord>().toList();
+      }
+    } catch (e) {
+      debugPrint('[StorageService] getEncouragementRecords decode error: $e');
+    }
+    return [];
   }
 
   Future<void> saveEncouragementStats(Map<int, EncouragementStats> stats) async {
@@ -442,8 +602,20 @@ class StorageService {
   List<Map<String, String>> getConversationHistory() {
     final str = _prefs.getString(_keyConversationHistory);
     if (str == null) return [];
-    final List decoded = jsonDecode(str) as List;
-    return decoded.map((e) => Map<String, String>.from(e as Map)).toList();
+    try {
+      final dynamic decoded = jsonDecode(str);
+      if (decoded is List) {
+        return decoded.map((e) {
+          if (e is Map) {
+            return Map<String, String>.from(e);
+          }
+          return null;
+        }).whereType<Map<String, String>>().toList();
+      }
+    } catch (e) {
+      debugPrint('[StorageService] getConversationHistory decode error: $e');
+    }
+    return [];
   }
 
   // ====== 对话历史摘要 ======
@@ -460,8 +632,20 @@ class StorageService {
   List<PetMemoryHighlight> getPetMemoryHighlights() {
     final str = _prefs.getString(_keyPetMemoryHighlights);
     if (str == null) return [];
-    final list = jsonDecode(str) as List;
-    return list.map((e) => PetMemoryHighlight.fromJson(e)).toList();
+    try {
+      final dynamic decoded = jsonDecode(str);
+      if (decoded is List) {
+        return decoded.map((e) {
+          if (e is Map) {
+            return PetMemoryHighlight.fromJson(e as Map<String, dynamic>);
+          }
+          return null;
+        }).whereType<PetMemoryHighlight>().toList();
+      }
+    } catch (e) {
+      debugPrint('[StorageService] getPetMemoryHighlights decode error: $e');
+    }
+    return [];
   }
 
   /// 添加宠物记忆亮点（同类只添加一次）
@@ -552,38 +736,94 @@ class StorageService {
     return _prefs.getInt(_keyPetIntimacy) ?? 0;
   }
 
-  /// 获取亲密度等级数字（1-5）
+  /// 获取亲密度等级数字（1-10，与名称体系对应）
   int getPetIntimacyLevel() {
     final intimacy = getPetIntimacy();
+    if (intimacy >= 350) return 10;
+    if (intimacy >= 280) return 9;
+    if (intimacy >= 210) return 8;
+    if (intimacy >= 160) return 7;
+    if (intimacy >= 120) return 6;
     if (intimacy >= 80) return 5;
-    if (intimacy >= 60) return 4;
-    if (intimacy >= 40) return 3;
-    if (intimacy >= 20) return 2;
+    if (intimacy >= 50) return 4;
+    if (intimacy >= 30) return 3;
+    if (intimacy >= 15) return 2;
     return 1;
   }
 
-  /// 计算亲密度等级名称
+  /// 计算亲密度等级名称（10级）
   String getPetIntimacyLevelName() {
-    final level = getPetIntimacyLevel();
-    switch (level) {
-      case 5: return '灵魂伴侣';
-      case 4: return '好友';
-      case 3: return '熟人';
-      case 2: return '点头之交';
-      default: return '初次见面';
-    }
+    final intimacy = getPetIntimacy();
+    if (intimacy >= 350) return '命中注定';
+    if (intimacy >= 280) return '灵魂伴侣';
+    if (intimacy >= 210) return '心有灵犀';
+    if (intimacy >= 160) return '知己';
+    if (intimacy >= 120) return '好友';
+    if (intimacy >= 80) return '熟悉';
+    if (intimacy >= 50) return '有好感';
+    if (intimacy >= 30) return '熟悉中';
+    if (intimacy >= 15) return '点头之交';
+    return '初次见面';
   }
 
   /// 增加亲密度
   /// 返回是否升级了等级
-  Future<bool> addPetIntimacy(int amount) async {
-    final oldLevel = getPetIntimacyLevel();
-    final current = getPetIntimacy();
-    final newIntimacy = (current + amount).clamp(0, 100);
+  Future<bool> addPetIntimacy(int amount, {String reason = '互动'}) async {
+    final oldName = getPetIntimacyLevelName();
+    var current = getPetIntimacy();
+
+    // 旧数据（≤100）一次性迁移到新上限350
+    final hasMigrated = _prefs.getBool(_keyIntimacyMigrated) ?? false;
+    if (!hasMigrated && current <= 100) {
+      current = (current * 3.5).round();
+      await _prefs.setInt(_keyPetIntimacy, current);
+      await _prefs.setBool(_keyIntimacyMigrated, true);
+      debugPrint('[StorageService] Intimacy migrated: $current');
+    }
+
+    final newIntimacy = (current + amount).clamp(0, 350);
     await _prefs.setInt(_keyPetIntimacy, newIntimacy);
     await _prefs.setString(_keyLastIntimacyUpdate, DateTime.now().toIso8601String());
-    final newLevel = getPetIntimacyLevel();
-    return newLevel > oldLevel;
+    // 记录交易
+    final tx = IntimacyTransaction(
+      amount: amount,
+      reason: reason,
+      createdAt: DateTime.now(),
+    );
+    final txs = _getIntimacyTransactions();
+    txs.add(tx);
+    if (txs.length > 200) txs.removeRange(0, txs.length - 200);
+    await _prefs.setString(_keyPetIntimacyTransactions, jsonEncode(txs.map((t) => t.toJson()).toList()));
+    final newName = getPetIntimacyLevelName();
+    return newName != oldName;
+  }
+
+  List<IntimacyTransaction> _getIntimacyTransactions() {
+    final str = _prefs.getString(_keyPetIntimacyTransactions);
+    if (str == null) return [];
+    try {
+      final dynamic decoded = jsonDecode(str);
+      if (decoded is List) {
+        return decoded.map((e) {
+          if (e is Map) {
+            return IntimacyTransaction.fromJson(e as Map<String, dynamic>);
+          }
+          return null;
+        }).whereType<IntimacyTransaction>().toList();
+      }
+    } catch (e) {
+      debugPrint('[StorageService] _getIntimacyTransactions decode error: $e');
+    }
+    return [];
+  }
+
+  /// 本月亲密度新增
+  int getMonthlyIntimacyGain() {
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    return _getIntimacyTransactions()
+        .where((t) => t.createdAt.isAfter(startOfMonth) && t.amount > 0)
+        .fold(0, (sum, t) => sum + t.amount);
   }
 
   // ====== Onboarding ======
@@ -846,8 +1086,20 @@ class StorageService {
   List<Map<String, dynamic>> getFocusReminders() {
     final str = _prefs.getString(_keyFocusReminders);
     if (str == null) return [];
-    final list = jsonDecode(str) as List;
-    return list.cast<Map<String, dynamic>>();
+    try {
+      final dynamic decoded = jsonDecode(str);
+      if (decoded is List) {
+        return decoded.map((e) {
+          if (e is Map) {
+            return Map<String, dynamic>.from(e);
+          }
+          return null;
+        }).whereType<Map<String, dynamic>>().toList();
+      }
+    } catch (e) {
+      debugPrint('[StorageService] getFocusReminders decode error: $e');
+    }
+    return [];
   }
 
   Future<void> addFocusReminder(String leverId, String leverContent, int hour, int minute, int duration) async {
@@ -872,15 +1124,43 @@ class StorageService {
 
   // ====== 打卡记录 ======
   Future<void> saveCheckIns(List<CheckIn> checkIns) async {
+    // 检测新增打卡，埋点记录行为事件
+    final oldCheckIns = getCheckIns();
+    final oldDates = oldCheckIns.map((c) => _formatDate(c.date)).toSet();
+    for (final checkIn in checkIns) {
+      final dateKey = _formatDate(checkIn.date);
+      if (!oldDates.contains(dateKey)) {
+        // 新打卡日期，追加行为事件
+        await saveBehaviorEvent(BehaviorEvent(
+          eventType: 'check_in',
+          timestamp: DateTime.now(),
+          meta: {'date': dateKey, 'leverCount': checkIn.leverIds.length},
+        ));
+      }
+    }
     final list = checkIns.map((c) => c.toJson()).toList();
     await _prefs.setString(_keyCheckIns, jsonEncode(list));
   }
 
+  String _formatDate(DateTime d) => '${d.year}-${d.month}-${d.day}';
+
   List<CheckIn> getCheckIns() {
     final str = _prefs.getString(_keyCheckIns);
     if (str == null) return [];
-    final list = jsonDecode(str) as List;
-    return list.map((e) => CheckIn.fromJson(e)).toList();
+    try {
+      final dynamic decoded = jsonDecode(str);
+      if (decoded is List) {
+        return decoded.map((e) {
+          if (e is Map) {
+            return CheckIn.fromJson(e as Map<String, dynamic>);
+          }
+          return null;
+        }).whereType<CheckIn>().toList();
+      }
+    } catch (e) {
+      debugPrint('[StorageService] getCheckIns decode error: $e');
+    }
+    return [];
   }
 
   // ====== 周复盘数据 ======
@@ -1444,6 +1724,143 @@ Future<void> saveOnboardingData({
     if (newLevel > getPetAppearanceLevel()) {
       await savePetAppearanceLevel(newLevel);
     }
+    // 同时更新性格等级并发放属性点
+    await updatePersonalityLevelFromStreak(totalDays);
+  }
+
+  // ====== 行为分析报告 ======
+  /// 计算当前 year-week key，格式 "YYYY-WW"
+  /// 以每年1月1日为第1周起点
+  String getCurrentWeekKey() {
+    final now = DateTime.now();
+    final jan1 = DateTime(now.year, 1, 1);
+    final weekNumber = (now.difference(jan1).inDays ~/ 7) + 1;
+    return '${now.year}-${weekNumber.toString().padLeft(2, '0')}';
+  }
+
+  /// 获取上次生成报告的周 key（null = 从未生成过）
+  String? getLastAnalyticsWeek() {
+    return _prefs.getString(_keyLastAnalyticsWeek);
+  }
+
+  /// 检查本周是否需要生成行为报告
+  /// 返回 true = 需要生成（首次或新的一周），false = 已生成过，跳过
+  bool shouldGenerateBehaviorReport() {
+    final lastWeek = getLastAnalyticsWeek();
+    final currentWeek = getCurrentWeekKey();
+    return lastWeek != currentWeek;
+  }
+
+  /// 生成行为分析报告（使用新的 generateFromData 方法）
+  BehaviorReport generateBehaviorReport() {
+    final report = BehaviorReport.generateFromData(
+      checkIns: getCheckIns(),
+      dailyLevers: getDailyLevers(),
+      monthlyBoss: getMonthlyBoss(),
+      userStats: getUserStats(),
+      lastWeekReport: getLastWeekReport(),
+      behaviorEvents: getBehaviorEvents(),
+    );
+    return report;
+  }
+
+  /// 保存行为分析报告并更新周标记
+  Future<void> saveBehaviorReport(BehaviorReport report) async {
+    // 保存报告列表（最多保留最近12周）
+    final reports = getBehaviorReports();
+    // 替换同周报告（如果已存在）
+    reports.removeWhere((r) => r.weekKey == report.weekKey);
+    reports.add(report);
+    // 只保留最近12周
+    if (reports.length > 12) {
+      reports.sort((a, b) => a.weekKey.compareTo(b.weekKey));
+      reports.removeRange(0, reports.length - 12);
+    }
+    final list = reports.map((r) => r.toJson()).toList();
+    await _prefs.setString(_keyBehaviorReports, jsonEncode(list));
+    // 更新周标记
+    await _prefs.setString(_keyLastAnalyticsWeek, report.weekKey);
+  }
+
+  /// 获取所有行为分析报告（按周排序）
+  List<BehaviorReport> getBehaviorReports() {
+    final str = _prefs.getString(_keyBehaviorReports);
+    if (str == null) return [];
+    try {
+      final dynamic decoded = jsonDecode(str);
+      if (decoded is List) {
+        return decoded.map((e) {
+          if (e is Map) {
+            return BehaviorReport.fromJson(e as Map<String, dynamic>);
+          }
+          return null;
+        }).whereType<BehaviorReport>().toList();
+      }
+    } catch (e) {
+      debugPrint('[StorageService] getBehaviorReports decode error: $e');
+    }
+    return [];
+  }
+
+  /// 获取指定周的行为报告
+  BehaviorReport? getBehaviorReportForWeek(String weekKey) {
+    final reports = getBehaviorReports();
+    try {
+      return reports.firstWhere((r) => r.weekKey == weekKey);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 获取本周报告（如果存在）
+  BehaviorReport? getThisWeekReport() {
+    return getBehaviorReportForWeek(getCurrentWeekKey());
+  }
+
+  /// 获取上周报告（用于计算 delta）
+  BehaviorReport? getLastWeekReport() {
+    final reports = getBehaviorReports();
+    if (reports.isEmpty) return null;
+    // 按 weekKey 降序排列取最新（即本周），再取前一条
+    reports.sort((a, b) => b.weekKey.compareTo(a.weekKey));
+    if (reports.length < 2) return null;
+    return reports[1]; // 第二条 = 上周
+  }
+
+  // ====== 行为事件埋点 ======
+  /// 保存行为事件（追加，最多保留90天）
+  Future<void> saveBehaviorEvent(BehaviorEvent event) async {
+    final events = getBehaviorEvents();
+    events.add(event);
+    // 过滤掉超过90天的事件
+    final cutoff = DateTime.now().subtract(const Duration(days: 90));
+    final valid = events.where((e) => e.timestamp.isAfter(cutoff)).toList();
+    final list = valid.map((e) => e.toJson()).toList();
+    await _prefs.setString(_keyBehaviorEvents, jsonEncode(list));
+  }
+
+  /// 获取行为事件（可指定起始日期）
+  List<BehaviorEvent> getBehaviorEvents({DateTime? since}) {
+    final str = _prefs.getString(_keyBehaviorEvents);
+    if (str == null) return [];
+    try {
+      final dynamic decoded = jsonDecode(str);
+      if (decoded is List) {
+        final events = decoded.map((e) {
+          if (e is Map) {
+            return BehaviorEvent.fromJson(e as Map<String, dynamic>);
+          }
+          return null;
+        }).whereType<BehaviorEvent>().toList();
+        if (since != null) {
+          return events.where((e) => e.timestamp.isAfter(since)).toList();
+        }
+        return events;
+      }
+    } catch (e) {
+      debugPrint('[StorageService] getBehaviorEvents decode error: $e');
+    }
+    return [];
   }
 
   // ====== 重置应用 ======
