@@ -2067,34 +2067,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: () => _showObstacleDialog(lever, index),
-                        child: Row(
-                          children: [
-                            Icon(
-                              lever.obstacle.isEmpty
-                                  ? Icons.psychology_outlined
-                                  : Icons.psychology,
-                              size: 12,
-                              color: lever.obstacle.isEmpty
-                                  ? const Color(0xFFFF6B35).withValues(alpha: 0.6)
-                                  : const Color(0xFFFF6B35),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              lever.obstacle.isEmpty ? '添加应对方案' : '编辑应对方案',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: lever.obstacle.isEmpty
-                                    ? const Color(0xFFFF6B35).withValues(alpha: 0.6)
-                                    : const Color(0xFFFF6B35),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -2659,113 +2631,55 @@ class _HomeScreenState extends State<HomeScreen> {
     final textColor = isCompleted ? AppColors.primary : AppColors.textPrimary;
     final decoration = isCompleted ? TextDecoration.lineThrough : null;
 
-    // 如果有障碍，先显示障碍
-    if (obstacle.isNotEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 内心障碍（灰色小字）
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                Icons.psychology_outlined,
-                size: 12,
-                color: textColor.withValues(alpha: 0.5),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  obstacle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: textColor.withValues(alpha: 0.5),
-                    fontStyle: FontStyle.italic,
-                    decoration: decoration,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-            ],
+    // 优先展示今日任务
+    // 尝试解析 IF-THEN 格式，提取行动部分
+    String mainTask = plan;
+    String? ifThenNote;
+
+    final ifThenPattern = RegExp(
+        r'^如果(.*?)，我就(.*)$',
+        caseSensitive: false);
+    final match = ifThenPattern.firstMatch(plan);
+
+    if (match != null) {
+      final ifPart = match.group(1) ?? '';
+      final thenPart = match.group(2) ?? '';
+      mainTask = thenPart.isNotEmpty ? thenPart : plan;
+      ifThenNote = '如果$ifPart';
+    } else if (obstacle.isNotEmpty) {
+      // 有obstacle时，优先显示plan
+      mainTask = plan;
+      ifThenNote = obstacle;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 主要任务（优先展示）
+        Text(
+          mainTask,
+          style: TextStyle(
+            fontSize: 15,
+            color: textColor,
+            fontWeight: FontWeight.w500,
+            decoration: decoration,
+            height: 1.4,
           ),
-          if (plan.isNotEmpty) const SizedBox(height: 6),
-          // IF-THEN 计划（主要样式）
-          if (plan.isNotEmpty)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.arrow_forward,
-                  size: 14,
-                  color: textColor,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    plan,
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: textColor,
-                      fontWeight: FontWeight.w500,
-                      decoration: decoration,
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-        ],
-      );
-    }
-
-    // 没有障碍时，显示 IF-THEN 计划（兼容旧格式或无障碍的情况）
-    if (plan.isNotEmpty) {
-      // 尝试解析 IF-THEN 格式
-      final ifThenPattern = RegExp(
-          r'^(如果[，,].*?[，,]|如果[^\n]{2,30}[,，]\s*)(.*)$',
-          caseSensitive: false);
-      final match = ifThenPattern.firstMatch(plan);
-      if (match != null) {
-        final ifPart = match.group(1) ?? '';
-        final thenPart = match.group(2) ?? '';
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              ifPart,
-              style: TextStyle(
-                fontSize: 12,
-                color: textColor.withValues(alpha: 0.6),
-                fontWeight: FontWeight.w500,
-                decoration: decoration,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              '→ $thenPart',
-              style: TextStyle(
-                fontSize: 15,
-                color: textColor,
-                fontWeight: FontWeight.w500,
-                decoration: decoration,
-              ),
-            ),
-          ],
-        );
-      }
-      // 直接显示计划
-      return Text(
-        plan,
-        style: TextStyle(
-          fontSize: 15,
-          color: textColor,
-          fontWeight: FontWeight.w500,
-          decoration: decoration,
         ),
-      );
-    }
-
-    // 完全无内容时显示空
-    return const SizedBox.shrink();
+        // IF-THEN备注（次要展示，淡色小字）
+        if (ifThenNote != null && ifThenNote!.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            ifThenNote!,
+            style: TextStyle(
+              fontSize: 12,
+              color: textColor.withValues(alpha: 0.5),
+              decoration: decoration,
+              height: 1.3,
+            ),
+          ),
+        ],
+      ],
+    );
   }
 }
