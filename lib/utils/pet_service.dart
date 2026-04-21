@@ -1507,7 +1507,7 @@ $presetContext
 
   /// 清理文本中的无效 Unicode 字符
   /// 将无法显示的字符替换为安全的替代符号
-  String StorageService.sanitizeText(String text) {
+  String sanitizeText(String text) {
     // 移除可能导致渲染问题的控制字符（保留换行和Tab）
     text = text.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]'), '');
 
