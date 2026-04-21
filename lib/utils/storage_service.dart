@@ -2,13 +2,14 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../models/pet_models.dart';
+import 'date_utils.dart' as app_date;
 
 class StorageService {
   static StorageService? _instance;
   late SharedPreferences _prefs;
 
   /// 清理文本中的无效 Unicode 字符，防止出现「�」问号框
-  static String _sanitizeText(String text) {
+  static String sanitizeText(String text) {
     return text
         .replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]'), '')
         .replaceAll('\uFFFD', '~')
@@ -112,7 +113,11 @@ class StorageService {
   static const String _keyHistorySummary = 'history_summary'; // 对话历史摘要
   static const String _keyPetIntimacy = 'pet_intimacy'; // 亲密度 0-100
   static const String _keyLastIntimacyUpdate = 'last_intimacy_update'; // 上次互动时间
-  static const String _keyPetMemoryHighlights = 'pet_memory_highlights'; // 宠物记忆亮点
+  static const String _keyPetMemoryHighlights = 'pet_memory_highlights';
+  static const String _keyLastPushShowDate = 'last_push_show_date'; // 上次显示推送的日期
+  static const String _keyLastCheckInDate = 'last_check_in_date'; // 上次打卡日期
+  static const String _keyPushShowCountToday = 'push_show_count_today'; // 今天显示推送的次数
+  static const String _keyLastPushShowTime = 'last_push_show_time'; // 上次显示推送的时间
 
   // ====== 宠物名字 ======
   static const String defaultPetName = '炭炭';
@@ -808,13 +813,13 @@ class StorageService {
         return decoded.map((e) {
           if (e is String) {
             // 兼容旧数据：只有计划文本，没有障碍字段
-            return {'obstacle': '', 'plan': _sanitizeText(e)};
+            return {'obstacle': '', 'plan': sanitizeText(e)};
           }
           if (e is Map) {
             final map = Map<String, dynamic>.from(e);
             return {
-              'obstacle': _sanitizeText(map['obstacle']?.toString() ?? ''),
-              'plan': _sanitizeText(map['plan']?.toString() ?? ''),
+              'obstacle': sanitizeText(map['obstacle']?.toString() ?? ''),
+              'plan': sanitizeText(map['plan']?.toString() ?? ''),
             };
           }
           return null;
@@ -837,7 +842,7 @@ class StorageService {
     try {
       final dynamic decoded = jsonDecode(str);
       if (decoded is List) {
-        return decoded.whereType<String>().map(_sanitizeText).toList();
+        return decoded.whereType<String>().map(sanitizeText).toList();
       }
     } catch (e) {
       debugPrint('[StorageService] getDailyActions decode error: $e');
@@ -1425,7 +1430,7 @@ class StorageService {
         final bossTasks = getBossTasks();
         final cleanContent = bossTasks.isNotEmpty
             ? bossTasks.values.map((actions) => actions.isNotEmpty ? actions.first : '').where((s) => s.isNotEmpty).join('；')
-            : _sanitizeText(json['content']?.toString() ?? '');
+            : sanitizeText(json['content']?.toString() ?? '');
 
         return MonthlyBoss(
           content: cleanContent,
@@ -1679,6 +1684,140 @@ Future<void> saveOnboardingData({
     if (newLevel > getPetAppearanceLevel()) {
       await savePetAppearanceLevel(newLevel);
     }
+  }
+
+  // ====== 推送显示控制 ======
+  /// 检查今天是否已经打卡过
+  bool hasCheckedInToday() {
+    final lastCheckInDateStr = _prefs.getString(_keyLastCheckInDate);
+    if (lastCheckInDateStr == null) return false;
+
+    final lastCheckInDate = DateTime.tryParse(lastCheckInDateStr);
+    if (lastCheckInDate == null) return false;
+
+    return app_date.AppDateUtils.isToday(lastCheckInDate);
+  }
+
+  /// 标记今天已经打卡
+  Future<void> markCheckedInToday() async {
+    await _prefs.setString(_keyLastCheckInDate, DateTime.now().toIso8601String());
+  }
+
+  /// 获取今天已经显示推送的次数
+  int getPushShowCountToday() {
+    final lastShowDateStr = _prefs.getString(_keyLastPushShowDate);
+    if (lastShowDateStr == null) return 0;
+
+    final lastShowDate = DateTime.tryParse(lastShowDateStr);
+    if (lastShowDate == null) return 0;
+
+    if (!app_date.AppDateUtils.isToday(lastShowDate)) return 0;
+    return _prefs.getInt(_keyPushShowCountToday) ?? 0;
+  }
+
+  /// 根据亲密度获取今天最多显示次数
+  int getMaxPushShowCountPerDay(int intimacy) {
+    // 亲密度等级对应的每天最多显示次数：
+    // Lv1 (0-19): 1次
+    // Lv2 (20-39): 2次
+    // Lv3 (40-59): 3次
+    // Lv4 (60-79): 4次
+    // Lv5 (80-100): 5次
+    if (intimacy >= 80) return 5;
+    if (intimacy >= 60) return 4;
+    if (intimacy >= 40) return 3;
+    if (intimacy >= 20) return 2;
+    return 1;
+  }
+
+  /// 获取两次显示之间的最小间隔（小时）
+  int getMinPushIntervalHours(int intimacy) {
+    // 亲密度越高，间隔越短
+    if (intimacy >= 80) return 2;   // 2小时
+    if (intimacy >= 60) return 3;   // 3小时
+    if (intimacy >= 40) return 4;   // 4小时
+    if (intimacy >= 20) return 5;   // 5小时
+    return 6;                         // 6小时
+  }
+
+  /// 检查距离上次显示是否已经过了足够时间
+  bool hasEnoughTimeSinceLastPush(DateTime now, int intimacy) {
+    final lastShowTimeStr = _prefs.getString(_keyLastPushShowTime);
+    if (lastShowTimeStr == null) return true;
+
+    final lastShowTime = DateTime.tryParse(lastShowTimeStr);
+    if (lastShowTime == null) return true;
+
+    final intervalHours = getMinPushIntervalHours(intimacy);
+    return now.difference(lastShowTime).inHours >= intervalHours;
+  }
+
+  /// 检查是否应该触发保底策略（晚上8点后有未完成的今日行动）
+  bool shouldTriggerGuaranteedPush(DateTime now, int countToday) {
+    // 晚上8点后
+    if (now.hour < 20) return false;
+
+    // 今天还没显示过推送
+    if (countToday > 0) return false;
+
+    // 检查是否有未完成的今日行动
+    final levers = getDailyLevers();
+    return levers.isNotEmpty;
+  }
+
+  /// 综合判断是否应该显示推送
+  bool shouldShowPush() {
+    final now = DateTime.now();
+    final countToday = getPushShowCountToday();
+    final intimacy = getPetIntimacy();
+    final maxCount = getMaxPushShowCountPerDay(intimacy);
+
+    // 保底策略：晚上8点后有未完成行动且今天没显示过
+    if (shouldTriggerGuaranteedPush(now, countToday)) return true;
+
+    // 超过今天最大次数，不显示
+    if (countToday >= maxCount) return false;
+
+    // 距离上次显示时间不够，不显示
+    if (countToday > 0 && !hasEnoughTimeSinceLastPush(now, intimacy)) return false;
+
+    // 每天至少显示1次：如果今天还没显示过，且已经过了中午12点
+    if (countToday == 0 && now.hour >= 12) return true;
+
+    // 其他情况：有概率显示（亲密度越高概率越大）
+    final random = now.millisecond % 100;
+
+    int threshold;
+    if (intimacy >= 80) threshold = 80;
+    else if (intimacy >= 60) threshold = 60;
+    else if (intimacy >= 40) threshold = 40;
+    else if (intimacy >= 20) threshold = 25;
+    else threshold = 15;
+
+    return random < threshold;
+  }
+
+  /// 记录推送已显示
+  Future<void> markPushShown() async {
+    final now = DateTime.now();
+    await _prefs.setString(_keyLastPushShowDate, now.toIso8601String());
+    await _prefs.setString(_keyLastPushShowTime, now.toIso8601String());
+
+    // 获取当前计数并更新，避免两次调用 getPushShowCountToday()
+    final lastShowDateStr = _prefs.getString(_keyLastPushShowDate);
+    int countToday = 0;
+    if (lastShowDateStr != null) {
+      final lastShowDate = DateTime.tryParse(lastShowDateStr);
+      if (lastShowDate != null) {
+        final isSameDay = now.year == lastShowDate.year &&
+                         now.month == lastShowDate.month &&
+                         now.day == lastShowDate.day;
+        if (isSameDay) {
+          countToday = _prefs.getInt(_keyPushShowCountToday) ?? 0;
+        }
+      }
+    }
+    await _prefs.setInt(_keyPushShowCountToday, countToday + 1);
   }
 
   // ====== 重置应用 ======

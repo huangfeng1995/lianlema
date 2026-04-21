@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../models/models.dart';
 import '../models/pet_models.dart';
 import 'storage_service.dart';
+import 'date_utils.dart' as app_date;
 
 /// 宠物拆解结果：年度目标 → 月度挑战 → 每日行动
 class DecompositionResult {
@@ -133,7 +134,7 @@ class PetService {
   PetService._();
 
   /// 对话历史最大条数（超过后压缩）
-  static const int _maxHistorySize = 20;
+  static const int _maxHistorySize = 100;
   /// 压缩时保留最近 N 条，丢弃最早的 M 条
   static const int _keepRecentCount = 10;
 
@@ -738,8 +739,8 @@ class PetService {
     final boss = storage.getMonthlyBoss();
 
     final now = DateTime.now();
-    final todayStr = _formatDate(now);
-    final checkedIn = checkIns.any((c) => _formatDate(c.date) == todayStr);
+    final todayStr = app_date.AppDateUtils.formatDate(now);
+    final checkedIn = checkIns.any((c) => app_date.AppDateUtils.formatDate(c.date) == todayStr);
 
     DateTime? lastActive;
     if (checkIns.isNotEmpty) {
@@ -989,7 +990,7 @@ class PetService {
           if (item['type'] == 'text' && (item['text'] as String?)?.isNotEmpty == true) {
             String text = (item['text'] as String).trim();
             // 清理无效 Unicode 字符，将无法识别的字符替换为替代符号
-            text = _sanitizeText(text);
+            text = StorageService.sanitizeText(text);
             return text;
           }
         }
@@ -1468,7 +1469,7 @@ $presetContext
       final challenges = <String>[];
       if (json['monthlyChallenges'] is List) {
         for (final c in json['monthlyChallenges']) {
-          if (c is String && c.isNotEmpty) challenges.add(_sanitizeText(c));
+          if (c is String && c.isNotEmpty) challenges.add(StorageService.sanitizeText(c));
         }
       }
 
@@ -1481,7 +1482,7 @@ $presetContext
             for (final a in entry.value) {
               if (a is String && a.isNotEmpty) {
                 // 清理 LLM 返回的无效 Unicode 字符
-                final cleanAction = _sanitizeText(a);
+                final cleanAction = StorageService.sanitizeText(a);
                 // 验证：每个行动必须包含数字，否则尝试补充或跳过
                 final quantifiedAction = _quantifyAction(cleanAction);
                 if (quantifiedAction != null) {
@@ -1506,7 +1507,7 @@ $presetContext
 
   /// 清理文本中的无效 Unicode 字符
   /// 将无法显示的字符替换为安全的替代符号
-  String _sanitizeText(String text) {
+  String StorageService.sanitizeText(String text) {
     // 移除可能导致渲染问题的控制字符（保留换行和Tab）
     text = text.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]'), '');
 
@@ -1575,8 +1576,6 @@ $presetContext
     return null;
   }
 
-  String _formatDate(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   /// ====== WOOP障碍引导（心理咨询师风格）======
   /// 生成障碍探索引导语（心理咨询师风格，非说教）

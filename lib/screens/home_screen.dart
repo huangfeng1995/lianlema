@@ -15,7 +15,6 @@ import '../widgets/boss_hp_bar.dart';
 import '../widgets/boss_victory_celebration.dart';
 import '../widgets/streak_broken_overlay.dart';
 import '../widgets/evolution_celebration.dart';
-import '../widgets/pet_push_banner.dart';
 import '../controllers/pet_mood_controller.dart';
 import '../services/share_service.dart';
 import 'package:get/get.dart';
@@ -99,7 +98,6 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hasLongTermPlanning = false; // 是否有长期规划
   PetContext? _context; // 宠物上下文
   String _petName = StorageService.defaultPetName; // 宠物名字
-  PetPush? _currentPush;
 
   @override
   void initState() {
@@ -113,13 +111,6 @@ class _HomeScreenState extends State<HomeScreen> {
     await PetService.instance.loadState();
     _context = await PetService.instance.buildContext();
     _petName = _storage.getPetName();
-    // 加载宠物推送（取最高优先级一条）
-    try {
-      final pushes = await PetPushService.instance.generateDailyPushes(_context!);
-      if (pushes.isNotEmpty) {
-        _currentPush = pushes.first;
-      }
-    } catch (_) {}
 
     final stats = _storage.getUserStats();
     final leverMaps = _storage.getDailyLevers();
@@ -971,11 +962,6 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-              // 宠物推送通知栏（初始化完成且有推送时才显示）
-              if (!_isLoading && _currentPush != null) ...[
-                PetPushBanner(push: _currentPush!),
-                const SizedBox(height: 12),
-              ],
               // ===== 大字问候语 =====
               _buildGreetingHeader(),
               const SizedBox(height: 28),
@@ -1791,7 +1777,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 2),
                     Text(
                       isEggPhase
-                          ? '再等${7 - DateTime.now().difference(_storage.getPetAdoptDate() ?? DateTime.now()).inDays}天就孵化了 🥚'
+                          ? '再等${7 - DateTime.now().difference(_storage.getPetAdoptDate() ?? DateTime.now()).inDays}天就孵化了'
                           : '$greeting $suggestion',
                       style: const TextStyle(
                         fontSize: 12,

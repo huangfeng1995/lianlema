@@ -254,10 +254,10 @@ class PetPushService {
   }
 
   String _milestoneTitle(int streak) {
-    if (streak < 10) return '里程碑在望 🎯';
-    if (streak < 35) return '7天里程碑快到了 🔥';
-    if (streak < 105) return '30天里程碑在等你 💎';
-    return '百日里程碑 🌟';
+    if (streak < 10) return '里程碑在望';
+    if (streak < 35) return '7天里程碑快到了';
+    if (streak < 105) return '30天里程碑在等你';
+    return '百日里程碑';
   }
 
   String _milestoneBody(int streak) {
@@ -351,12 +351,12 @@ class PetPushService {
 
   /// 根据用户激励偏好获取打卡提醒标题
   String _getStreakReminderTitle(EncouragementType? bestType) {
-    if (bestType == EncouragementType.toughLove) return '起床干活 💪';
-    if (bestType == EncouragementType.encouragement) return '每日打卡 ☀️';
-    if (bestType == EncouragementType.humor) return '今日任务待领取 🎁';
-    if (bestType == EncouragementType.warmCompanion) return '新的一天 🌱';
-    if (bestType == EncouragementType.dataDriven) return '今日数据 📊';
-    return '每日打卡提醒 ☀️';
+    if (bestType == EncouragementType.toughLove) return '起床干活';
+    if (bestType == EncouragementType.encouragement) return '每日打卡';
+    if (bestType == EncouragementType.humor) return '今日任务待领取';
+    if (bestType == EncouragementType.warmCompanion) return '新的一天';
+    if (bestType == EncouragementType.dataDriven) return '今日数据';
+    return '每日打卡提醒';
   }
 
   /// 生成个性化打卡提醒内容
@@ -365,20 +365,20 @@ class PetPushService {
       return '别躺了，就差今天这一步。动起来！';
     }
     if (bestType == EncouragementType.encouragement) {
-      return '今天的行动完成了吗？哪怕只做一点点也是进步 💪';
+      return '今天的行动完成了吗？哪怕只做一点点也是进步';
     }
     if (bestType == EncouragementType.humor) {
-      return '今日打卡任务还没领哦，再不来就要被扣分了 🏃';
+      return '今日打卡任务还没领哦，再不来就要被扣分了';
     }
     if (bestType == EncouragementType.warmCompanion) {
       return '今天打算什么时候动一下？不急，我在这里等你。';
     }
     if (bestType == EncouragementType.dataDriven) {
-      return '今日打卡率待更新，你来完成今天这 1% 📈';
+      return '今日打卡率待更新，你来完成今天这 1%';
     }
     if (bestType == EncouragementType.silentSupport) {
       return '......（你什么时候方便就什么时候来）';
     }
-    return '今天的行动完成了吗？哪怕只做一点点也是进步 💪';
+    return '今天的行动完成了吗？哪怕只做一点点也是进步';
   }
 }

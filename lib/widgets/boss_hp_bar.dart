@@ -82,30 +82,21 @@ class _BossHpBarState extends State<BossHpBar> with SingleTickerProviderStateMix
             // 标题行
             Row(
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '本月挑战',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '已打卡 ${checkedDays.length}/${DateTime(now.year, now.month + 1, 0).day} 天',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
+                const Text(
+                  '本月挑战',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
                   ),
                 ),
-                Icon(Icons.chevron_right, size: 20, color: AppColors.primary.withValues(alpha: 0.5)),
+                const SizedBox(width: 12),
+                Text(
+                  '${checkedDays.length}/${DateTime(now.year, now.month + 1, 0).day}',
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+                const Spacer(),
+                Icon(Icons.chevron_right, size: 20, color: const Color(0xFFF5A623).withValues(alpha: 0.6)),
               ],
             ),
             const SizedBox(height: 12),

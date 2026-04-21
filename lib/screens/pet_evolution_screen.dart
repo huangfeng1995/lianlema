@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../utils/storage_service.dart';
@@ -40,6 +41,18 @@ class _PetEvolutionScreenState extends State<PetEvolutionScreen> {
     _EvolutionStage(5, '👑', '高级', 100, '火焰使者'),
     _EvolutionStage(6, '🌟', '终极', 365, '永恒之火'),
   ];
+
+  IconData _getStageIcon(String emoji) {
+    switch (emoji) {
+      case '🥚': return Icons.egg_outlined;
+      case '🐣': return Icons.egg;
+      case '🔥': return Icons.local_fire_department;
+      case '⚡': return Icons.bolt;
+      case '👑': return Icons.star;
+      case '🌟': return Icons.star_border;
+      default: return Icons.circle;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +97,7 @@ class _PetEvolutionScreenState extends State<PetEvolutionScreen> {
               const SizedBox(height: 12),
               _buildNextStagePreview(stages[_currentLevel], _currentStreak),
             ] else ...[
-              _buildSectionTitle('🏆 已达到最高形态'),
+              _buildSectionTitle('已达到最高形态'),
               const SizedBox(height: 12),
               _buildMaxLevelCard(),
             ],
@@ -130,9 +143,10 @@ class _PetEvolutionScreenState extends State<PetEvolutionScreen> {
               shape: BoxShape.circle,
             ),
             child: Center(
-              child: Text(
-                stage?.evolutionEmoji ?? '🥚',
-                style: const TextStyle(fontSize: 48),
+              child: Icon(
+                _getStageIcon(stage?.evolutionEmoji ?? '🥚'),
+                size: 40,
+                color: AppColors.primary,
               ),
             ),
           ),
@@ -209,12 +223,10 @@ class _PetEvolutionScreenState extends State<PetEvolutionScreen> {
                         : null,
                   ),
                   child: Center(
-                    child: Text(
-                      stage.emoji,
-                      style: TextStyle(
-                        fontSize: 24,
-                        color: isUnlocked ? null : Colors.grey,
-                      ),
+                    child: Icon(
+                      _getStageIcon(stage.emoji),
+                      size: 24,
+                      color: isUnlocked ? AppColors.primary : Colors.grey,
                     ),
                   ),
                 ),
@@ -360,9 +372,10 @@ class _PetEvolutionScreenState extends State<PetEvolutionScreen> {
               shape: BoxShape.circle,
             ),
             child: Center(
-              child: Text(
-                nextStage.emoji,
-                style: const TextStyle(fontSize: 32),
+              child: Icon(
+                _getStageIcon(nextStage.emoji),
+                size: 32,
+                color: AppColors.primary,
               ),
             ),
           ),
@@ -431,9 +444,10 @@ class _PetEvolutionScreenState extends State<PetEvolutionScreen> {
       ),
       child: Column(
         children: [
-          const Text(
-            '🌟',
-            style: TextStyle(fontSize: 48),
+          Icon(
+            CupertinoIcons.star_fill,
+            size: 48,
+            color: Color(0xFFFFD700),
           ),
           const SizedBox(height: 8),
           Text(
@@ -446,7 +460,7 @@ class _PetEvolutionScreenState extends State<PetEvolutionScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            '永恒之火，与你同在 🔥',
+            '永恒之火，与你同在',
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,

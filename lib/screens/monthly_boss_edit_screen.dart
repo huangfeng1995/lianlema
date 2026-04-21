@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../theme/app_theme.dart';
 import '../models/models.dart';
 import '../utils/storage_service.dart';
-import '../utils/pet_service.dart';
-import '../widgets/boss_hp_bar.dart';
 
 class MonthlyBossEditScreen extends StatefulWidget {
   const MonthlyBossEditScreen({super.key});
@@ -13,259 +12,90 @@ class MonthlyBossEditScreen extends StatefulWidget {
 }
 
 class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
-  late StorageService _storage;
-  bool _isLoading = true;
+  StorageService? _storage;
   bool _isSaving = false;
-  bool _isDecomposing = false;
+  bool _dataLoaded = false;
 
-  // 所有 Boss keys（template name 或 custom_0, custom_1...）
-  late List<String> _bossKeys = [];
-
-  // 每个 Boss 的行动控制器 Map
-  late Map<String, List<TextEditingController>> _actionControllers;
-
-  // Boss 内容（用于显示）
-  late Map<String, String> _bossContents = {};
-
-  // Boss hp 信息
-  MonthlyBoss? _boss;
-
-  // 模板定义（用于获取 desc 和 hints）
-  final List<Map<String, String>> _bossTemplates = [
-    {'name': '读完一本书', 'desc': '本月读完一本书'},
-    {'name': '培养早起习惯', 'desc': '连续早起21天'},
-    {'name': '学会Python', 'desc': 'Python基础入门'},
-    {'name': '养成运动习惯', 'desc': '每周运动3次'},
-  ];
+  // 月度挑战列表
+  List<String> _monthlyGoals = [''];
+  List<TextEditingController> _goalControllers = [];
 
   @override
   void initState() {
     super.initState();
-    _actionControllers = {};
-    _bossContents = {};
-    _loadData();
-  }
-
-  String _getBossDesc(String key) {
-    // 如果是默认key，直接用boss内容里的对应项
-    if (key == 'default') {
-      return _bossContents[key] ?? '月度挑战';
-    }
-    if (key.startsWith('custom_')) {
-      final idx = int.tryParse(key.substring(7)) ?? 0;
-      // 如果内容已经加载过，优先用已加载的内容
-      if (_bossContents.containsKey(key) && _bossContents[key]!.isNotEmpty) {
-        return _bossContents[key]!;
-      }
-      final customs = _storage.getCustomBosses();
-      if (idx < customs.length) return customs[idx];
-      return '自定义挑战';
-    }
-    // 如果内容已经加载过，优先用已加载的内容
-    if (_bossContents.containsKey(key) && _bossContents[key]!.isNotEmpty) {
-      return _bossContents[key]!;
-    }
-    final t = _bossTemplates.firstWhere(
-      (t) => t['name'] == key,
-      orElse: () => {'desc': key},
-    );
-    return t['desc']!;
+    _goalControllers = [TextEditingController()];
+    // 先显示表单，再异步加载数据
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
   }
 
   Future<void> _loadData() async {
-    _storage = await StorageService.getInstance();
-
-    // 加载 Boss HP 信息
-    final now = DateTime.now();
-    final boss = _storage.getMonthlyBoss();
-    if (boss != null && boss.month == now.month && boss.year == now.year) {
-      _boss = boss;
-    }
-
-    // 加载 bossTasks（per-boss 每日行动）
-    final bossTasks = _storage.getBossTasks();
-
-    // 加载已选的 Boss 类型
-    final selectedTypes = _storage.getSelectedBossTypes();
-    final customBosses = _storage.getCustomBosses();
-
-    _bossKeys = [];
-    _bossKeys.addAll(selectedTypes);
-    for (var i = 0; i < customBosses.length; i++) {
-      if (customBosses[i].trim().isNotEmpty) {
-        _bossKeys.add('custom_$i');
-      }
-    }
-
-    // 如果没有任何 boss（兼容旧数据）
-    if (_bossKeys.isEmpty && boss != null) {
-      _bossKeys = ['default'];
-    }
-
-    // 初始化每个 boss 的控制器
-    _actionControllers = {};
-    for (final key in _bossKeys) {
-      final actions = bossTasks[key] ?? [];
-      if (actions.isEmpty) {
-        _actionControllers[key] = [TextEditingController()];
-      } else {
-        _actionControllers[key] = actions.map((a) => TextEditingController(text: a)).toList();
-      }
-    }
-
-    // 加载 boss 内容（从 monthlyBoss.content 解析，或从 customBosses）
-    _bossContents = {};
-    if (_boss != null) {
-      final parts = _boss!.content.split('；').where((s) => s.trim().isNotEmpty).toList();
-      // 如果 _bossKeys 只有 'default' 但 content 有多个任务，展开为多个 key
-      if (_bossKeys.length == 1 && _bossKeys.first == 'default' && parts.length > 1) {
-        _bossKeys = List.generate(parts.length, (i) => 'task_$i');
-        for (final key in _bossKeys) {
-          _actionControllers[key] = [TextEditingController()];
-        }
-      }
-      for (var i = 0; i < _bossKeys.length && i < parts.length; i++) {
-        _bossContents[_bossKeys[i]] = parts[i].trim();
-      }
-    }
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    // 自动触发 AI 拆解：有 Boss 内容但任务为空
-    if (_boss != null && _boss!.content.isNotEmpty && _bossKeys.isNotEmpty) {
-      final hasAnyAction = _actionControllers.values.any(
-        (controllers) => controllers.any((c) => c.text.trim().isNotEmpty),
-      );
-      if (!hasAnyAction) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _decomposeWithAI());
-      }
-    }
-  }
-
-  /// 调用 AI 智能拆解：根据 Boss 内容自动生成每日行动
-  Future<void> _decomposeWithAI() async {
-    if (_isDecomposing) return;
-    if (_boss == null || _boss!.content.trim().isEmpty) return;
-
-    setState(() => _isDecomposing = true);
     try {
-      final result = await PetService.instance
-          .decomposeGoals([_boss!.content])
-          .timeout(const Duration(seconds: 15));
-
+      final storage = await StorageService.getInstance();
       if (!mounted) return;
 
-      // 将结果填充到控制器（按顺序取前 N 个 Boss key）
-      int bossIdx = 0;
-      for (final key in _bossKeys) {
-        if (bossIdx >= result.dailyActionsPerChallenge.length) break;
-        final actions = result.dailyActionsPerChallenge.values.toList()[bossIdx];
-        if (actions.isNotEmpty) {
-          setState(() {
-            _actionControllers[key] = actions
-                .take(5)
-                .map((a) => TextEditingController(text: a))
-                .toList();
-          });
+      // 加载月度挑战
+      final boss = storage.getMonthlyBoss();
+      if (boss != null && boss.content.isNotEmpty) {
+        final parts = boss.content.split('；').where((g) => g.trim().isNotEmpty).toList();
+        if (parts.isNotEmpty) {
+          // 有已有数据：显示已有数据 + 一个额外的空输入框
+          _monthlyGoals = [...parts, ''];
+        } else {
+          // 没有已有数据：显示1个空输入框
+          _monthlyGoals = [''];
         }
-        bossIdx++;
+      } else {
+        // 没有已有数据：显示1个空输入框
+        _monthlyGoals = [''];
       }
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('AI 已生成 ${result.dailyActionsPerChallenge.values.expand((a) => a).length} 条每日行动 ✨'),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      // 重建 controllers
+      for (final c in _goalControllers) c.dispose();
+      _goalControllers = _monthlyGoals.map((g) => TextEditingController(text: g)).toList();
+
+      _storage = storage;
+      if (mounted) setState(() => _dataLoaded = true);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('AI 拆解失败: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isDecomposing = false);
+      debugPrint('[MonthlyBossEditScreen] loadData error: $e');
+      if (mounted) setState(() => _dataLoaded = true);
     }
   }
 
-  void _addAction(String bossKey) {
-    if (_actionControllers[bossKey]!.length >= 5) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('每个挑战最多5个行动'), behavior: SnackBarBehavior.floating),
-      );
-      return;
-    }
-    setState(() {
-      _actionControllers[bossKey]!.add(TextEditingController());
-    });
-  }
-
-  void _removeAction(String bossKey, int index) {
-    if (_actionControllers[bossKey]!.length <= 1) return;
-    setState(() {
-      _actionControllers[bossKey]![index].dispose();
-      _actionControllers[bossKey]!.removeAt(index);
-    });
+  @override
+  void dispose() {
+    for (final c in _goalControllers) c.dispose();
+    super.dispose();
   }
 
   Future<void> _save() async {
     if (_isSaving) return;
+    final storage = _storage ?? await StorageService.getInstance();
     setState(() => _isSaving = true);
 
     try {
-      // 收集每个 boss 的非空行动
-      final bossTasks = <String, List<String>>{};
-      final contentParts = <String>[];
-
-      for (final key in _bossKeys) {
-        final actions = _actionControllers[key]!
-            .map((c) => c.text.trim())
-            .where((a) => a.isNotEmpty)
-            .toList();
-        if (actions.isNotEmpty) {
-          bossTasks[key] = actions;
-          // 第一个行动作为 boss 的描述
-          contentParts.add(actions.first);
-        }
-      }
+      final goals = _goalControllers.map((c) => c.text.trim()).where((g) => g.isNotEmpty).toList();
 
       final now = DateTime.now();
+      final boss = storage.getMonthlyBoss();
 
       // 保存 monthlyBoss
-      if (bossTasks.isNotEmpty) {
+      if (goals.isNotEmpty || (boss != null && boss.content.isNotEmpty)) {
         final updatedBoss = MonthlyBoss(
-          content: contentParts.join('；'),
+          content: goals.isNotEmpty ? goals.join('；') : boss?.content ?? '',
           month: now.month,
           year: now.year,
           totalDays: DateTime(now.year, now.month + 1, 0).day,
-          hp: _boss?.hp ?? 0,
+          hp: boss?.hp ?? 0,
         );
-        await _storage.saveMonthlyBoss(updatedBoss);
+        await storage.saveMonthlyBoss(updatedBoss);
       }
-
-      // 保存 per-boss 行动
-      await _storage.saveBossTasks(bossTasks);
-
-      // 展平保存到 dailyActions 和 dailyLevers（兼容其他读取）
-      final allActions = bossTasks.values.expand((a) => a).toList();
-      await _storage.saveDailyActions(allActions);
-      await _storage.saveDailyLevers(
-        allActions.map((a) => {'obstacle': '', 'plan': a}).toList(),
-      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('保存成功 ✨'),
+            content: Text('保存成功'),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
@@ -287,23 +117,13 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
   }
 
   @override
-  void dispose() {
-    for (final controllers in _actionControllers.values) {
-      for (final c in controllers) {
-        c.dispose();
-      }
-    }
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.background,
         title: const Text(
-          '编辑月度挑战',
+          '月度计划',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -332,266 +152,172 @@ class _MonthlyBossEditScreenState extends State<MonthlyBossEditScreen> {
         ],
         elevation: 0,
       ),
-      body: _isLoading
+      body: !_dataLoaded
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // HP 状态
-                  if (_boss != null) ...[
-                    BossHpBar(
-                      currentHp: _boss!.hp,
-                      maxHp: _boss!.totalDays,
-                      bossName: _boss!.content,
-                      currentMonth: _boss!.month,
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // AI 智能拆解按钮
-                  if (_boss != null && _boss!.content.isNotEmpty)
-                    GestureDetector(
-                      onTap: _isDecomposing ? null : _decomposeWithAI,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              AppColors.primary.withValues(alpha: 0.15),
-                              AppColors.primaryLight.withValues(alpha: 0.08),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            if (_isDecomposing)
-                              const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                              )
-                            else
-                              const Icon(Icons.auto_awesome, size: 18, color: AppColors.primary),
-                            const SizedBox(width: 8),
-                            Text(
-                              _isDecomposing ? 'AI 拆解中...' : 'AI 智能拆解',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.primary,
+                  // ===== 月度目标 =====
+                  _buildSectionHeader('月度目标', Icons.flag_outlined, '这个月最想做成的一件事'),
+                  const SizedBox(height: 12),
+                  ...List.generate(_monthlyGoals.length, (index) {
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: index < _monthlyGoals.length - 1 ? 10 : 0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 28,
+                            height: 28,
+                            margin: const EdgeInsets.only(top: 8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${index + 1}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                  if (_boss != null && _boss!.content.isNotEmpty)
-                    const SizedBox(height: 24),
-
-                  // 每个 Boss 的编辑区块
-                  if (_bossKeys.isEmpty)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(32),
-                        child: Text(
-                          '暂无挑战数据，请在设置中添加',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
-                      ),
-                    )
-                  else
-                    ..._bossKeys.asMap().entries.map((entry) {
-                      final idx = entry.key;
-                      final key = entry.value;
-                      final desc = _getBossDesc(key);
-                      final controllers = _actionControllers[key] ?? [];
-                      final circledNumbers = ['①', '②', '③', '④', '⑤'];
-
-                      return Container(
-                        margin: EdgeInsets.only(bottom: idx < _bossKeys.length - 1 ? 20 : 0),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.cardBackground,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: AppColors.textLight.withValues(alpha: 0.15),
                           ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Boss 标签
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    AppColors.primary.withValues(alpha: 0.15),
-                                    AppColors.primaryLight.withValues(alpha: 0.08),
-                                  ],
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: index < _goalControllers.length ? _goalControllers[index] : null,
+                              maxLines: 2,
+                              decoration: InputDecoration(
+                                hintText: '例如：读完一本书，养成运动习惯...',
+                                hintStyle: TextStyle(
+                                  color: AppColors.textLight.withValues(alpha: 0.6),
+                                  fontSize: 13,
                                 ),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.shield_outlined, size: 16, color: AppColors.primary),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      desc,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-
-                            // 每日行动提示
-                            Row(
-                              children: [
-                                const Text(
-                                  '每日行动',
-                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                                ),
-                                const Spacer(),
-                                GestureDetector(
-                                  onTap: () => _addAction(key),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFFF8E53).withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.add, size: 12, color: Color(0xFFFF8E53)),
-                                        SizedBox(width: 2),
-                                        Text(
-                                          '添加',
-                                          style: TextStyle(fontSize: 11, color: Color(0xFFFF8E53), fontWeight: FontWeight.w500),
-                                        ),
-                                      ],
-                                    ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                    color: AppColors.textLight.withValues(alpha: 0.2),
                                   ),
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-
-                            // 行动输入框
-                            ...List.generate(controllers.length, (actionIdx) {
-                              return Padding(
-                                padding: EdgeInsets.only(bottom: actionIdx < controllers.length - 1 ? 10 : 0),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      width: 28,
-                                      height: 28,
-                                      margin: const EdgeInsets.only(top: 7),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFF8E53).withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          circledNumbers[actionIdx],
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: Color(0xFFFF8E53),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: TextField(
-                                        controller: controllers[actionIdx],
-                                        maxLines: 2,
-                                        style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
-                                        decoration: InputDecoration(
-                                          hintText: '这个行动要做什么？',
-                                          hintStyle: TextStyle(fontSize: 12, color: AppColors.textLight.withValues(alpha: 0.6)),
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(10),
-                                            borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.2), width: 1.5),
-                                          ),
-                                          enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(10),
-                                            borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.2), width: 1.5),
-                                          ),
-                                          focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(10),
-                                            borderSide: const BorderSide(color: Color(0xFFFF8E53), width: 2),
-                                          ),
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                          isDense: true,
-                                        ),
-                                      ),
-                                    ),
-                                    if (controllers.length > 1)
-                                      GestureDetector(
-                                        onTap: () => _removeAction(key, actionIdx),
-                                        child: Padding(
-                                          padding: const EdgeInsets.only(left: 6, top: 9),
-                                          child: Icon(
-                                            Icons.close,
-                                            size: 18,
-                                            color: AppColors.textLight.withValues(alpha: 0.5),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                    color: AppColors.textLight.withValues(alpha: 0.2),
+                                  ),
                                 ),
-                              );
-                            }),
-                          ],
-                        ),
-                      );
-                    }),
-
-                  const SizedBox(height: 32),
-
-                  // 保存按钮
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isSaving ? null : _save,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        elevation: 0,
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(
+                                    color: AppColors.primary,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                isDense: true,
+                              ),
+                              style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                            ),
+                          ),
+                          if (_monthlyGoals.length > 1)
+                            GestureDetector(
+                              onTap: () {
+                                _goalControllers[index].dispose();
+                                _goalControllers.removeAt(index);
+                                setState(() => _monthlyGoals.removeAt(index));
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 6, top: 10),
+                                child: Icon(
+                                  Icons.close,
+                                  size: 18,
+                                  color: AppColors.textLight.withValues(alpha: 0.4),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                      child: _isSaving
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
-                          : const Text('保存', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    );
+                  }),
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: () {
+                      if (_monthlyGoals.length >= 5) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('目标不宜过多，聚焦最重要的事效果更好'),
+                            duration: Duration(seconds: 2),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        return;
+                      }
+                      setState(() {
+                        _monthlyGoals.add('');
+                        _goalControllers.add(TextEditingController());
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add, size: 16, color: AppColors.primary),
+                          const SizedBox(width: 4),
+                          const Text(
+                            '添加目标',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.primary),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, IconData icon, String subtitle) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 16, color: AppColors.primary),
+            const SizedBox(width: 6),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 12,
+            color: AppColors.textSecondary.withValues(alpha: 0.7),
+          ),
+        ),
+      ],
     );
   }
 }

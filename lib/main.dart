@@ -11,6 +11,8 @@ import 'screens/annual_plan_screen.dart';
 import 'utils/notification_service.dart';
 import 'utils/storage_service.dart';
 import 'controllers/pet_mood_controller.dart';
+import 'controllers/push_banner_controller.dart';
+import 'widgets/pet_push_banner.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,6 +54,7 @@ class AppBindings extends Bindings {
   @override
   void dependencies() {
     Get.put(PetMoodController(), permanent: true);
+    Get.put(PushBannerController(), permanent: true);
   }
 }
 
@@ -108,6 +111,28 @@ class _LianlemaAppState extends State<LianlemaApp> {
           return PetScreen(initialMessage: args?['initialMessage'] as String?);
         },
         '/annual-plan': (context) => const AnnualPlanScreen(),
+      },
+      builder: (context, child) {
+        return Stack(
+          children: [
+            child!,
+            // 全局推送横幅
+            Obx(() {
+              final controller = PushBannerController.to;
+              if (controller.isVisible && controller.currentPush != null) {
+                return Positioned(
+                  top: 20,
+                  left: 24,
+                  right: 24,
+                  child: PetPushBanner(
+                    push: controller.currentPush!,
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            }),
+          ],
+        );
       },
     );
   }
