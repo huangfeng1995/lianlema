@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
@@ -100,10 +101,33 @@ class _HomeScreenState extends State<HomeScreen> {
   PetContext? _context; // 宠物上下文
   String _petName = StorageService.defaultPetName; // 宠物名字
 
+  // 长期计划轮播
+  Timer? _visionCarouselTimer;
+  bool _showVision = true; // true显示愿景，false显示反愿景
+
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  void _startVisionCarousel() {
+    // 先取消之前的定时器
+    _visionCarouselTimer?.cancel();
+    // 每10分钟切换一次
+    _visionCarouselTimer = Timer.periodic(const Duration(minutes: 10), (timer) {
+      if (mounted) {
+        setState(() {
+          _showVision = !_showVision;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _visionCarouselTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -186,6 +210,13 @@ class _HomeScreenState extends State<HomeScreen> {
       _temptingBundling = temptingBundling;
       _isLoading = false;
     });
+
+    // 如果愿景和反愿景都填写了，启动轮播
+    final hasVision = vision.isNotEmpty;
+    final hasAntiVision = antiVision.isNotEmpty;
+    if (hasVision && hasAntiVision) {
+      _startVisionCarousel();
+    }
 
     // 月末/月初检查：显示月度复盘
     if (_storage.shouldShowMonthlyReview()) {
@@ -1911,35 +1942,34 @@ class _HomeScreenState extends State<HomeScreen> {
       },
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 今日行动 标题
-                  Row(
-                    children: [
-                      const Text(
-                        '今日行动',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      if (hasActions) ...[
-                        const Spacer(),
-                        Text(
-                          '${_todayLevers.where((l) => l.isCompleted).length}/${_todayLevers.length}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ],
+            // 今日行动 标题
+            Row(
+              children: [
+                const Text(
+                  '今日行动',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
                   ),
+                ),
+                if (hasActions) ...[
+                  const SizedBox(width: 12),
+                  Text(
+                    '${_todayLevers.where((l) => l.isCompleted).length}/${_todayLevers.length}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+                const Spacer(),
+                Icon(Icons.chevron_right, size: 18, color: AppColors.textLight),
+              ],
+            ),
                   // 如果有行动内容，显示列表
                   if (hasActions) ...[
                     const SizedBox(height: 8),
@@ -2008,10 +2038,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ],
               ),
-            ),
-            Icon(Icons.chevron_right, size: 18, color: AppColors.textLight),
-          ],
-        ),
       ),
     );
   }
@@ -2395,7 +2421,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final vision = _vision;
     final antiVision = _antiVision;
     final yearGoal = _storage.getYearGoal();
-    final hasVision = vision.isNotEmpty && vision != '成为更好的自己';
+    final hasVision = vision.isNotEmpty;
     final hasAntiVision = antiVision.isNotEmpty;
     final hasYearGoal = yearGoal.isNotEmpty && yearGoal != '持续成长';
     if (!hasVision && !hasAntiVision && !hasYearGoal) {
@@ -2478,48 +2504,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ],
                               ),
                             )),
-                  if (hasVision) ...[
+                  // 愿景和反愿景轮播
+                  if (hasVision || hasAntiVision) ...[
                     const SizedBox(height: 6),
-                    ...vision
-                        .split('；')
-                        .where((s) => s.trim().isNotEmpty)
-                        .map((v) => Padding(
-                              padding: const EdgeInsets.only(bottom: 2),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    width: 5,
-                                    height: 5,
-                                    margin:
-                                        const EdgeInsets.only(top: 6, right: 8),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.textSecondary,
-                                      borderRadius: BorderRadius.circular(2.5),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: Text(
-                                      v.trim(),
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        color: AppColors.textSecondary,
-                                        height: 1.4,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )),
-                  ],
-                  if (hasAntiVision) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      '不想成为：$antiVision',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                        height: 1.4,
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: _buildVisionContent(
+                        hasVision: hasVision,
+                        hasAntiVision: hasAntiVision,
+                        vision: vision,
+                        antiVision: antiVision,
                       ),
                     ),
                   ],
@@ -2529,6 +2523,66 @@ class _HomeScreenState extends State<HomeScreen> {
             Icon(Icons.chevron_right, size: 18, color: AppColors.textLight),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildVisionContent({
+    required bool hasVision,
+    required bool hasAntiVision,
+    required String vision,
+    required String antiVision,
+  }) {
+    // 如果都填写了，轮播展示
+    if (hasVision && hasAntiVision) {
+      if (_showVision) {
+        return _buildVisionText(vision);
+      } else {
+        return _buildAntiVisionText(antiVision);
+      }
+    }
+    // 如果只写了一个，只展示那一个
+    else if (hasVision) {
+      return _buildVisionText(vision);
+    } else if (hasAntiVision) {
+      return _buildAntiVisionText(antiVision);
+    }
+    // 都没写，不展示
+    else {
+      return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildVisionText(String vision) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      key: const ValueKey('vision'),
+      children: vision
+          .split('；')
+          .where((s) => s.trim().isNotEmpty)
+          .map((v) => Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: Text(
+                  v.trim(),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+              ))
+          .toList(),
+    );
+  }
+
+  Widget _buildAntiVisionText(String antiVision) {
+    return Text(
+      antiVision,
+      key: const ValueKey('antiVision'),
+      style: const TextStyle(
+        fontSize: 13,
+        color: AppColors.textSecondary,
+        height: 1.4,
       ),
     );
   }

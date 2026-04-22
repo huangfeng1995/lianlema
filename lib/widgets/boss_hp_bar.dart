@@ -96,7 +96,7 @@ class _BossHpBarState extends State<BossHpBar> with SingleTickerProviderStateMix
                   style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
                 const Spacer(),
-                Icon(Icons.chevron_right, size: 20, color: const Color(0xFFF5A623).withValues(alpha: 0.6)),
+                Icon(Icons.chevron_right, size: 20, color: AppColors.textLight),
               ],
             ),
             const SizedBox(height: 12),
