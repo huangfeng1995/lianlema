@@ -24,6 +24,7 @@ import 'monthly_review_screen.dart';
 import 'pet_screen.dart';
 import 'monthly_boss_edit_screen.dart';
 import 'annual_plan_screen.dart';
+import 'daily_actions_edit_screen.dart';
 
 /// 蛋形Painter（绘制椭圆形的蛋轮廓）
 class _EggPainter extends CustomPainter {
@@ -1896,202 +1897,134 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDailyCheckIn() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 今日行动标题
-          Row(
-            children: [
-              const Text(
-                '今日行动',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              // 连续 + 累计
-              Text(
-                '连续 ',
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              ),
-              Text(
-                '${_stats.streak} 天',
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              ),
-              const SizedBox(width: 10),
-              Container(width: 1, height: 10, color: AppColors.textLight.withValues(alpha: 0.2)),
-              const SizedBox(width: 10),
-              Text(
-                '累积 ',
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              ),
-              Text(
-                '${_stats.totalCheckIns}',
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              ),
-              const Spacer(),
-              if (_todayLevers.isNotEmpty)
-                Text(
-                  '${_todayLevers.where((l) => l.isCompleted).length}/${_todayLevers.length}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              GestureDetector(
-                onTap: _showAddLeverDialog,
-                child: Container(
-                  margin: const EdgeInsets.only(left: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
+    // 如果没有今日行动内容，显示简洁版本
+    final hasActions = _todayLevers.isNotEmpty;
+
+    return GestureDetector(
+      onTap: () {
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const DailyActionsEditScreen()),
+          );
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 今日行动 标题
+                  Row(
                     children: [
-                      Icon(Icons.add, size: 14, color: AppColors.primary),
-                      SizedBox(width: 2),
-                      Text(
-                        '添加',
+                      const Text(
+                        '今日行动',
                         style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w500),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
+                      const SizedBox(width: 12),
+                      // 连续 + 累计
+                      Text(
+                        '连续 ${_stats.streak} 天',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(width: 1, height: 10, color: AppColors.textLight.withValues(alpha: 0.2)),
+                      const SizedBox(width: 10),
+                      Text(
+                        '累积 ${_stats.totalCheckIns}',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                      if (hasActions) ...[
+                        const Spacer(),
+                        Text(
+                          '${_todayLevers.where((l) => l.isCompleted).length}/${_todayLevers.length}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (_todayLevers.isEmpty) _buildEmptyLeversCard(),
-          ...List.generate(_todayLevers.length, (index) {
-            final lever = _todayLevers[index];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: GestureDetector(
-                onTap: () => _toggleLever(lever),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: lever.isCompleted
-                        ? AppColors.primary.withValues(alpha: 0.08)
-                        : AppColors.cardBackground,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: lever.isCompleted
-                          ? AppColors.primary
-                          : Colors.transparent,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            width: 22,
-                            height: 22,
-                            decoration: BoxDecoration(
-                              color: lever.isCompleted
-                                  ? AppColors.primary
-                                  : Colors.transparent,
-                              border: Border.all(
-                                color: lever.isCompleted
-                                    ? AppColors.primary
-                                    : AppColors.textLight
-                                        .withValues(alpha: 0.4),
-                                width: 1.5,
+                  // 如果有行动内容，显示列表
+                  if (hasActions) ...[
+                    const SizedBox(height: 8),
+                    ..._todayLevers.take(3).map((lever) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              margin: const EdgeInsets.only(top: 6, right: 8),
+                              decoration: BoxDecoration(
+                                color: lever.isCompleted ? AppColors.success : AppColors.primary,
+                                borderRadius: BorderRadius.circular(3),
                               ),
-                              borderRadius: BorderRadius.circular(6),
-                              boxShadow: lever.isCompleted
-                                  ? [
-                                      BoxShadow(
-                                          color: AppColors.primary
-                                              .withValues(alpha: 0.3),
-                                          blurRadius: 6,
-                                          spreadRadius: 1)
-                                    ]
-                                  : null,
                             ),
-                            child: Icon(
-                              Icons.check,
-                              size: 14,
-                              color: lever.isCompleted
-                                  ? Colors.white
-                                  : AppColors.textLight.withValues(alpha: 0.3),
+                            Expanded(
+                              child: Text(
+                                lever.plan.length > 30 ? '${lever.plan.substring(0, 30)}...' : lever.plan,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: lever.isCompleted ? AppColors.textSecondary : AppColors.textPrimary,
+                                  fontWeight: FontWeight.w500,
+                                  decoration: lever.isCompleted ? TextDecoration.lineThrough : null,
+                                  height: 1.4,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
+                          ],
+                        ),
+                      );
+                    }),
+                    if (_todayLevers.length > 3)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          '还有 ${_todayLevers.length - 3} 项...',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(child: _buildLeverText(lever)),
-                          GestureDetector(
-                            onTap: () => _deleteLever(index),
-                            child: Padding(
-                              padding: const EdgeInsets.only(top: 2),
-                              child: Icon(Icons.close,
-                                  size: 16,
-                                  color: AppColors.textLight
-                                      .withValues(alpha: 0.35)),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }),
-          if (_todayLevers.every((l) => l.isCompleted) && !_isCheckedInToday)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _checkIn,
-                  child: const Text('完成打卡'),
-                ),
-              ),
-            ),
-          if (_isCheckedInToday)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Center(
-                  child: Text(
-                    '今日已打卡，明天继续加油！',
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.success),
-                  ),
-                ),
+                  ],
+                  // 今日打卡状态
+                  if (_isCheckedInToday) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.check_circle, size: 14, color: AppColors.success),
+                        const SizedBox(width: 4),
+                        Text(
+                          '今日已打卡',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
             ),
-        ],
+            Icon(Icons.chevron_right, size: 18, color: AppColors.textLight),
+          ],
+        ),
       ),
     );
   }
