@@ -977,7 +977,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _monthlyBoss!.month == DateTime.now().month &&
                   _monthlyBoss!.year == DateTime.now().year)
                 _buildWarmCard(
-                  accent: const Color(0xFFF5A623),
+                  accent: const Color(0xFFEE8A30),
                   child: BossHpBar(
                     currentHp: _monthlyBoss!.hp,
                     maxHp: _monthlyBoss!.totalDays,
@@ -998,7 +998,7 @@ class _HomeScreenState extends State<HomeScreen> {
               if (_monthlyBoss != null) const SizedBox(height: 16),
               // 今日行动
               _buildWarmCard(
-                accent: const Color(0xFFFFCC00),
+                accent: const Color(0xFFF4B86A),
                 child: _buildDailyCheckIn(),
               ),
               const SizedBox(height: 32),
@@ -1928,19 +1928,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      // 连续 + 累计
-                      Text(
-                        '连续 ${_stats.streak} 天',
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                      ),
-                      const SizedBox(width: 10),
-                      Container(width: 1, height: 10, color: AppColors.textLight.withValues(alpha: 0.2)),
-                      const SizedBox(width: 10),
-                      Text(
-                        '累积 ${_stats.totalCheckIns}',
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                      ),
                       if (hasActions) ...[
                         const Spacer(),
                         Text(
@@ -2291,11 +2278,11 @@ class _HomeScreenState extends State<HomeScreen> {
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
         border: Border(
-          left: BorderSide(color: accent, width: 3),
+          left: BorderSide(color: accent, width: 4),
         ),
         boxShadow: [
           BoxShadow(
-            color: accent.withValues(alpha: 0.08),
+            color: accent.withValues(alpha: 0.12),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -2431,18 +2418,33 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 长期计划 标题（只在有实际内容时显示）
-                  if (hasYearGoal || hasVision) ...[
-                    const Text(
-                      '长期计划',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                  // 长期计划 标题 + 打卡统计
+                  Row(
+                    children: [
+                      const Text(
+                        '长期计划',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                  ],
+                      const SizedBox(width: 12),
+                      // 连续 + 累计
+                      Text(
+                        '连续 ${_stats.streak} 天',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(width: 1, height: 10, color: AppColors.textLight.withValues(alpha: 0.2)),
+                      const SizedBox(width: 10),
+                      Text(
+                        '累计 ${_stats.totalCheckIns}天',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
                   if (hasYearGoal)
                     ...yearGoal
                         .split('；')

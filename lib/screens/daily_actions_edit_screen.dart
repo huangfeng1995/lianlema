@@ -178,11 +178,11 @@ class _DailyActionsEditScreenState extends State<DailyActionsEditScreen> {
                 ? const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE8533A)),
                   )
                 : const Text(
                     '保存',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.primary),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFFE8533A)),
                   ),
           ),
         ],
