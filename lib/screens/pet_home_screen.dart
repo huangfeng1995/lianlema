@@ -87,7 +87,6 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
   List<PetOwnedItem> _ownedItems = [];
   String _petEmoji = '🦊';
   int _appearanceLevel = 1;
-  int _moodValue = 50;
   int _intimacy = 0;
   int _intimacyLevel = 1;
   String _intimacyName = '初次见面';
@@ -156,7 +155,6 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
         _petEmoji = petConfig?.emoji ?? soul.petEmoji;
         _appearanceLevel = _storage.getPetAppearanceLevel();
       }
-      _moodValue = _storage.getCurrentMoodValue();
       _personality = _storage.getPetPersonality();
       _intimacy = _storage.getPetIntimacy();
       _intimacyLevel = _storage.getPetIntimacyLevel();
@@ -214,8 +212,6 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
                         const SizedBox(height: 16),
                         _buildStatsRow(),
                         const SizedBox(height: 16),
-                        _buildMoodBar(),
-                        const SizedBox(height: 16),
                         _buildIntimacyBar(),
                         const SizedBox(height: 16),
                         _buildPersonalityRow(),
@@ -240,7 +236,6 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     final costume = _equippedCostume != null
         ? PetShopConfig.getById(_equippedCostume!)
         : null;
-    final moodEmoji = _getMoodEmoji();
 
     return Container(
       width: double.infinity,
@@ -336,39 +331,6 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
                         ),
                       ),
                   ],
-                ),
-              ),
-              // 心情角标
-              Positioned(
-                top: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 6,
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(moodEmojiToIcon(moodEmoji), size: 16, color: AppColors.primary),
-                      const SizedBox(width: 4),
-                      Text(
-                        _getMoodText(),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: _getMoodColor(),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ],
@@ -557,63 +519,6 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     return '初次见面，请多关照';
   }
 
-  // ====== 心情进度条 ======
-  Widget _buildMoodBar() {
-    final moodColor = _getMoodColor();
-    final moodDecayDesc = _storage.getMoodDecayDescription();
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.1)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Icon(Icons.favorite, size: 14, color: moodColor),
-              const SizedBox(width: 6),
-              const Text(
-                '心情值',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '$_moodValue / 100',
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: _moodValue / 100,
-              backgroundColor: AppColors.textLight.withValues(alpha: 0.15),
-              valueColor: AlwaysStoppedAnimation<Color>(moodColor),
-              minHeight: 6,
-            ),
-          ),
-          if (moodDecayDesc.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              moodDecayDesc,
-              style: const TextStyle(fontSize: 12, color: AppColors.textLight),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
   // ====== 性格一行（简化展示）======
   Widget _buildPersonalityRow() {
     if (_personality == null) return const SizedBox.shrink();
@@ -799,31 +704,6 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     );
   }
 
-  // ====== 心情辅助方法 ======
-  String _getMoodEmoji() {
-    if (_moodValue >= 80) return '😄';
-    if (_moodValue >= 60) return '🙂';
-    if (_moodValue >= 40) return '😌';
-    if (_moodValue >= 20) return '😢';
-    return '😭';
-  }
-
-  String _getMoodText() {
-    if (_moodValue >= 80) return '超开心';
-    if (_moodValue >= 60) return '开心';
-    if (_moodValue >= 40) return '平静';
-    if (_moodValue >= 20) return '有点丧';
-    return '很低落';
-  }
-
-  Color _getMoodColor() {
-    if (_moodValue >= 80) return const Color(0xFFE85A1C);
-    if (_moodValue >= 60) return const Color(0xFFFF8E72);
-    if (_moodValue >= 40) return const Color(0xFF8B7355);
-    if (_moodValue >= 20) return const Color(0xFFFF6B5B);
-    return const Color(0xFFD32F2F);
-  }
-
   // ====== Bottom Sheet 入口 ======
   void _openSnackSheet() {
     if (!_initialized || _storage.getPetAdoptDate() == null) return;
@@ -914,16 +794,12 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
   Future<void> _useSnack(PetOwnedItem owned) async {
     final item = PetShopConfig.getById(owned.itemId);
     if (item == null) return;
-    if (item.effect > 0) {
-      final currentMood = _storage.getPetMoodValue();
-      await _storage.savePetMoodValue(currentMood + item.effect);
-    }
     await _storage.removePetOwnedItem(owned.itemId);
     await _loadData();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$_petName 吃了 ${item.name}，心情提升了！'),
+        content: Text('$_petName 吃了 ${item.name}，很开心！'),
         backgroundColor: AppColors.primary,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -1033,7 +909,6 @@ class _SnackChip extends StatelessWidget {
             Icon(anyEmojiToIcon(item.icon), size: 22, color: AppColors.primary),
             const SizedBox(height: 4),
             Text(item.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.primary)),
-            Text('心情+${item.effect}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
           ],
         ),
       ),
