@@ -83,10 +83,9 @@ class _DailyActionsEditScreenState extends State<DailyActionsEditScreen> {
         return TextEditingController(text: '');
       }).toList();
 
-      // 初始化展开状态：如果有 obstacle 内容则展开
+      // 初始化展开状态：默认不展开，点击后才显示应对方案
       _expanded = _dailyActions.map((a) {
-        final obstacle = a['obstacle'] ?? '';
-        return obstacle.isNotEmpty;
+        return false;
       }).toList();
 
       _storage = storage;
@@ -199,9 +198,7 @@ class _DailyActionsEditScreenState extends State<DailyActionsEditScreen> {
                   _buildSectionHeader('今日行动', Icons.checklist_outlined, '每天2-3件高优先级事'),
                   const SizedBox(height: 12),
                   ...List.generate(_dailyActions.length, (index) {
-                    final hasObstacleContent = _obstacleControllers.length > index && _obstacleControllers[index].text.isNotEmpty;
-                    final hasIfThenContent = _ifThenControllers.length > index && _ifThenControllers[index].text.isNotEmpty;
-                    final shouldExpand = _expanded.length > index && (_expanded[index] || hasObstacleContent || hasIfThenContent);
+                    final shouldExpand = _expanded.length > index && _expanded[index];
 
                     return Padding(
                       padding: EdgeInsets.only(bottom: index < _dailyActions.length - 1 ? 16 : 0),
