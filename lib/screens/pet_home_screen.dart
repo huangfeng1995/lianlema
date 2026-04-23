@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../models/pet_models.dart';
@@ -212,9 +213,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
                         const SizedBox(height: 16),
                         _buildStatsRow(),
                         const SizedBox(height: 16),
-                        _buildIntimacyBar(),
-                        const SizedBox(height: 16),
-                        _buildPersonalityRow(),
+                        _buildPersonalityRadarChart(),
                         const SizedBox(height: 24),
                       ],
                     ),
@@ -394,13 +393,13 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     );
   }
 
-  // ====== 统计行（宠物币 + 连续天数）======
+  // ====== 统计行（宠物币 + 亲密度）======
   Widget _buildStatsRow() {
     return Row(
       children: [
         Expanded(child: _buildStatTile(CupertinoIcons.bitcoin_circle, '宠物币', '$_coins', AppColors.primary)),
         const SizedBox(width: 12),
-        Expanded(child: _buildStatTile(CupertinoIcons.flame, '连续打卡', '$_streakDays天', const Color(0xFFE85A1C))),
+        Expanded(child: _buildStatTile(CupertinoIcons.heart, '亲密度', '$_intimacyLevel', const Color(0xFFFF6B6B))),
       ],
     );
   }
@@ -442,10 +441,13 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     );
   }
 
-  // ====== 亲密度进度条 ======
-  Widget _buildIntimacyBar() {
+  // ====== 大五人格雷达图 ======
+  Widget _buildPersonalityRadarChart() {
+    if (_personality == null) return const SizedBox.shrink();
+    final p = _personality!;
+
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -456,10 +458,10 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.favorite, size: 14, color: Color(0xFFFF6B6B)),
+              const Icon(Icons.psychology, size: 14, color: AppColors.primary),
               const SizedBox(width: 6),
               Text(
-                '亲密度: $_intimacyName',
+                '性格分析',
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -468,71 +470,41 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
               ),
               const Spacer(),
               Text(
-                'Lv$_intimacyLevel',
+                p.archetype,
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFFFF6B6B),
+                  color: AppColors.primary,
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 240,
+            child: CustomPaint(
+              painter: RadarChartPainter(
+                data: [
+                  RadarDataPoint('开放性', p.openness.toDouble(), AppColors.primary),
+                  RadarDataPoint('尽责性', p.conscientiousness.toDouble(), const Color(0xFFE85A1C)),
+                  RadarDataPoint('外向性', p.extraversion.toDouble(), Colors.green),
+                  RadarDataPoint('宜人性', p.agreeableness.toDouble(), Colors.blue),
+                  RadarDataPoint('神经质', p.neuroticism.toDouble(), Colors.purple),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 8),
-          Stack(
-            children: [
-              Container(
-                height: 6,
-                decoration: BoxDecoration(
-                  color: AppColors.textLight.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-              FractionallySizedBox(
-                widthFactor: (_intimacy / 100).clamp(0.0, 1.0),
-                child: Container(
-                  height: 6,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFF6B6B), Color(0xFFFF8E8E)],
-                    ),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
           Text(
-            _getIntimacyHint(),
-            style: const TextStyle(fontSize: 11, color: AppColors.textLight),
+            p.archetypeDescription,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.textLight,
+            ),
           ),
         ],
       ),
-    );
-  }
-
-  String _getIntimacyHint() {
-    if (_intimacy >= 80) return '我们心意相通';
-    if (_intimacy >= 60) return '已经成为好朋友啦';
-    if (_intimacy >= 40) return '越来越了解彼此了';
-    if (_intimacy >= 20) return '慢慢熟悉中...';
-    return '初次见面，请多关照';
-  }
-
-  // ====== 性格一行（简化展示）======
-  Widget _buildPersonalityRow() {
-    if (_personality == null) return const SizedBox.shrink();
-    final p = _personality!;
-    return Row(
-      children: [
-        _buildTraitBadge('话痨', '${(p.talkativeness * 100).round()}', AppColors.primary),
-        const SizedBox(width: 8),
-        _buildTraitBadge('严格', '${(p.strictness * 100).round()}', const Color(0xFFE85A1C)),
-        const SizedBox(width: 8),
-        _buildTraitBadge('正向', '${(p.positivityRatio * 100).round()}%', Colors.green),
-        const SizedBox(width: 8),
-        _buildTraitBadge('情绪', '${(p.emotionalVolatility * 100).round()}', Colors.purple),
-      ],
     );
   }
 
@@ -590,38 +562,6 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
             }).toList(),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildTraitBadge(String label, String value, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                color: color.withValues(alpha: 0.7),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -1211,4 +1151,125 @@ class _PetAdoptionDialogState extends State<_PetAdoptionDialog> {
       ),
     );
   }
+}
+
+// ====== 雷达图支持类 ======
+
+class RadarDataPoint {
+  final String label;
+  final double value;
+  final Color color;
+
+  RadarDataPoint(this.label, this.value, this.color);
+}
+
+class RadarChartPainter extends CustomPainter {
+  final List<RadarDataPoint> data;
+
+  RadarChartPainter({required this.data});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final maxRadius = size.shortestSide / 2 * 0.7;
+
+    // 画背景网格
+    _drawGrid(canvas, center, maxRadius);
+
+    // 画数据多边形
+    _drawData(canvas, center, maxRadius);
+
+    // 画标签
+    _drawLabels(canvas, center, maxRadius);
+  }
+
+  void _drawGrid(Canvas canvas, Offset center, double radius) {
+    final paint = Paint()
+      ..color = Colors.grey.withValues(alpha: 0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+
+    // 画5个同心圆
+    for (int i = 1; i <= 5; i++) {
+      canvas.drawCircle(center, radius * i / 5, paint);
+    }
+
+    // 画5条辐射线
+    final angleStep = 2 * pi / data.length;
+    for (int i = 0; i < data.length; i++) {
+      final angle = angleStep * i - pi / 2;
+      final endX = center.dx + radius * cos(angle);
+      final endY = center.dy + radius * sin(angle);
+      canvas.drawLine(center, Offset(endX, endY), paint);
+    }
+  }
+
+  void _drawData(Canvas canvas, Offset center, double radius) {
+    final angleStep = 2 * pi / data.length;
+    final points = <Offset>[];
+
+    for (int i = 0; i < data.length; i++) {
+      final angle = angleStep * i - pi / 2;
+      final value = data[i].value;
+      final r = radius * value / 5;
+      points.add(Offset(
+        center.dx + r * cos(angle),
+        center.dy + r * sin(angle),
+      ));
+    }
+
+    // 画填充区域
+    final path = Path()..addPolygon(points, true);
+    final fillPaint = Paint()
+      ..color = AppColors.primary.withValues(alpha: 0.15)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(path, fillPaint);
+
+    // 画边框
+    final strokePaint = Paint()
+      ..color = AppColors.primary
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    canvas.drawPath(path, strokePaint);
+
+    // 画数据点
+    for (int i = 0; i < points.length; i++) {
+      final dotPaint = Paint()
+        ..color = data[i].color
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(points[i], 5, dotPaint);
+    }
+  }
+
+  void _drawLabels(Canvas canvas, Offset center, double radius) {
+    const labelRadius = 1.15;
+    final angleStep = 2 * pi / data.length;
+
+    for (int i = 0; i < data.length; i++) {
+      final angle = angleStep * i - pi / 2;
+      final x = center.dx + radius * labelRadius * cos(angle);
+      final y = center.dy + radius * labelRadius * sin(angle);
+
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: data[i].label,
+          style: const TextStyle(
+            fontSize: 11,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+
+      final offset = Offset(
+        x - textPainter.width / 2,
+        y - textPainter.height / 2,
+      );
+      textPainter.paint(canvas, offset);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
