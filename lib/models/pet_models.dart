@@ -118,16 +118,16 @@ class PetPersonality {
   });
 
   /// 话痨度（0.0-1.0）：外向性×开放性，越高越能聊
-  double get talkativeness => (extraversion + openness) / 10.0;
+  double get talkativeness => (extraversion + openness) / 20.0;
 
   /// 严格度（0.0-1.0）：尽责性，越高对漏打卡越严格
-  double get strictness => conscientiousness / 5.0;
+  double get strictness => conscientiousness / 10.0;
 
   /// 正向比率（0.0-1.0）：宜人性，越高越夸奖/温和
-  double get positivityRatio => agreeableness / 5.0;
+  double get positivityRatio => agreeableness / 10.0;
 
   /// 情绪波动（0.0-1.0）：神经质，越高越玻璃心
-  double get emotionalVolatility => neuroticism / 5.0;
+  double get emotionalVolatility => neuroticism / 10.0;
 
   /// 根据五个维度计算性格原型（10种之一）
   String get archetype {
@@ -145,17 +145,17 @@ class PetPersonality {
     // 玻璃心：高波动
     if (volatility > 0.6) return '玻璃心';
     // 理性军师：高开放+低话痨（高O×低E）
-    if (openness > 3 && extraversion < 3) return '理性军师';
+    if (openness > 6 && extraversion < 6) return '理性军师';
     // 沙雕室友：高E+低A（外向+不友善）
-    if (extraversion > 3 && agreeableness < 3) return '沙雕室友';
+    if (extraversion > 6 && agreeableness < 6) return '沙雕室友';
     // 沉默老炮：高C+低E（高尽责+低外向）
-    if (strictness > 0.6 && extraversion < 3) return '沉默老炮';
+    if (strictness > 0.6 && extraversion < 6) return '沉默老炮';
     // 焦虑监视器：高C+高N（高尽责+高神经质）
-    if (strictness > 0.6 && neuroticism > 3) return '焦虑监视器';
+    if (strictness > 0.6 && neuroticism > 6) return '焦虑监视器';
     // 爱夸怪：高E+高A（高外向+高宜人）
-    if (extraversion > 3 && agreeableness > 3) return '爱夸怪';
+    if (extraversion > 6 && agreeableness > 6) return '爱夸怪';
     // 冷淡达人：低E+低N（低外向+低神经质）
-    if (extraversion < 3 && neuroticism < 3) return '冷淡达人';
+    if (extraversion < 6 && neuroticism < 6) return '冷淡达人';
 
     // 默认：普通小火苗
     return '小火苗';
@@ -198,33 +198,33 @@ class PetPersonality {
   };
 
   factory PetPersonality.fromJson(Map<String, dynamic> json) => PetPersonality(
-    openness: json['openness'] ?? 3,
-    conscientiousness: json['conscientiousness'] ?? 3,
-    extraversion: json['extraversion'] ?? 3,
-    agreeableness: json['agreeableness'] ?? 3,
-    neuroticism: json['neuroticism'] ?? 3,
+    openness: json['openness'] ?? 6,
+    conscientiousness: json['conscientiousness'] ?? 6,
+    extraversion: json['extraversion'] ?? 6,
+    agreeableness: json['agreeableness'] ?? 6,
+    neuroticism: json['neuroticism'] ?? 6,
   );
 
   /// 随机生成性格（孵化时调用）
-  /// 使用 Big Five 标准正态分布变体，范围 1-5
+  /// 使用 Big Five 标准正态分布变体，范围 2-8（10分制）
   factory PetPersonality.random() {
     final rng = Random();
     // 使用高斯近似：5个均匀分布加起来得到近正态分布
-    int gaussian5() {
+    int gaussian10() {
       // Box-Muller 不需要，用简单加和法近似正态
       int sum = 0;
       for (int i = 0; i < 5; i++) {
-        sum += rng.nextInt(5) + 1; // 1-5
+        sum += rng.nextInt(7) + 2; // 2-8
       }
-      return (sum / 5).round().clamp(1, 5);
+      return (sum / 5).round().clamp(2, 8);
     }
 
     return PetPersonality(
-      openness: gaussian5(),
-      conscientiousness: gaussian5(),
-      extraversion: gaussian5(),
-      agreeableness: gaussian5(),
-      neuroticism: gaussian5(),
+      openness: gaussian10(),
+      conscientiousness: gaussian10(),
+      extraversion: gaussian10(),
+      agreeableness: gaussian10(),
+      neuroticism: gaussian10(),
     );
   }
 }

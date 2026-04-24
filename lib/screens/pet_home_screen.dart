@@ -122,6 +122,8 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     await _storage.savePetName(petName);
     final personality = PetPersonality.random();
     await _storage.savePetPersonality(personality);
+    await _storage.savePetPersonalityLevel(1);
+    await _storage.savePetUnallocatedPoints(1);
     await _storage.savePetSoul(PetSoul(
       name: petName,
       personality: personality.archetype, // PetPersonality.archetype is a String
@@ -169,6 +171,10 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     if (needsAdoption) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _showAdoptionDialog());
     }
+    // 有未分配属性点 → 弹出分配对话框
+    else if (_storage.getPetUnallocatedPoints() > 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showAllocatePointsDialog());
+    }
   }
 
   List<PetOwnedItem> get _ownedSnacks => _ownedItems
@@ -192,13 +198,6 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
         ),
         centerTitle: true,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined, size: 22),
-            color: AppColors.textSecondary,
-            onPressed: _openSettings,
-          ),
-        ],
       ),
       body: _initialized
           ? Column(
@@ -210,18 +209,18 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
                     child: Column(
                       children: [
                         _buildPetBigCard(),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         _buildStatsRow(),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         _buildPersonalityRadarChart(),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
                       ],
                     ),
                   ),
                 ),
                 // ====== 底部横向滑动互动按钮 ======
                 _buildActionScroll(),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
               ],
             )
           : const Center(
@@ -238,15 +237,15 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
       decoration: BoxDecoration(
         color: const Color(0xFFFAF7F2),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: AppColors.primary.withValues(alpha: 0.08),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -334,7 +333,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
           // 名字 + 等级标签
           Row(
@@ -343,23 +342,23 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
               Text(
                 _petName,
                 style: const TextStyle(
-                  fontSize: 24,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
-                  letterSpacing: 1,
+                  letterSpacing: 0.5,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   'Lv$_appearanceLevel',
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: AppColors.primary,
                   ),
@@ -367,20 +366,20 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
 
           // 性格标签
           if (_personality != null)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
               decoration: BoxDecoration(
                 color: const Color(0xFF1A1A1A).withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
                 _personality!.archetype,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: AppColors.textPrimary.withValues(alpha: 0.7),
                   fontWeight: FontWeight.w500,
                 ),
@@ -398,7 +397,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     return Row(
       children: [
         Expanded(child: _buildStatTile(CupertinoIcons.bitcoin_circle, '宠物币', '$_coins', AppColors.primary)),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(child: _buildStatTile(CupertinoIcons.heart, '亲密度', '$_intimacyLevel', const Color(0xFFFF6B6B))),
       ],
     );
@@ -406,30 +405,30 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
 
   Widget _buildStatTile(IconData icon, String label, String value, Color accent) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: accent.withValues(alpha: 0.15)),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 22, color: accent),
-          const SizedBox(width: 10),
+          Icon(icon, size: 18, color: accent),
+          const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 label,
                 style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: 10,
                   color: AppColors.textSecondary,
                 ),
               ),
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: accent,
                 ),
@@ -445,6 +444,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
   Widget _buildPersonalityRadarChart() {
     if (_personality == null) return const SizedBox.shrink();
     final p = _personality!;
+    final unallocatedPoints = _storage.getPetUnallocatedPoints();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -469,39 +469,65 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
                 ),
               ),
               const Spacer(),
-              Text(
-                p.archetype,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
+              if (unallocatedPoints > 0)
+                GestureDetector(
+                  onTap: _showAllocatePointsDialog,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.primary, width: 1.5),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.add_circle, size: 14, color: AppColors.primary),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$unallocatedPoints 点可用',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  p.archetypeDescription,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textLight,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 180,
+                height: 140,
+                child: CustomPaint(
+                  painter: RadarChartPainter(
+                    data: [
+                      RadarDataPoint('开放性', p.openness.toDouble(), AppColors.primary),
+                      RadarDataPoint('尽责性', p.conscientiousness.toDouble(), const Color(0xFFE85A1C)),
+                      RadarDataPoint('外向性', p.extraversion.toDouble(), Colors.green),
+                      RadarDataPoint('宜人性', p.agreeableness.toDouble(), Colors.blue),
+                      RadarDataPoint('神经质', p.neuroticism.toDouble(), Colors.purple),
+                    ],
+                  ),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 240,
-            child: CustomPaint(
-              painter: RadarChartPainter(
-                data: [
-                  RadarDataPoint('开放性', p.openness.toDouble(), AppColors.primary),
-                  RadarDataPoint('尽责性', p.conscientiousness.toDouble(), const Color(0xFFE85A1C)),
-                  RadarDataPoint('外向性', p.extraversion.toDouble(), Colors.green),
-                  RadarDataPoint('宜人性', p.agreeableness.toDouble(), Colors.blue),
-                  RadarDataPoint('神经质', p.neuroticism.toDouble(), Colors.purple),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            p.archetypeDescription,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.textLight,
-            ),
           ),
         ],
       ),
@@ -515,44 +541,44 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     }
 
     return Container(
-      margin: const EdgeInsets.only(top: 12),
+      margin: const EdgeInsets.only(top: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.auto_awesome, size: 14, color: AppColors.primary),
-              const SizedBox(width: 4),
+              Icon(Icons.auto_awesome, size: 12, color: AppColors.primary),
+              const SizedBox(width: 3),
               Text(
                 '我们的记忆',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textSecondary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Wrap(
-            spacing: 6,
-            runSpacing: 6,
+            spacing: 5,
+            runSpacing: 5,
             children: _memoryHighlights.take(5).map((m) {
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(anyEmojiToIcon(m.emoji), size: 14, color: AppColors.primary),
-                    const SizedBox(width: 4),
+                    Icon(anyEmojiToIcon(m.emoji), size: 12, color: AppColors.primary),
+                    const SizedBox(width: 3),
                     Text(
                       m.title,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 10,
                         color: AppColors.textPrimary,
                       ),
                     ),
@@ -572,21 +598,21 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Padding(
-          padding: EdgeInsets.only(left: 20, bottom: 10),
+          padding: EdgeInsets.only(left: 20, bottom: 6),
           child: Text(
             '互动',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
           ),
         ),
         SizedBox(
-          height: 88,
+          height: 70,
           child: ListView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             children: [
               _buildActionChip(Icons.restaurant, '喂零食', _openSnackSheet),
               const SizedBox(width: 10),
@@ -597,8 +623,6 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
               _buildActionChip(Icons.store, '商店', _openShop),
               const SizedBox(width: 10),
               _buildActionChip(Icons.chat_bubble, '聊天', _openChat),
-              const SizedBox(width: 10),
-              _buildActionChip(Icons.local_fire_department, '进化', _openEvolution),
               const SizedBox(width: 20),
             ],
           ),
@@ -611,29 +635,29 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 72,
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        width: 64,
+        padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.textLight.withValues(alpha: 0.12)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              blurRadius: 6,
+              offset: const Offset(0, 1.5),
             ),
           ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 22, color: AppColors.primary),
-            const SizedBox(height: 4),
+            Icon(icon, size: 20, color: AppColors.primary),
+            const SizedBox(height: 3),
             Text(
               label,
               style: const TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w500,
                 color: AppColors.textPrimary,
               ),
@@ -727,8 +751,135 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     );
   }
 
-  void _openSettings() {
-    // TODO: 宠物设置页面
+  void _showAllocatePointsDialog() {
+    if (_personality == null) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          // 获取当前最新状态
+          final p = _storage.getPetPersonality();
+          final unallocatedPoints = _storage.getPetUnallocatedPoints();
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.psychology, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    const Text('分配属性点', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '可用点数: $unallocatedPoints',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 8),
+                  _TraitAllocateTile(
+                    name: '开放性',
+                    description: '影响宠物对话的创意和想象力',
+                    current: p.openness,
+                    color: AppColors.primary,
+                    canAdd: unallocatedPoints > 0 && p.openness < 10,
+                    onTap: () => _allocatePoint('openness', setDialogState),
+                  ),
+                  _TraitAllocateTile(
+                    name: '尽责性',
+                    description: '影响宠物提醒打卡的严格程度',
+                    current: p.conscientiousness,
+                    color: const Color(0xFFE85A1C),
+                    canAdd: unallocatedPoints > 0 && p.conscientiousness < 10,
+                    onTap: () => _allocatePoint('conscientiousness', setDialogState),
+                  ),
+                  _TraitAllocateTile(
+                    name: '外向性',
+                    description: '影响宠物的话痨程度和热情度',
+                    current: p.extraversion,
+                    color: Colors.green,
+                    canAdd: unallocatedPoints > 0 && p.extraversion < 10,
+                    onTap: () => _allocatePoint('extraversion', setDialogState),
+                  ),
+                  _TraitAllocateTile(
+                    name: '宜人性',
+                    description: '影响宠物的温暖和鼓励程度',
+                    current: p.agreeableness,
+                    color: Colors.blue,
+                    canAdd: unallocatedPoints > 0 && p.agreeableness < 10,
+                    onTap: () => _allocatePoint('agreeableness', setDialogState),
+                  ),
+                  _TraitAllocateTile(
+                    name: '神经质',
+                    description: '影响宠物的情绪波动和敏感度',
+                    current: p.neuroticism,
+                    color: Colors.purple,
+                    canAdd: unallocatedPoints > 0 && p.neuroticism < 10,
+                    onTap: () => _allocatePoint('neuroticism', setDialogState),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text(unallocatedPoints > 0 ? '稍后分配' : '关闭', style: const TextStyle(color: AppColors.textSecondary)),
+              ),
+              if (unallocatedPoints == 0)
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('完成', style: TextStyle(color: Colors.white)),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _allocatePoint(String traitKey, StateSetter setDialogState) async {
+    final success = await _storage.allocateTraitPoint(traitKey);
+    if (!mounted) return;
+    if (success) {
+      await _loadData();
+      // 只刷新对话框内容，不关闭重新打开
+      if (mounted) {
+        setDialogState(() {});
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('属性点不足或已达上限'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   Future<void> _useSnack(PetOwnedItem owned) async {
@@ -1189,9 +1340,9 @@ class RadarChartPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
 
-    // 画5个同心圆
-    for (int i = 1; i <= 5; i++) {
-      canvas.drawCircle(center, radius * i / 5, paint);
+    // 画10个同心圆
+    for (int i = 1; i <= 10; i++) {
+      canvas.drawCircle(center, radius * i / 10, paint);
     }
 
     // 画5条辐射线
@@ -1211,7 +1362,7 @@ class RadarChartPainter extends CustomPainter {
     for (int i = 0; i < data.length; i++) {
       final angle = angleStep * i - pi / 2;
       final value = data[i].value;
-      final r = radius * value / 5;
+      final r = radius * value / 10;
       points.add(Offset(
         center.dx + r * cos(angle),
         center.dy + r * sin(angle),
@@ -1272,4 +1423,97 @@ class RadarChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+class _TraitAllocateTile extends StatelessWidget {
+  final String name;
+  final String description;
+  final int current;
+  final Color color;
+  final bool canAdd;
+  final VoidCallback onTap;
+
+  const _TraitAllocateTile({
+    required this.name,
+    required this.description,
+    required this.current,
+    required this.color,
+    required this.canAdd,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      name,
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: color),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '$current/10',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  description,
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.3),
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: current / 10,
+                    color: color,
+                    backgroundColor: color.withValues(alpha: 0.2),
+                    minHeight: 6,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          GestureDetector(
+            onTap: canAdd ? onTap : null,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: canAdd ? color.withValues(alpha: 0.15) : AppColors.textLight.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.add,
+                color: canAdd ? color : AppColors.textLight,
+                size: 24,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

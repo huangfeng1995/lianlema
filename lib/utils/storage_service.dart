@@ -106,6 +106,9 @@ class StorageService {
   static const String _keyPetMoodValue = 'pet_mood_value'; // 心情数值 0-100
   static const String _keyLastMoodUpdate = 'last_mood_update'; // 上次心情更新时间
   static const String _keyPetPersonality = 'pet_personality'; // 大五人格
+  static const String _keyPetUnallocatedPoints = 'pet_unallocated_points'; // 未分配属性点
+  static const String _keyPetPersonalityLevel = 'pet_personality_level'; // 性格等级
+  static const String _keyPetLastLevelUpdateDays = 'pet_last_level_update_days'; // 上次更新等级时的累计打卡天数
   static const String _keyEncouragementRecords = 'encouragement_records'; // 激励记录
   static const String _keyEncouragementStats = 'encouragement_stats'; // 激励有效性统计
   static const String _keyAutonomySignals = 'autonomy_signals'; // 自主感信号
@@ -345,6 +348,90 @@ class StorageService {
       debugPrint('[StorageService] getPetPersonality decode error: $e');
       return PetPersonality.random();
     }
+  }
+
+  // ====== 性格等级和加点 ======
+  static int calculatePersonalityLevel(int totalDays) {
+    if (totalDays >= 365) return 10;
+    if (totalDays >= 270) return 9;
+    if (totalDays >= 180) return 8;
+    if (totalDays >= 100) return 7;
+    if (totalDays >= 60) return 6;
+    if (totalDays >= 30) return 5;
+    if (totalDays >= 15) return 4;
+    if (totalDays >= 7) return 3;
+    if (totalDays >= 3) return 2;
+    return 1;
+  }
+
+  int getPetPersonalityLevel() {
+    return _prefs.getInt(_keyPetPersonalityLevel) ?? 1;
+  }
+
+  Future<void> savePetPersonalityLevel(int level) async {
+    await _prefs.setInt(_keyPetPersonalityLevel, level);
+  }
+
+  int getPetUnallocatedPoints() {
+    return _prefs.getInt(_keyPetUnallocatedPoints) ?? 0;
+  }
+
+  Future<void> savePetUnallocatedPoints(int points) async {
+    await _prefs.setInt(_keyPetUnallocatedPoints, points);
+  }
+
+  Future<void> addTraitUpgradePoints(int amount) async {
+    final current = getPetUnallocatedPoints();
+    await savePetUnallocatedPoints(current + amount);
+  }
+
+  Future<bool> allocateTraitPoint(String traitKey) async {
+    final currentPoints = getPetUnallocatedPoints();
+    if (currentPoints <= 0) return false;
+
+    final personality = getPetPersonality();
+    Map<String, int> traits = {
+      'openness': personality.openness,
+      'conscientiousness': personality.conscientiousness,
+      'extraversion': personality.extraversion,
+      'agreeableness': personality.agreeableness,
+      'neuroticism': personality.neuroticism,
+    };
+
+    if (!traits.containsKey(traitKey)) return false;
+    if (traits[traitKey]! >= 10) return false; // 上限10分
+
+    traits[traitKey] = traits[traitKey]! + 1;
+
+    final newPersonality = PetPersonality(
+      openness: traits['openness']!,
+      conscientiousness: traits['conscientiousness']!,
+      extraversion: traits['extraversion']!,
+      agreeableness: traits['agreeableness']!,
+      neuroticism: traits['neuroticism']!,
+    );
+
+    await savePetPersonality(newPersonality);
+    await savePetUnallocatedPoints(currentPoints - 1);
+    return true;
+  }
+
+  /// 检查并升级性格等级（打卡后调用）
+  Future<int?> updatePersonalityLevelFromStreak(int totalDays) async {
+    final lastUpdateDays = _prefs.getInt(_keyPetLastLevelUpdateDays) ?? 0;
+    if (totalDays <= lastUpdateDays) return null;
+
+    final currentLevel = getPetPersonalityLevel();
+    final newLevel = calculatePersonalityLevel(totalDays);
+
+    if (newLevel > currentLevel) {
+      final pointsToAdd = newLevel - currentLevel;
+      await savePetPersonalityLevel(newLevel);
+      await addTraitUpgradePoints(pointsToAdd);
+      await _prefs.setInt(_keyPetLastLevelUpdateDays, totalDays);
+      return pointsToAdd;
+    }
+    return null;
   }
 
   /// 消耗宠物币（余额不足时抛出异常）

@@ -274,6 +274,9 @@ class _HomeScreenState extends State<HomeScreen> {
     // 打卡后亲密度+3
     await _storage.addPetIntimacy(3);
 
+    // 检查并升级性格等级，发放属性点
+    final pointsAwarded = await _storage.updatePersonalityLevelFromStreak(_stats.totalCheckIns + 1);
+
     // 更新 GetX 心情控制器
     if (Get.isRegistered<PetMoodController>()) {
       PetMoodController.to.onCheckIn(

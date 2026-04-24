@@ -18,8 +18,8 @@ dependencies:
   http: ^1.2.0
   get: ^4.6.6
   share_plus: ^7.0.0
-  flutter_mnn: ^1.0.5          # MNN端侧推理引擎
-  flutter_downloader: ^1.11.7  # 可选模型下载管理
+  # flutter_mnn: ^1.0.5          # MNN端侧推理引擎
+  # flutter_downloader: ^1.11.7  # 可选模型下载管理
   path_provider: ^2.1.2        # 本地文件路径管理
 
 dev_dependencies:
