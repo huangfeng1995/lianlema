@@ -94,11 +94,22 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
   int _streakDays = 0;
   PetPersonality? _personality;
   List<PetMemoryHighlight> _memoryHighlights = [];
+  int _unallocatedPoints = 0;
+  bool _showAllocatePanel = false;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 页面每次显示时都重新加载数据
+    if (_initialized) {
+      _loadData();
+    }
   }
 
   /// 显示宠物领养对话框
@@ -123,7 +134,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     final personality = PetPersonality.random();
     await _storage.savePetPersonality(personality);
     await _storage.savePetPersonalityLevel(1);
-    await _storage.savePetUnallocatedPoints(1);
+    await _storage.savePetUnallocatedPoints(5);
     await _storage.savePetSoul(PetSoul(
       name: petName,
       personality: personality.archetype, // PetPersonality.archetype is a String
@@ -164,6 +175,8 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
       _intimacyName = _storage.getPetIntimacyLevelName();
       _streakDays = _storage.getUserStats().streak;
       _memoryHighlights = _storage.getPetMemoryHighlights();
+      _unallocatedPoints = _storage.getPetUnallocatedPoints();
+      print('🔍 _loadData() 调试: _unallocatedPoints = $_unallocatedPoints');
       _initialized = true;
     });
 
@@ -199,25 +212,27 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
         centerTitle: true,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
-      body: _initialized
-          ? Column(
-              children: [
-                // ====== 宠物大卡片（占据主要空间）======
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      children: [
-                        _buildPetBigCard(),
-                        const SizedBox(height: 12),
-                        _buildStatsRow(),
-                        const SizedBox(height: 12),
-                        _buildPersonalityRadarChart(),
-                        const SizedBox(height: 16),
-                      ],
+      body: Stack(
+        children: [
+          _initialized
+              ? Column(
+                  children: [
+                    // ====== 宠物大卡片（占据主要空间）======
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          children: [
+                            _buildPetBigCard(),
+                            const SizedBox(height: 12),
+                            _buildStatsRow(),
+                            const SizedBox(height: 12),
+                            _buildPersonalityRadarChart(),
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ),
                 // ====== 底部横向滑动互动按钮 ======
                 _buildActionScroll(),
                 const SizedBox(height: 12),
@@ -226,7 +241,11 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
           : const Center(
               child: CircularProgressIndicator(color: AppColors.primary),
             ),
-    );
+          // ====== 底部属性分配面板 ======
+          if (_showAllocatePanel && _personality != null)
+            _buildAllocatePanel(),
+        ],
+      );
   }
 
   // ====== 宠物大卡片（站立平台光效）======
@@ -444,7 +463,23 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
   Widget _buildPersonalityRadarChart() {
     if (_personality == null) return const SizedBox.shrink();
     final p = _personality!;
-    final unallocatedPoints = _storage.getPetUnallocatedPoints();
+
+    // ✅ 每次 build 都检查 storage 中的最新值，如果不同就更新 state
+    final latestPoints = _storage.getPetUnallocatedPoints();
+    if (latestPoints != _unallocatedPoints) {
+      print('🔄 更新: _unallocatedPoints 从 $_unallocatedPoints 更新到 $latestPoints');
+      Future.microtask(() {
+        if (mounted) {
+          setState(() {
+            _unallocatedPoints = latestPoints;
+          });
+        }
+      });
+    }
+
+    final unallocatedPoints = _unallocatedPoints;
+    print('🔍 调试: _unallocatedPoints = $_unallocatedPoints');
+    print('🔍 调试: _storage.getPetUnallocatedPoints() = $latestPoints');
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -753,124 +788,20 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
 
   void _showAllocatePointsDialog() {
     if (_personality == null) return;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) {
-          // 获取当前最新状态
-          final p = _storage.getPetPersonality();
-          final unallocatedPoints = _storage.getPetUnallocatedPoints();
-
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.psychology, color: AppColors.primary),
-                    const SizedBox(width: 8),
-                    const Text('分配属性点', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '可用点数: $unallocatedPoints',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 8),
-                  _TraitAllocateTile(
-                    name: '开放性',
-                    description: '影响宠物对话的创意和想象力',
-                    current: p.openness,
-                    color: AppColors.primary,
-                    canAdd: unallocatedPoints > 0 && p.openness < 10,
-                    onTap: () => _allocatePoint('openness', setDialogState),
-                  ),
-                  _TraitAllocateTile(
-                    name: '尽责性',
-                    description: '影响宠物提醒打卡的严格程度',
-                    current: p.conscientiousness,
-                    color: const Color(0xFFE85A1C),
-                    canAdd: unallocatedPoints > 0 && p.conscientiousness < 10,
-                    onTap: () => _allocatePoint('conscientiousness', setDialogState),
-                  ),
-                  _TraitAllocateTile(
-                    name: '外向性',
-                    description: '影响宠物的话痨程度和热情度',
-                    current: p.extraversion,
-                    color: Colors.green,
-                    canAdd: unallocatedPoints > 0 && p.extraversion < 10,
-                    onTap: () => _allocatePoint('extraversion', setDialogState),
-                  ),
-                  _TraitAllocateTile(
-                    name: '宜人性',
-                    description: '影响宠物的温暖和鼓励程度',
-                    current: p.agreeableness,
-                    color: Colors.blue,
-                    canAdd: unallocatedPoints > 0 && p.agreeableness < 10,
-                    onTap: () => _allocatePoint('agreeableness', setDialogState),
-                  ),
-                  _TraitAllocateTile(
-                    name: '神经质',
-                    description: '影响宠物的情绪波动和敏感度',
-                    current: p.neuroticism,
-                    color: Colors.purple,
-                    canAdd: unallocatedPoints > 0 && p.neuroticism < 10,
-                    onTap: () => _allocatePoint('neuroticism', setDialogState),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: Text(unallocatedPoints > 0 ? '稍后分配' : '关闭', style: const TextStyle(color: AppColors.textSecondary)),
-              ),
-              if (unallocatedPoints == 0)
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('完成', style: TextStyle(color: Colors.white)),
-                ),
-            ],
-          );
-        },
-      ),
-    );
+    setState(() {
+      _showAllocatePanel = true;
+    });
   }
 
-  Future<void> _allocatePoint(String traitKey, StateSetter setDialogState) async {
+  Future<void> _allocatePoint(String traitKey) async {
     final success = await _storage.allocateTraitPoint(traitKey);
     if (!mounted) return;
     if (success) {
-      await _loadData();
-      // 只刷新对话框内容，不关闭重新打开
-      if (mounted) {
-        setDialogState(() {});
-      }
+      // 直接更新本地状态
+      setState(() {
+        _personality = _storage.getPetPersonality();
+        _unallocatedPoints = _storage.getPetUnallocatedPoints();
+      });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -880,6 +811,296 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
         ),
       );
     }
+  }
+
+  // ====== 底部属性分配面板 ======
+  Widget _buildAllocatePanel() {
+    final p = _personality ?? _storage.getPetPersonality();
+    final unallocatedPoints = _unallocatedPoints;
+
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _showAllocatePanel = false;
+          });
+        },
+        child: Container(
+          color: Colors.black.withValues(alpha: 0.4),
+          height: MediaQuery.of(context).size.height,
+          child: Stack(
+            children: [
+              DraggableScrollableSheet(
+                initialChildSize: 0.7,
+                minChildSize: 0.5,
+                maxChildSize: 0.85,
+                builder: (context, scrollController) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 20,
+                          offset: const Offset(0, -4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        // 顶部把手
+                        Container(
+                          margin: const EdgeInsets.symmetric(vertical: 12),
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: AppColors.textLight.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        // 标题栏
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppColors.primary,
+                                      AppColors.primary.withValues(alpha: 0.7),
+                                    ],
+                                  ),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.primary.withValues(alpha: 0.3),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.auto_awesome,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: const [
+                                    Text(
+                                      '分配属性点',
+                                      style: TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      '提升你宠物的性格特质',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: AppColors.textLight,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // 可用点数显示
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppColors.primary,
+                                      AppColors.primary.withValues(alpha: 0.8),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.primary.withValues(alpha: 0.3),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 24,
+                                      height: 24,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          '$unallocatedPoints',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    const Text(
+                                      '可用',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // 分隔线
+                        Container(
+                          height: 1,
+                          color: AppColors.textLight.withValues(alpha: 0.1),
+                          margin: const EdgeInsets.symmetric(horizontal: 24),
+                        ),
+                        const SizedBox(height: 16),
+                        // 属性列表
+                        Expanded(
+                          child: SingleChildScrollView(
+                            controller: scrollController,
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            child: Column(
+                              children: [
+                                _NewTraitAllocateTile(
+                                  name: '开放性',
+                                  description: '影响宠物对话的创意和想象力',
+                                  current: p.openness,
+                                  color: AppColors.primary,
+                                  icon: Icons.lightbulb_outline,
+                                  canAdd: unallocatedPoints > 0 && p.openness < 10,
+                                  onTap: () => _allocatePoint('openness'),
+                                ),
+                                _NewTraitAllocateTile(
+                                  name: '尽责性',
+                                  description: '影响宠物提醒打卡的严格程度',
+                                  current: p.conscientiousness,
+                                  color: const Color(0xFFE85A1C),
+                                  icon: Icons.check_circle_outline,
+                                  canAdd: unallocatedPoints > 0 && p.conscientiousness < 10,
+                                  onTap: () => _allocatePoint('conscientiousness'),
+                                ),
+                                _NewTraitAllocateTile(
+                                  name: '外向性',
+                                  description: '影响宠物的话痨程度和热情度',
+                                  current: p.extraversion,
+                                  color: const Color(0xFF10B981),
+                                  icon: Icons.wb_sunny_outlined,
+                                  canAdd: unallocatedPoints > 0 && p.extraversion < 10,
+                                  onTap: () => _allocatePoint('extraversion'),
+                                ),
+                                _NewTraitAllocateTile(
+                                  name: '宜人性',
+                                  description: '影响宠物的温暖和鼓励程度',
+                                  current: p.agreeableness,
+                                  color: const Color(0xFF3B82F6),
+                                  icon: Icons.favorite_border,
+                                  canAdd: unallocatedPoints > 0 && p.agreeableness < 10,
+                                  onTap: () => _allocatePoint('agreeableness'),
+                                ),
+                                _NewTraitAllocateTile(
+                                  name: '神经质',
+                                  description: '影响宠物的情绪波动和敏感度',
+                                  current: p.neuroticism,
+                                  color: const Color(0xFF8B5CF6),
+                                  icon: Icons.opacity_outlined,
+                                  canAdd: unallocatedPoints > 0 && p.neuroticism < 10,
+                                  onTap: () => _allocatePoint('neuroticism'),
+                                ),
+                                const SizedBox(height: 24),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // 底部按钮
+                        if (unallocatedPoints == 0)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size(double.infinity, 52),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                elevation: 0,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _showAllocatePanel = false;
+                                });
+                              },
+                              child: const Text(
+                                '分配完成',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (unallocatedPoints > 0)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                            child: TextButton(
+                              style: TextButton.styleFrom(
+                                minimumSize: const Size(double.infinity, 52),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _showAllocatePanel = false;
+                                });
+                              },
+                              child: Text(
+                                '稍后分配',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _useSnack(PetOwnedItem owned) async {
@@ -1509,6 +1730,127 @@ class _TraitAllocateTile extends StatelessWidget {
                 Icons.add,
                 color: canAdd ? color : AppColors.textLight,
                 size: 24,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NewTraitAllocateTile extends StatelessWidget {
+  final String name;
+  final String description;
+  final int current;
+  final Color color;
+  final IconData icon;
+  final bool canAdd;
+  final VoidCallback onTap;
+
+  const _NewTraitAllocateTile({
+    required this.name,
+    required this.description,
+    required this.current,
+    required this.color,
+    required this.icon,
+    required this.canAdd,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.15), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 24, color: color),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      name,
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                    ),
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '$current/10',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  description,
+                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+                ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: current / 10,
+                    color: color,
+                    backgroundColor: color.withValues(alpha: 0.15),
+                    minHeight: 8,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          GestureDetector(
+            onTap: canAdd ? onTap : null,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: canAdd ? color : AppColors.textLight.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+                boxShadow: canAdd
+                    ? [
+                        BoxShadow(
+                          color: color.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ]
+                    : [],
+              ),
+              child: Icon(
+                Icons.add,
+                color: canAdd ? Colors.white : AppColors.textLight,
+                size: 26,
               ),
             ),
           ),

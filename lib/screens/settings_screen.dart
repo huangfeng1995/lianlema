@@ -126,6 +126,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 24),
             _buildSectionHeader('数据'),
+            _buildSettingsCard([
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                leading: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.auto_awesome, size: 18, color: AppColors.primary),
+                  ),
+                ),
+                title: const Text(
+                  '获得 10 点属性点',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                subtitle: const Text(
+                  '调试功能',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                trailing: const Icon(
+                  Icons.chevron_right,
+                  color: AppColors.textLight,
+                ),
+                onTap: () async {
+                  await _storage?.addTraitUpgradePoints(10);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('已获得 10 点属性点'),
+                        backgroundColor: AppColors.primary,
+                      ),
+                    );
+                  }
+                },
+              ),
+            ]),
+            const SizedBox(height: 12),
             _buildDangerItem(
               icon: Icons.delete_forever,
               title: '清空所有数据',

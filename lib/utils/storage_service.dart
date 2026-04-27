@@ -373,7 +373,7 @@ class StorageService {
   }
 
   int getPetUnallocatedPoints() {
-    return _prefs.getInt(_keyPetUnallocatedPoints) ?? 0;
+    return _prefs.getInt(_keyPetUnallocatedPoints) ?? 1;
   }
 
   Future<void> savePetUnallocatedPoints(int points) async {
