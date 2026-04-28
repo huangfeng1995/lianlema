@@ -8,39 +8,40 @@
 
 ## 阶段0目标
 
-验证 MNN + Qwen2-0.5B 在 iOS/Android 端侧运行的可行性
+验证 **llama.cpp + Qwen2-0.5B** 在 iOS/Android 端侧运行的可行性（从MNN调整为llama.cpp）
 
 ---
 
 ## 任务清单
 
-### 任务0.1：调研 MNN 对 LLM 的支持
-- [ ] 查阅 MNN 官方文档，确认对 Transformer/LLM 的支持
-- [ ] 查找 MNN 的移动端集成示例
-- [ ] 确认 MNN 的 iOS/Android SDK 获取方式
-- [ ] 查找 MNN 推理 LLM 的示例代码
+### 任务0.1：调研 llama.cpp
+- [x] 确认使用 llama.cpp 替代 MNN（用户选择方案A）
+- [ ] 查阅 llama.cpp 官方文档和GitHub
+- [ ] 查找 llama.cpp 的移动端（iOS/Android）集成方式
+- [ ] 查找 Flutter 绑定的可能性
+- [ ] 调研 llama.cpp 的推理性能
 
 **记录：**
--
+- llama.cpp：https://github.com/ggerganov/llama.cpp
+- 用户选择方案A，从MNN调整为llama.cpp
 
 ---
 
 ### 任务0.2：调研 Qwen2 模型资源
 - [ ] 查找 Qwen2-0.5B-Instruct 的官方模型下载
-- [ ] 确认是否有量化版本
-- [ ] 查找是否有转换好的 MNN 格式模型
+- [ ] 确认是否有 GGUF 量化版本（llama.cpp格式）
 - [ ] 了解模型转换工具和流程
 
 **记录：**
--
+- Qwen2：https://github.com/QwenLM/Qwen2
 
 ---
 
-### 任务0.3：备选方案调研
-- [ ] 调研 MLC LLM 方案
-- [ ] 调研 llama.cpp + Flutter 方案
-- [ ] 调研 ONNX Runtime 方案
-- [ ] 对比各方案的优缺点
+### 任务0.3：Flutter 集成方案调研
+- [ ] 查找是否有现成的 llama.cpp Flutter 插件
+- [ ] 调研 Platform Channel 桥接方案
+- [ ] 了解 iOS/Android 原生集成 llama.cpp 的方式
+- [ ] 对比不同集成方案的优缺点
 
 **记录：**
 -

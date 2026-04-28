@@ -9,8 +9,8 @@
 
 | 组件 | 选型 | 说明 |
 |------|------|------|
-| 推理引擎 | MNN（先验证） | 备选：MLC LLM / llama.cpp |
-| 内置模型 | Qwen2-0.5B-Instruct 4bit量化版 | ~250MB，**首次启动下载** |
+| 推理引擎 | **llama.cpp**（先验证） | 备选：MLC LLM |
+| 内置模型 | Qwen2-0.5B-Instruct GGUF 4bit量化版 | ~250MB，**首次启动下载** |
 | 可选模型 | MiniCPM-2B、Llama3-8B | 用户按需下载 |
 | 桥接方案 | Platform Channel | Flutter <-> 原生双端 |
 
@@ -39,7 +39,7 @@
     │                         │
 ┌───▼──────────┐      ┌──────▼───────┐
 │  iOS原生层   │      │ Android原生层 │
-│  MNN + Swift │      │ MNN + Kotlin │
+│  llama.cpp + Swift │  llama.cpp + Kotlin │
 │  + Tokenizer │      │  + Tokenizer │
 └──────────────┘      └──────────────┘
 ```
@@ -60,9 +60,9 @@
 ## 三、分阶段实现（调整版）
 
 ### 阶段0：技术验证（最重要！先做这个）
-- 最小 Demo 验证：MNN + Qwen2-0.5B 能否在 iOS/Android 端跑通？
+- 最小 Demo 验证：**llama.cpp + Qwen2-0.5B** 能否在 iOS/Android 端跑通？
 - 测量推理速度、内存占用、电量消耗
-- 如果 MNN 不行，及时切换备选方案（MLC LLM / llama.cpp）
+- 如果 llama.cpp 不行，及时切换备选方案（MLC LLM）
 
 **验收标准：**
 - [ ] iOS 端能加载 Qwen2-0.5B 并推理
@@ -243,16 +243,22 @@ class MnnInferencePlugin : FlutterPlugin, MethodCallHandler {
 ### 1. 为什么不用 flutter_mnn？
 因为 `flutter_mnn` 包在 pub.dev 上不存在，是虚构的依赖，必须自己实现桥接。
 
-### 2. 为什么模型不内置？
+### 2. 为什么从 MNN 改为 llama.cpp？
+- MNN 主要用于计算机视觉，对 LLM 支持有限
+- llama.cpp 是目前最成熟的端侧 LLM 推理方案
+- 生态好，支持多种模型（包括 Qwen2）
+- 用户选择方案A（llama.cpp）
+
+### 3. 为什么模型不内置？
 - 250MB 内置会导致 App 体积暴增
 - App Store 初始下载限制 150MB
 - 改为首次启动时下载，用户可以选择 WiFi 环境下载
 
-### 3. 为什么保留 Isolate？
+### 4. 为什么保留 Isolate？
 不保留，改为 Platform Channel 后，推理在原生线程执行，Dart 层不需要 Isolate。
 
-### 4. 降级策略？
-- MNN 验证失败 → 切换备选方案（MLC LLM / llama.cpp）
+### 5. 降级策略？
+- llama.cpp 验证失败 → 切换备选方案（MLC LLM）
 - 推理失败 → 提示用户重试
 - 终极降级 → 保留 Mock 回复机制
 
@@ -262,7 +268,7 @@ class MnnInferencePlugin : FlutterPlugin, MethodCallHandler {
 
 | 风险 | 概率 | 影响 | 缓解措施 |
 |------|------|------|----------|
-| MNN 不支持 Qwen2 | 中 | 高 | 先做阶段 0 验证，准备备选方案 |
+| llama.cpp 移动端集成复杂 | 中 | 高 | 先做阶段 0 验证，准备备选方案 |
 | 推理速度太慢 | 中 | 高 | 实测性能，必要时换更小的模型 |
 | 内存占用过高 | 中 | 高 | 优化模型量化，必要时降级 |
 | 用户拒绝下载模型 | 低 | 中 | 友好提示，提供跳过选项 |
@@ -274,6 +280,7 @@ class MnnInferencePlugin : FlutterPlugin, MethodCallHandler {
 
 1. `model_download_service.dart` 中 `_calculateFileMd5` 直接返回 `model.md5`，需要实现真实的 MD5 校验
 2. `mnn_inference_service.dart` 需要移除 Isolate 相关代码，改为 Platform Channel
+3. 需要把 `MnnInferenceService` 重命名为更通用的名称（如 `LlmInferenceService`）
 
 ---
 
@@ -282,10 +289,10 @@ class MnnInferencePlugin : FlutterPlugin, MethodCallHandler {
 | 决策项 | 决策 | 日期 | 备注 |
 |--------|------|------|------|
 | 端侧 vs 云端 | 端侧 | 2026-04-28 | 用户明确拒绝云端 |
-| 推理引擎 | MNN（先验证） | 2026-04-28 | 备选 MLC LLM / llama.cpp |
-| 模型 | Qwen2-0.5B-Instruct | 2026-04-28 | 4bit 量化，~250MB |
+| 推理引擎 | MNN → **llama.cpp** | 2026-04-28 | 用户选择方案A，MNN对LLM支持有限 |
+| 模型 | Qwen2-0.5B-Instruct GGUF | 2026-04-28 | 4bit 量化，~250MB |
 | 模型分发 | 首次启动下载 | 2026-04-28 | 不内置 |
-| 桥接方案 | Platform Channel | 2026-04-28 | 仅修改 MnnInferenceService |
+| 桥接方案 | Platform Channel | 2026-04-28 | 仅修改推理服务 |
 
 ---
 
