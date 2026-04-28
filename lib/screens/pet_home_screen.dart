@@ -134,7 +134,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     final personality = PetPersonality.random();
     await _storage.savePetPersonality(personality);
     await _storage.savePetPersonalityLevel(1);
-    await _storage.savePetUnallocatedPoints(5);
+    await _storage.savePetUnallocatedPoints(2);
     await _storage.savePetSoul(PetSoul(
       name: petName,
       personality: personality.archetype, // PetPersonality.archetype is a String
@@ -183,10 +183,6 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     // 首次进入且未领养 → 弹出领养对话框
     if (needsAdoption) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _showAdoptionDialog());
-    }
-    // 有未分配属性点 → 弹出分配对话框
-    else if (_storage.getPetUnallocatedPoints() > 0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _showAllocatePointsDialog());
     }
   }
 
