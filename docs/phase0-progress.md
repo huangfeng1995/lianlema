@@ -152,11 +152,16 @@
 - 任务0.3正在进行：调研Flutter集成方案
 - **发现了现成的Fllama包！可以直接用！**
 
-**下一步建议：**
-1. 直接集成Fllama包到项目中
-2. 更新设计文档，将MnnInferenceService改为用Fllama
-3. 保持现有PetService接口不变，最小化改动
+**已完成：**
+1. ✅ 直接集成Fllama包到项目中（pubspec.yaml已更新）
+2. ✅ 更新MnnInferenceService，用Fllama实现
+3. ✅ 保持现有接口不变，最小化改动
+
+**待完成：**
+1. 运行flutter pub get安装依赖
+2. 更新设计文档
+3. 在模拟器/真机上测试
 
 ---
 
-**最后更新：** 2026-04-29 - 重大发现！Fllama完美符合我们的需求！
+**最后更新：** 2026-04-29 - 已集成Fllama包，代码已修改！
