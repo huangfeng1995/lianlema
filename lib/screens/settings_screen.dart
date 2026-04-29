@@ -1,9 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/storage_service.dart';
 import '../utils/notification_service.dart';
+import '../services/model_download_service.dart';
 import '../main.dart';
 import 'splash_screen.dart';
 
@@ -33,6 +37,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final String _appVersion = '1.0.0';
 
   StorageService? _storage;
+  ModelDownloadService? _modelService;
+
+  // 模型状态
+  bool _modelLoading = false;
+  String? _modelStatusText;
+  ModelInfo? _currentModel;
 
   @override
   void initState() {
@@ -42,14 +52,85 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     final storage = await StorageService.getInstance();
+    final modelService = ModelDownloadService();
+    await modelService.init();
+    final model = await modelService.getCurrentModel();
     setState(() {
       _storage = storage;
+      _modelService = modelService;
+      _currentModel = model;
       _minimalMode = storage.getMinimalMode();
       _darkMode = storage.getDarkMode();
       _reminderHour = storage.getReminderHour();
       _reminderMinute = storage.getReminderMinute();
       _notificationsEnabled = storage.getNotificationsEnabled();
     });
+  }
+
+  Future<void> _importModel() async {
+    setState(() {
+      _modelLoading = true;
+      _modelStatusText = '正在选择文件...';
+    });
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['gguf'],
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final sourcePath = result.files.single.path!;
+        final sourceFile = File(sourcePath);
+
+        if (!await sourceFile.exists()) {
+          setState(() {
+            _modelLoading = false;
+            _modelStatusText = '文件不存在';
+          });
+          await Future.delayed(const Duration(seconds: 2));
+          setState(() => _modelStatusText = null);
+          return;
+        }
+
+        setState(() => _modelStatusText = '正在复制文件...');
+        final modelDir = await getApplicationDocumentsDirectory();
+        final modelsDir = Directory('${modelDir.path}/models');
+        if (!await modelsDir.exists()) {
+          await modelsDir.create(recursive: true);
+        }
+
+        final destPath = '${modelsDir.path}/qwen2_05b_int4.gguf';
+        await sourceFile.copy(destPath);
+
+        // 重新检查模型状态
+        final modelService = ModelDownloadService();
+        await modelService.init();
+        final model = await modelService.getCurrentModel();
+
+        setState(() {
+          _modelLoading = false;
+          _currentModel = model;
+          _modelStatusText = '模型导入成功！';
+        });
+
+        await Future.delayed(const Duration(seconds: 2));
+        setState(() => _modelStatusText = null);
+
+      } else {
+        setState(() {
+          _modelLoading = false;
+          _modelStatusText = null;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _modelLoading = false;
+        _modelStatusText = '导入失败：$e';
+      });
+      await Future.delayed(const Duration(seconds: 3));
+      setState(() => _modelStatusText = null);
+    }
   }
 
   @override
@@ -124,6 +205,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 }
               },
             ),
+            const SizedBox(height: 24),
+            _buildSectionHeader('模型'),
+            _buildModelCard(),
             const SizedBox(height: 24),
             _buildSectionHeader('数据'),
             _buildSettingsCard([
@@ -645,5 +729,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
     }
+  }
+
+  Widget _buildModelCard() {
+    final hasModel = _currentModel != null && _currentModel!.status == ModelStatus.downloaded;
+    return _buildSettingsCard([
+      ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: hasModel
+                ? Colors.green.withValues(alpha: 0.1)
+                : AppColors.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Center(
+            child: Icon(
+              hasModel ? Icons.check_circle : Icons.cloud_download,
+              size: 18,
+              color: hasModel ? Colors.green : AppColors.primary,
+            ),
+          ),
+        ),
+        title: Text(
+          hasModel ? 'Qwen2-0.5B' : '未安装模型',
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        subtitle: _modelStatusText != null
+            ? Text(
+                _modelStatusText!,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.primary,
+                ),
+              )
+            : Text(
+                hasModel
+                    ? '已就绪'
+                    : '导入 .gguf 模型文件以启用端侧推理',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+        trailing: _modelLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                ),
+              )
+            : ElevatedButton(
+                onPressed: hasModel ? null : _importModel,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: hasModel ? Colors.grey : AppColors.primary,
+                ),
+                child: const Text('导入'),
+              ),
+      ),
+    ]);
   }
 }

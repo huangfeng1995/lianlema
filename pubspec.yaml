@@ -20,6 +20,7 @@ dependencies:
   share_plus: ^7.0.0
   fcllama: ^0.0.2              # llama.cpp Flutter绑定（用Platform Channel）
   path_provider: ^2.1.2        # 本地文件路径管理
+  file_picker: ^8.1.2          # 文件选择器，用于导入模型
 
 dev_dependencies:
   flutter_test:
