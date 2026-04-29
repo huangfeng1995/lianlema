@@ -180,21 +180,41 @@
 
 ---
 
-## 接下来的选项
+## ✅ 代码完善完成（2026-04-29）
 
-**选项1：继续完善代码**（推荐）
-- 把PetService中的注释代码取消，连接真实推理
-- 完善model_download_service.dart，下载GGUF模型
-- 做端到端测试
+**已完成：**
+1. ✅ PetService取消注释，连接真实推理
+   - chat()方法：尝试加载模型并推理，失败时fallback到mock回复
+   - getEmotion()方法：情绪判断，失败时返回"happy"
+   - generatePush()方法：推送生成，失败时返回默认值
+2. ✅ 更新model_download_service.dart
+   - 移除flutter_downloader依赖（暂时不用）
+   - 适配GGUF格式
+   - 简化firstWhereOrNull为普通循环
+3. ✅ flutter analyze通过！无错误
 
-**选项2：先把当前改动提交和合并**
-- 先提交当前feature分支的改动
-- 然后继续下一步开发
-
-**选项3：在你那边的模拟器/真机上测试**
-- 你那边运行flutter build ios/android试试
-- 看看能不能编译通过
+**代码结构：**
+- PetService与MnnInferenceService、ModelDownloadService完整连接
+- 保持了优雅降级：模型不可用时自动使用mock回复
+- 无需修改现有UI代码
 
 ---
 
-**最后更新：** 2026-04-29 - Flutter analyze通过！代码没问题！
+## 接下来的选项
+
+**选项1：在模拟器/真机上测试编译**
+- 运行flutter build ios/android
+- 检查能否正常编译通过
+
+**选项2：下载Qwen2-0.5B GGUF模型**
+- 从HuggingFace下载Qwen2-0.5B-Instruct-GGUF
+- 放入assets/models目录
+- 测试端到端推理
+
+**选项3：合并到main分支**
+- 把当前feature分支合并到main
+- 准备进入下一阶段开发
+
+---
+
+**最后更新：** 2026-04-29 - 代码完善完成，PetService已连接推理服务！
