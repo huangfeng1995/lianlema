@@ -46,3 +46,12 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Model files (too big for git)
+*.gguf
+*.mnn
+*.safetensors
+*.pth
+*.pt
+assets/models/*.gguf
+assets/models/*.mnn

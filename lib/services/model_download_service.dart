@@ -163,17 +163,48 @@ class ModelDownloadService {
       }
     }
 
-    // 内置模型默认标记为已下载（占位，实际使用时需要用户下载）
+    // 检查assets目录是否有模型（不推荐，因为文件太大）
     if (model.type == ModelType.qwen2_05b) {
-      // TODO: 暂时标记为已下载，后续实现真实模型加载
-      model.status = ModelStatus.downloaded;
-      model.localPath = "assets/models/qwen2_05b_int4.gguf";
-      await _saveModelStatus(model);
-      return;
+      // 尝试从应用文档目录加载，而不是从assets
+      final modelDir = await _getModelSaveDir();
+      final modelPath = path.join(modelDir.path, _getModelFileName(model.type));
+      final file = File(modelPath);
+      if (await file.exists()) {
+        model.status = ModelStatus.downloaded;
+        model.localPath = modelPath;
+        await _saveModelStatus(model);
+        return;
+      }
     }
 
     model.status = ModelStatus.notDownloaded;
     model.localPath = null;
+  }
+
+  /// 获取模型下载说明
+  String getModelDownloadInstructions(ModelType type) {
+    switch (type) {
+      case ModelType.qwen2_05b:
+        return """
+Qwen2-0.5B-Instruct-GGUF 下载说明：
+
+1. 访问 HuggingFace: https://huggingface.co/Qwen/Qwen2-0.5B-Instruct-GGUF
+
+2. 下载一个合适的量化版本，推荐：
+   - qwen2-0_5b-instruct-q4_0.gguf (约300MB，速度快)
+   - qwen2-0_5b-instruct-q8_0.gguf (约600MB，质量更好)
+
+3. 将下载的文件重命名为: qwen2_05b_int4.gguf
+
+4. 通过iTunes/文件共享放入应用文档目录，或在开发时放入手机的Documents/models目录
+
+5. 重启应用即可
+""";
+      case ModelType.miniCPM_2b:
+        return "MiniCPM-2B模型下载说明待添加";
+      case ModelType.llama3_8b:
+        return "Llama3-8B模型下载说明待添加";
+    }
   }
 
   /// 保存模型状态到存储

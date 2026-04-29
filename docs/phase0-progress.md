@@ -200,21 +200,49 @@
 
 ---
 
+## ✅ 模型准备完成（2026-04-29）
+
+**已完成：**
+1. ✅ 创建assets/models目录和.gitkeep文件
+2. ✅ 更新ModelDownloadService支持从应用文档目录加载模型
+3. ✅ 添加getModelDownloadInstructions()方法获取下载说明
+4. ✅ 创建docs/MODEL_DOWNLOAD.md详细下载指南
+5. ✅ 更新.gitignore防止大模型文件提交到git
+6. ✅ pubspec.yaml已配置assets/models/
+7. ✅ flutter analyze通过！
+
+**关键设计决策：**
+- ❌ 不把模型文件提交到git（文件太大，影响仓库体积）
+- ✅ 支持从应用文档目录加载模型
+- ✅ 提供详细的下载说明文档
+- ✅ 保持优雅降级：无模型时继续使用mock回复
+
+**模型下载指南：**
+详细说明见 docs/MODEL_DOWNLOAD.md
+
+**如何测试端到端推理：**
+1. 从 https://huggingface.co/Qwen/Qwen2-0.5B-Instruct-GGUF 下载模型
+2. 推荐 qwen2-0_5b-instruct-q4_0.gguf (约300MB)
+3. 重命名为 qwen2_05b_int4.gguf
+4. 放入应用的Documents/models目录
+5. 重启应用，与宠物对话即可测试端侧推理
+
+---
+
 ## 接下来的选项
 
 **选项1：在模拟器/真机上测试编译**
 - 运行flutter build ios/android
 - 检查能否正常编译通过
 
-**选项2：下载Qwen2-0.5B GGUF模型**
-- 从HuggingFace下载Qwen2-0.5B-Instruct-GGUF
-- 放入assets/models目录
-- 测试端到端推理
-
-**选项3：合并到main分支**
+**选项2：合并到main分支**
 - 把当前feature分支合并到main
 - 准备进入下一阶段开发
 
+**选项3：下载模型进行真实端侧测试**
+- 下载Qwen2-0.5B GGUF模型到测试设备
+- 测试真实的端侧推理效果
+
 ---
 
-**最后更新：** 2026-04-29 - 代码完善完成，PetService已连接推理服务！
+**最后更新：** 2026-04-29 - 模型准备完成，提供下载指南！
