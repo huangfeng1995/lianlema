@@ -772,7 +772,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             : Text(
                 hasModel
                     ? '已就绪'
-                    : '导入 .gguf 模型文件以启用端侧推理',
+                    : '点击下载自动获取模型，或手动导入 .gguf 文件',
                 style: const TextStyle(
                   fontSize: 13,
                   color: AppColors.textSecondary,
@@ -787,14 +787,124 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                 ),
               )
-            : ElevatedButton(
-                onPressed: hasModel ? null : _importModel,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: hasModel ? Colors.grey : AppColors.primary,
-                ),
-                child: const Text('导入'),
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (hasModel)
+                    ElevatedButton(
+                      onPressed: _deleteModel,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                      ),
+                      child: const Text('删除'),
+                    )
+                  else ...[
+                    ElevatedButton(
+                      onPressed: _downloadModel,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                      ),
+                      child: const Text('下载'),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _importModel,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.secondary,
+                      ),
+                      child: const Text('导入'),
+                    ),
+                  ],
+                ],
               ),
       ),
     ]);
+  }
+
+  Future<void> _downloadModel() async {
+    setState(() {
+      _modelLoading = true;
+      _modelStatusText = '正在下载...';
+    });
+
+    try {
+      await _modelService?.downloadModel(
+        ModelType.qwen2_05b,
+        onProgress: (received, total) {
+          final progress = total > 0 ? (received / total * 100).round() : 0;
+          setState(() {
+            _modelStatusText = '正在下载: $progress%';
+          });
+        },
+        onComplete: () {
+          setState(() {
+            _modelLoading = false;
+            _modelStatusText = '下载成功！';
+            _currentModel = _modelService?.getModels().firstWhere(
+                  (m) => m.type == ModelType.qwen2_05b,
+                );
+          });
+          Future.delayed(const Duration(seconds: 2), () {
+            setState(() {
+              _modelStatusText = null;
+            });
+          });
+        },
+        onError: (error) {
+          setState(() {
+            _modelLoading = false;
+            _modelStatusText = '下载失败: $error';
+          });
+          Future.delayed(const Duration(seconds: 3), () {
+            setState(() {
+              _modelStatusText = null;
+            });
+          });
+        },
+      );
+    } catch (e) {
+      setState(() {
+        _modelLoading = false;
+        _modelStatusText = '下载失败: $e';
+      });
+      Future.delayed(const Duration(seconds: 3), () {
+        setState(() {
+          _modelStatusText = null;
+        });
+      });
+    }
+  }
+
+  Future<void> _deleteModel() async {
+    setState(() {
+      _modelLoading = true;
+      _modelStatusText = '正在删除...';
+    });
+
+    try {
+      await _modelService?.deleteModel(ModelType.qwen2_05b);
+      setState(() {
+        _modelLoading = false;
+        _modelStatusText = '删除成功！';
+        _currentModel = _modelService?.getModels().firstWhere(
+              (m) => m.type == ModelType.qwen2_05b,
+            );
+      });
+      Future.delayed(const Duration(seconds: 2), () {
+        setState(() {
+          _modelStatusText = null;
+        });
+      });
+    } catch (e) {
+      setState(() {
+        _modelLoading = false;
+        _modelStatusText = '删除失败: $e';
+      });
+      Future.delayed(const Duration(seconds: 3), () {
+        setState(() {
+          _modelStatusText = null;
+        });
+      });
+    }
   }
 }

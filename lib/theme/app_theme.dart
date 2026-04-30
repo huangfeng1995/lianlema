@@ -4,6 +4,7 @@ class AppColors {
   // 品牌色
   static const primary = Color(0xFFE85A1C);  // 炭火橙
   static const primaryLight = Color(0xFFFF8E72);
+  static const secondary = Color(0xFF8B7355);  // 暖灰
   
   // 背景
   static const background = Color(0xFFF5F0EB);  // 宣纸米白
