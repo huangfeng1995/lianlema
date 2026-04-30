@@ -134,7 +134,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
     final personality = PetPersonality.random();
     await _storage.savePetPersonality(personality);
     await _storage.savePetPersonalityLevel(1);
-    await _storage.savePetUnallocatedPoints(2);
+    await _storage.savePetUnallocatedPoints(0);
     await _storage.savePetSoul(PetSoul(
       name: petName,
       personality: personality.archetype, // PetPersonality.archetype is a String

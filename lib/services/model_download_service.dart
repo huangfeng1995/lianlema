@@ -163,15 +163,26 @@ class ModelDownloadService {
       }
     }
 
-    // 检查assets目录是否有模型（不推荐，因为文件太大）
+    // 检查应用文档目录是否有模型
     if (model.type == ModelType.qwen2_05b) {
-      // 尝试从应用文档目录加载，而不是从assets
       final modelDir = await _getModelSaveDir();
       final modelPath = path.join(modelDir.path, _getModelFileName(model.type));
       final file = File(modelPath);
       if (await file.exists()) {
         model.status = ModelStatus.downloaded;
         model.localPath = modelPath;
+        await _saveModelStatus(model);
+        return;
+      }
+    }
+
+    // 【临时】检查Downloads目录（开发测试用）
+    if (model.type == ModelType.qwen2_05b) {
+      const downloadsPath = "/Users/openclaw/Downloads/qwen2_05b_int4.gguf";
+      final file = File(downloadsPath);
+      if (await file.exists()) {
+        model.status = ModelStatus.downloaded;
+        model.localPath = downloadsPath;
         await _saveModelStatus(model);
         return;
       }
