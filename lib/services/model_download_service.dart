@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'storage_service.dart';
@@ -55,27 +57,11 @@ class ModelDownloadService {
   final List<ModelInfo> _models = [
     ModelInfo(
       type: ModelType.qwen2_05b,
-      name: "Qwen2-0.5B（内置默认）",
+      name: "Qwen2-0.5B",
       description: "体积小，速度快，适合绝大多数用户使用",
-      sizeMB: 250,
-      downloadUrl: "https://huggingface.co/Qwen/Qwen2-0.5B-Instruct-GGUF",
-      md5: "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
-    ),
-    ModelInfo(
-      type: ModelType.miniCPM_2b,
-      name: "MiniCPM-2B（效果更好）",
-      description: "对话更自然，效果更接近大模型",
-      sizeMB: 600,
-      downloadUrl: "https://huggingface.co/openbmbai/MiniCPM-2B-sft-bf16",
-      md5: "b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7",
-    ),
-    ModelInfo(
-      type: ModelType.llama3_8b,
-      name: "Llama3-8B（高端机型专属）",
-      description: "效果接近GPT-3.5，适合高端机型用户",
-      sizeMB: 4500,
-      downloadUrl: "https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct",
-      md5: "c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8",
+      sizeMB: 350,
+      downloadUrl: "https://github.com/huangfeng1995/lianlema/releases/download/models/qwen2_05b_int4.gguf",
+      md5: "",
     ),
   ];
 
@@ -141,6 +127,92 @@ class ModelDownloadService {
     await _storage.setCurrentModelType(type.index);
   }
 
+  /// 下载模型
+  Future<void> downloadModel(
+    ModelType type, {
+    Function(int, int)? onProgress,
+    Function()? onComplete,
+    Function(String)? onError,
+  }) async {
+    ModelInfo? model;
+    for (final m in _models) {
+      if (m.type == type) {
+        model = m;
+        break;
+      }
+    }
+    if (model == null) {
+      onError?.call("模型不存在");
+      return;
+    }
+
+    model.status = ModelStatus.downloading;
+    model.downloadProgress = 0;
+
+    try {
+      final modelDir = await _getModelSaveDir();
+      final savePath = path.join(modelDir.path, _getModelFileName(type));
+      final tempPath = '$savePath.tmp';
+
+      final request = http.Request('GET', Uri.parse(model.downloadUrl));
+      final response = await http.Client().send(request);
+
+      if (response.statusCode != 200) {
+        throw Exception('下载失败: ${response.statusCode}');
+      }
+
+      final totalBytes = response.contentLength ?? 0;
+      var receivedBytes = 0;
+
+      final file = File(tempPath);
+      final sink = file.openWrite();
+
+      await for (final chunk in response.stream) {
+        receivedBytes += chunk.length;
+        sink.add(chunk);
+
+        model.downloadProgress = totalBytes > 0
+            ? (receivedBytes / totalBytes * 100).round()
+            : 0;
+
+        onProgress?.call(receivedBytes, totalBytes);
+      }
+
+      await sink.flush();
+      await sink.close();
+
+      // 重命名临时文件
+      await file.rename(savePath);
+
+      model.status = ModelStatus.downloaded;
+      model.localPath = savePath;
+      await _saveModelStatus(model);
+
+      // 设为当前模型
+      await _storage.setCurrentModelType(type.index);
+
+      onComplete?.call();
+    } catch (e) {
+      model.status = ModelStatus.notDownloaded;
+      model.downloadProgress = 0;
+      onError?.call(e.toString());
+    }
+  }
+
+  /// 取消下载
+  void cancelDownload(ModelType type) {
+    ModelInfo? model;
+    for (final m in _models) {
+      if (m.type == type) {
+        model = m;
+        break;
+      }
+    }
+    if (model == null) return;
+    model.status = ModelStatus.notDownloaded;
+    model.downloadProgress = 0;
+  }
+
   /// 校验所有模型状态
   Future<void> _checkAllModelsStatus() async {
     for (final model in _models) {
@@ -197,19 +269,12 @@ class ModelDownloadService {
     switch (type) {
       case ModelType.qwen2_05b:
         return """
-Qwen2-0.5B-Instruct-GGUF 下载说明：
+Qwen2-0.5B 模型下载说明：
 
-1. 访问 HuggingFace: https://huggingface.co/Qwen/Qwen2-0.5B-Instruct-GGUF
+模型已托管在 GitHub Releases，点击下载按钮即可自动下载。
 
-2. 下载一个合适的量化版本，推荐：
-   - qwen2-0_5b-instruct-q4_0.gguf (约300MB，速度快)
-   - qwen2-0_5b-instruct-q8_0.gguf (约600MB，质量更好)
-
-3. 将下载的文件重命名为: qwen2_05b_int4.gguf
-
-4. 通过iTunes/文件共享放入应用文档目录，或在开发时放入手机的Documents/models目录
-
-5. 重启应用即可
+文件大小：约 350MB
+预计时间：Wi-Fi 下 1-3 分钟
 """;
       case ModelType.miniCPM_2b:
         return "MiniCPM-2B模型下载说明待添加";

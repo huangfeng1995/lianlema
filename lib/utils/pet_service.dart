@@ -2,9 +2,10 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import '../models/models.dart';
 import '../models/pet_models.dart';
+import '../services/model_download_service.dart';
+import '../services/mnn_inference_service.dart';
 import 'storage_service.dart';
 import 'date_utils.dart' as app_date;
 
@@ -80,53 +81,8 @@ class PetContext {
   };
 }
 
-/// MiniMax API 配置
-/// API Key 读取优先级：
-/// 1. 环境变量 LIANLEMA_API_KEY
-/// 2. ~/.openclaw/volc_api_config.txt（格式：API_KEY=xxx）
-/// 3. 硬编码默认值（仅开发环境）
-class MiniMaxConfig {
-  /// 从环境变量或配置文件读取 API Key
-  static String get apiKey {
-    // 1. 优先从环境变量读取
-    final envKey = Platform.environment['LIANLEMA_API_KEY'];
-    if (envKey != null && envKey.isNotEmpty) {
-      debugPrint('[MiniMaxConfig] API key loaded from environment variable');
-      return envKey;
-    }
-
-    // 2. 从 ~/.openclaw/volc_api_config.txt 读取
-    final configFile = File('${Platform.environment['HOME']}/.openclaw/volc_api_config.txt');
-    if (configFile.existsSync()) {
-      try {
-        final content = configFile.readAsStringSync();
-        final lines = content.split('\n');
-        for (final line in lines) {
-          final trimmed = line.trim();
-          if (trimmed.startsWith('API_KEY=') || trimmed.startsWith('api_key=')) {
-            final key = trimmed.substring(trimmed.indexOf('=') + 1).trim();
-            if (key.isNotEmpty) {
-              debugPrint('[MiniMaxConfig] API key loaded from config file');
-              return key;
-            }
-          }
-        }
-      } catch (e) {
-        debugPrint('[MiniMaxConfig] Failed to read config file: $e');
-      }
-    }
-
-    // 3. 降级提示
-    debugPrint('[MiniMaxConfig] WARNING: No API key found. '
-        'Set LIANLEMA_API_KEY env var or create ~/.openclaw/volc_api_config.txt with API_KEY=xxx');
-    return '';
-  }
-
-  static const String baseUrl = 'https://api.minimaxi.com/anthropic/v1';
-}
-
 /// 宠物服务 v1.0
-/// 负责：状态管理、MiniMax LLM 对话集成、主动洞察、记忆与反思机制
+/// 负责：状态管理、本地 LLM 推理、主动洞察、记忆与反思机制
 class PetService {
   static PetService? _instance;
   static PetService get instance => _instance ??= PetService._();
@@ -905,104 +861,112 @@ class PetService {
     return insights[DateTime.now().millisecond % insights.length];
   }
 
-  /// 调用 MiniMax LLM 生成回复（Claude兼容接口）
+  /// 调用 LLM 生成回复（优先本地模型，回退到预设回复）
   Future<String> chat(String userMessage, PetContext context) async {
     _conversationHistory.add({'role': 'user', 'content': userMessage});
 
     // 先检测用户自主感信号（每次对话都记录）
     await detectAndRecordPushback(userMessage);
 
-    // 先调用 LLM 生成回复
+    // 先尝试本地模型推理
     String response;
     try {
-      response = await _callMiniMax(userMessage, context);
-      _conversationHistory.add({'role': 'assistant', 'content': response});
-      await _saveConversationHistory();
-      await updateMood(PetMoodState(mood: PetMood.calm, updatedAt: DateTime.now()));
+      final modelService = ModelDownloadService();
+      await modelService.init();
+      final model = await modelService.getCurrentModel();
 
-      // 对话成功 → 增加亲密度（每次+1，上限100）
-      final storage = await StorageService.getInstance();
-      await storage.addPetIntimacy(1);
+      if (model != null && model.localPath != null) {
+        // 有本地模型，尝试用本地推理
+        debugPrint('[PetService] Using local model: ${model.localPath}');
+        final inferService = MnnInferenceService();
+        await inferService.init();
+        final loaded = await inferService.loadModel(model.localPath!);
+        if (loaded) {
+          final prompt = _buildLocalModelPrompt(userMessage, context);
+          response = await inferService.infer(prompt, maxTokens: 150);
+          debugPrint('[PetService] Local model response: $response');
+
+          _conversationHistory.add({'role': 'assistant', 'content': response});
+          await _saveConversationHistory();
+          await updateMood(PetMoodState(mood: PetMood.calm, updatedAt: DateTime.now()));
+
+          // 对话成功 → 增加亲密度（每次+1，上限100）
+          final storage = await StorageService.getInstance();
+          await storage.addPetIntimacy(1);
+
+          // 检测是否是纠正，并记录宠物原回复供后续分析
+          final isCorrected = await detectAndAdaptToCorrection(userMessage, response);
+
+          // 如果是纠正，生成道歉+确认记住了什么
+          if (isCorrected) {
+            final learnedWhat = _extractWhatWasLearned(userMessage);
+            final apology = _generateLearningConfirmation(userMessage, learnedWhat);
+            return '$apology\n\n$response';
+          }
+
+          return response;
+        } else {
+          // 加载失败，使用预设回复
+          debugPrint('[PetService] Local model load failed, using preset response');
+        }
+      } else {
+        // 没有本地模型，使用预设回复
+        debugPrint('[PetService] No local model, using preset response');
+      }
     } catch (e) {
-      debugPrint('[PetService] MiniMax API error: $e');
+      debugPrint('[PetService] LLM error: $e');
       await updateMood(PetMoodState(mood: PetMood.resting, updatedAt: DateTime.now()));
-      return _fallbackResponse(userMessage, context);
     }
 
-    // 检测是否是纠正，并记录宠物原回复供后续分析
-    final isCorrected = await detectAndAdaptToCorrection(userMessage, response);
-
-    // 如果是纠正，生成道歉+确认记住了什么
-    if (isCorrected) {
-      final learnedWhat = _extractWhatWasLearned(userMessage);
-      final apology = _generateLearningConfirmation(userMessage, learnedWhat);
-      return '$apology\n\n$response';
-    }
+    // 使用预设回复
+    response = _fallbackResponse(userMessage, context);
+    _conversationHistory.add({'role': 'assistant', 'content': response});
+    await _saveConversationHistory();
 
     return response;
   }
 
-  Future<String> _callMiniMax(String userMessage, PetContext context) async {
-    final apiKey = MiniMaxConfig.apiKey;
-    if (apiKey.isEmpty) {
-      throw Exception('API key not configured. Set LIANLEMA_API_KEY env var or ~/.openclaw/volc_api_config.txt');
+  /// 构建本地模型的prompt（简化版，适配小模型）
+  String _buildLocalModelPrompt(String userMessage, PetContext context) {
+    final buf = StringBuffer();
+
+    // 基本角色设定（简化版）
+    buf.writeln('你是「练了吗」App的宠物小精灵，名字叫「${context.petName}」，性格阳光温暖。');
+    buf.writeln('你的任务是陪伴用户养成习惯，鼓励他们坚持打卡。');
+    buf.writeln('回复要求：简洁温暖，像朋友聊天，每次不超过80字。');
+    buf.writeln();
+
+    // 用户状态
+    buf.writeln('当前用户状态：');
+    buf.writeln('- 连续打卡：${context.streak}天');
+    buf.writeln('- 今日打卡：${context.checkedInToday ? "已完成" : "未完成"}');
+    if (context.vision.isNotEmpty) {
+      buf.writeln('- 用户愿景：${context.vision}');
     }
+    buf.writeln();
 
-    const endpoint = '${MiniMaxConfig.baseUrl}/messages';
-
-    // 根据偏好调整回复长度
-    final maxTokens = switch (_prefs.responseLength) {
-      'short' => 100,
-      'medium' => 150,
-      'long' => 250,
-      _ => 150,
-    };
-
-    final body = {
-      'model': 'abab6.5s-chat',
-      'max_tokens': maxTokens,
-      'temperature': 0.7,
-      'system': _buildSystemPrompt(context),
-      'messages': [
-        ..._conversationHistory.map((m) => {
-          'role': m['role'],
-          'content': m['content'],
-        }),
-      ],
-    };
-
-    final response = await http.post(
-      Uri.parse(endpoint),
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: jsonEncode(body),
-    ).timeout(const Duration(seconds: 20));
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      // MiniMax 返回格式：{ content: [{ type: "text", text: "..." }] }
-      final contentList = data['content'] as List?;
-      if (contentList != null) {
-        for (final item in contentList) {
-          if (item['type'] == 'text' && (item['text'] as String?)?.isNotEmpty == true) {
-            String text = (item['text'] as String).trim();
-            // 清理无效 Unicode 字符，将无法识别的字符替换为替代符号
-            text = StorageService.sanitizeText(text);
-            return text;
-          }
+    // 历史对话（只保留最近2条）
+    if (_conversationHistory.length > 1) {
+      final recentHistory = _conversationHistory.skip(_conversationHistory.length - 3).take(2);
+      for (final msg in recentHistory) {
+        if (msg['role'] == 'user') {
+          buf.writeln('用户：${msg['content']}');
+        } else {
+          buf.writeln('${context.petName}：${msg['content']}');
         }
       }
-      debugPrint('[PetService] API response body: ${response.body}');
-    } else {
-      debugPrint('[PetService] API error: ${response.statusCode} - ${response.body}');
     }
-    throw Exception('MiniMax API error: ${response.statusCode}');
+    buf.writeln();
+
+    // 用户最新消息
+    buf.writeln('用户最新消息：$userMessage');
+    buf.writeln('${context.petName}的回复：');
+
+    return buf.toString();
   }
 
-  String _buildSystemPrompt(PetContext context) {
+  /// 预设回复（当本地模型不可用时使用）
+  String _fallbackResponse(String userMessage, PetContext context) {
     final buf = StringBuffer();
 
     // 根据偏好调整语气
@@ -1411,50 +1375,68 @@ $presetContext
 ''';
 
     try {
-      // 拆解需要更多 tokens，直接调 API 不走 _callMiniMax（后者受 prefs.responseLength 限制）
-      final apiKeyForDecompose = MiniMaxConfig.apiKey;
-      if (apiKeyForDecompose.isEmpty) {
-        debugPrint('PetService decomposeGoals: API key not configured');
-        return DecompositionResult(monthlyChallenges: [], dailyActionsPerChallenge: {});
-      }
-      const endpoint = '${MiniMaxConfig.baseUrl}/messages';
-      final body = {
-        'model': 'abab6.5s-chat',
-        'max_tokens': 1500,
-        'temperature': 0.7,
-        'system': '你是炭炭，用户的宠物伙伴。回复简洁有温度。',
-        'messages': [
-          {'role': 'user', 'content': prompt},
-        ],
-      };
+      // 尝试使用本地模型进行目标拆解
+      final modelService = ModelDownloadService();
+      await modelService.init();
+      final model = await modelService.getCurrentModel();
 
-      final response = await http.post(
-        Uri.parse(endpoint),
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKeyForDecompose,
-          'anthropic-version': '2023-06-01',
-        },
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 20));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final contentList = data['content'] as List?;
-        if (contentList != null) {
-          for (final item in contentList) {
-            if (item['type'] == 'text' && (item['text'] as String?)?.isNotEmpty == true) {
-              return _parseDecompositionResponse((item['text'] as String).trim());
-            }
-          }
+      if (model != null && model.localPath != null) {
+        // 有本地模型，尝试用本地推理
+        debugPrint('[PetService] Using local model for decomposeGoals');
+        final inferService = MnnInferenceService();
+        await inferService.init();
+        final loaded = await inferService.loadModel(model.localPath!);
+        if (loaded) {
+          // 本地模型推理
+          final fullPrompt = '${_buildSystemPromptForDecompose()}\n\n$prompt';
+          final result = await inferService.infer(fullPrompt, maxTokens: 500);
+          inferService.autoRelease();
+          return _parseDecompositionResponse(result);
         }
       }
-      debugPrint('PetService decomposeGoals API error: ${response.statusCode}');
-      return DecompositionResult(monthlyChallenges: [], dailyActionsPerChallenge: {});
+
+      // 没有本地模型，使用预设模板（简化版）
+      debugPrint('[PetService] No local model for decomposeGoals, using preset');
+      return _presetDecomposition(goalsText);
     } catch (e) {
       debugPrint('PetService decomposeGoals error: $e');
-      return DecompositionResult(monthlyChallenges: [], dailyActionsPerChallenge: {});
+      return _presetDecomposition(goalsText);
     }
+  }
+
+  /// 构建目标拆解的 System Prompt（简化版）
+  String _buildSystemPromptForDecompose() {
+    return '''你是「炭炭」，用户的宠物伙伴。你的任务是把目标拆解为可量化的月度挑战和每日行动。
+
+回复要求：
+1. 只输出 JSON 格式，不要其他内容
+2. 每个行动必须量化（包含具体数字）
+3. 简洁高效，不说废话''';
+  }
+
+  /// 使用预设模板进行目标拆解（当没有本地模型时使用）
+  DecompositionResult _presetDecomposition(String goalsText) {
+    // 简单的预设拆解逻辑
+    final challenges = <String>[];
+    final actionsMap = <String, List<String>>{};
+
+    // 基础挑战
+    challenges.add('第一个月：基础巩固');
+    challenges.add('第二个月：强化提升');
+
+    actionsMap['第一个月：基础巩固'] = [
+      '每天学习1小时，打好基础',
+      '每天复习30分钟，巩固知识',
+    ];
+    actionsMap['第二个月：强化提升'] = [
+      '每天练习题目10道',
+      '每天复盘当天学习内容',
+    ];
+
+    return DecompositionResult(
+      monthlyChallenges: challenges,
+      dailyActionsPerChallenge: actionsMap,
+    );
   }
 
   /// 解析LLM返回的拆解结果
