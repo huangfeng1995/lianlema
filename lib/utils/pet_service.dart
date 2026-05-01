@@ -1122,51 +1122,6 @@ class PetService {
     return buf.toString();
   }
 
-  String _fallbackResponse(String userMessage, PetContext context) {
-    final msg = userMessage.toLowerCase();
-
-    // 根据偏好调整 fallback 回复
-    final useEmoji = _prefs.useEmoji;
-
-    if (msg.contains('打卡') || msg.contains('完成')) {
-      return context.checkedInToday
-          ? useEmoji ? '今天的你已经完成啦！继续保持 ✨' : '今日已完成，继续保持。'
-          : useEmoji ? '还没打卡？想想你的愿景，今天一小步是未来一大步 💪' : '还未打卡，想想你的愿景。';
-    }
-
-    if (msg.contains('提醒') || msg.contains('设')) {
-      return useEmoji ? '去「设置」里开启每日提醒，我也能更及时关心你 ⏰'
-          : '前往「设置」开启每日提醒功能。';
-    }
-
-    if (msg.contains('状态') || msg.contains('怎么样') || msg.contains('情况')) {
-      return '连续${context.streak}天，共打卡${context.totalCheckIns}次。'
-          '${context.checkedInToday ? (useEmoji ? "今天已完成！" : "今日已完成。") : (useEmoji ? "今天还差一点点～" : "今日待完成。")}';
-    }
-
-    if (msg.contains('鼓励') || msg.contains('加油') || msg.contains('撑')) {
-      return useEmoji ? '你已经在路上了！每一步都算数 💪 想想你为什么要成为那样的人？'
-          : '你已经在路上了。每一步都算数。';
-    }
-
-    if (msg.contains('习惯') || msg.contains('养成') || msg.contains('坚持')) {
-      return useEmoji ? '坚持的秘密是让行为足够小。小到不可能失败，然后慢慢放大 🔑'
-          : '坚持的秘密是让行为足够小，小到不可能失败。';
-    }
-
-    if (msg.contains('内化') || msg.contains('动机') || msg.contains('自律')) {
-      return useEmoji ? '真正的动力来自内在——当你觉得这件事是你自己选择的。问问自己：这个习惯背后的「为什么」是什么？ 🌟'
-          : '真正的动力来自内在。当你觉得这件事是你自己选择的，而非被迫的。问问自己：这个习惯的「为什么」是什么？';
-    }
-
-    if (context.vision.isNotEmpty) {
-      return useEmoji ? '想想你的愿景：${context.vision} — 那是你要活成的样子 🌟'
-          : '想想你的愿景：${context.vision}';
-    }
-
-    return useEmoji ? '炭炭在这里陪着你！有什么想问的吗？'
-        : '炭炭在这里陪着你。有任何问题都可以问我。';
-  }
 
   /// 处理快捷指令
   Future<String> handleCommand(PetCommand command, PetContext context) async {
