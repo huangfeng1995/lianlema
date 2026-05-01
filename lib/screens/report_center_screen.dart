@@ -104,7 +104,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                   ),
                   const SizedBox(height: 16),
                   _buildReportCard(
-                    icon: Icons.calendar_month_rounded,
+                    icon: Icons.calendar_today,
                     title: '月报',
                     subtitle: '本月出勤',
                     summary: '本月已打卡$_monthDays天',
@@ -155,7 +155,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: Colors.black.withOpacity(0.04),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),

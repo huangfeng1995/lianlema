@@ -4,70 +4,8 @@ import 'package:flutter/material.dart';
 import '../models/pet_models.dart';
 import '../theme/app_theme.dart';
 import '../utils/storage_service.dart';
+import '../utils/icon_utils.dart';
 import 'pet_evolution_screen.dart';
-
-/// 宠物emoji → IconData 映射
-IconData petEmojiToIcon(String emoji) {
-  switch (emoji) {
-    case '🥚': return Icons.egg_outlined;
-    case '🦊': return CupertinoIcons.hare;
-    case '🐺': return CupertinoIcons.flame;
-    case '🐰': return CupertinoIcons.hare;
-    case '🦌': return CupertinoIcons.leaf_arrow_circlepath;
-    case '🦔': return CupertinoIcons.leaf_arrow_circlepath;
-    case '🐦': return CupertinoIcons.paperplane;
-    case '🐿️': return CupertinoIcons.bolt;
-    case '🦝': return CupertinoIcons.eye;
-    case '🐻': return CupertinoIcons.house;
-    case '🐧': return CupertinoIcons.snow;
-    case '🦉': return CupertinoIcons.moon;
-    case '🐨': return CupertinoIcons.cloud;
-    case '🐼': return CupertinoIcons.circle_grid_hex;
-    case '🦋': return CupertinoIcons.sparkles;
-    case '🖤': return CupertinoIcons.moon_fill;
-    case '🐾': return CupertinoIcons.paw;
-    default: return CupertinoIcons.hare;
-  }
-}
-
-/// 心情emoji → IconData 映射
-IconData moodEmojiToIcon(String emoji) {
-  switch (emoji) {
-    case '😄': return CupertinoIcons.hand_thumbsup_fill;
-    case '🙂': return CupertinoIcons.hand_thumbsup;
-    case '😌': return CupertinoIcons.heart;
-    case '😢': return CupertinoIcons.drop;
-    case '😭': return CupertinoIcons.cloud_rain;
-    default: return CupertinoIcons.smiley;
-  }
-}
-
-/// 通用emoji → IconData 映射（记忆亮点、道具图标等）
-IconData anyEmojiToIcon(String emoji) {
-  switch (emoji) {
-    // 记忆亮点
-    case '🎯': return CupertinoIcons.scope;
-    case '🔥': return CupertinoIcons.flame;
-    case '⚡': return CupertinoIcons.bolt_fill;
-    case '💬': return CupertinoIcons.chat_bubble_2;
-    case '🏆': return CupertinoIcons.rosette;
-    case '⬆️': return CupertinoIcons.arrow_up_circle_fill;
-    // 心情
-    case '😄': return CupertinoIcons.hand_thumbsup_fill;
-    case '🙂': return CupertinoIcons.hand_thumbsup;
-    case '😌': return CupertinoIcons.heart;
-    case '😢': return CupertinoIcons.drop;
-    case '😭': return CupertinoIcons.cloud_rain;
-    // 道具/零食
-    case '🍪': return CupertinoIcons.gift;
-    case '🏠': return CupertinoIcons.house_fill;
-    case '👗': return CupertinoIcons.checkmark_seal;
-    case '🛒': return CupertinoIcons.cart;
-    case '💬': return CupertinoIcons.chat_bubble_2;
-    case '🪙': return CupertinoIcons.bitcoin_circle;
-    default: return CupertinoIcons.circle;
-  }
-}
 
 /// 宠物主页 — 淘宝AI助手卡片风格
 /// 顶部标题 + 宠物大卡片（站立平台光效） + 底部横向滑动互动按钮
