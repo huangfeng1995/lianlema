@@ -5,7 +5,7 @@ import '../models/report_models.dart';
 import '../utils/storage_service.dart';
 import '../utils/report_service.dart';
 import '../utils/xp_service.dart';
-import 'home_screen.dart';
+import 'main_screen.dart';
 
 /// 每月复盘流程（4步骤）
 /// 触发条件：月度Boss击败 或 每月25日-5日打开App
@@ -188,7 +188,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
                   onPressed: () {
                     Navigator.of(ctx).pop();
                     Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const HomeScreen()),
+                      MaterialPageRoute(builder: (_) => const MainScreen()),
                       (route) => false,
                     );
                   },
@@ -353,9 +353,9 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
             children: [
               GestureDetector(
                 onTap: () {
-                  // 直接返回首页，避免黑屏
+                  // 返回首页（回到包含底部导航栏的 MainScreen）
                   Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const HomeScreen()),
+                    MaterialPageRoute(builder: (_) => const MainScreen()),
                     (route) => false,
                   );
                 },
