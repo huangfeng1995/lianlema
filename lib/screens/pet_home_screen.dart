@@ -179,7 +179,8 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
           if (_showAllocatePanel && _personality != null)
             _buildAllocatePanel(),
         ],
-      );
+      ),
+    );
   }
 
   // ====== 宠物大卡片（站立平台光效）======
