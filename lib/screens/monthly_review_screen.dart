@@ -187,6 +187,11 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.of(ctx).pop();
+                    // 尝试多种返回方式
+                    if (Navigator.of(context).canPop()) {
+                      Navigator.of(context).pop();
+                      return;
+                    }
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(builder: (_) => const MainScreen()),
                       (route) => false,
@@ -353,7 +358,14 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
             children: [
               GestureDetector(
                 onTap: () {
-                  // 返回首页（回到包含底部导航栏的 MainScreen）
+                  // 尝试多种返回方式
+                  // 方式1：直接 pop（最保守）
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                    return;
+                  }
+
+                  // 方式2：pushAndRemoveUntil 到 MainScreen
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const MainScreen()),
                     (route) => false,
