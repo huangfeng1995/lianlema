@@ -170,7 +170,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
+                    color: color.withOpacity( 0.1),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(icon, color: color, size: 26),
@@ -229,7 +229,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.1),
+                        color: color.withOpacity( 0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -251,7 +251,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: progress.clamp(0.0, 1.0),
-                  backgroundColor: AppColors.textLight.withValues(alpha: 0.15),
+                  backgroundColor: AppColors.textLight.withOpacity( 0.15),
                   valueColor: AlwaysStoppedAnimation<Color>(color),
                   minHeight: 6,
                 ),

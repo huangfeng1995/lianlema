@@ -32,7 +32,7 @@ class _ConfettiPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     for (final p in particles) {
       final paint = Paint()
-        ..color = p.color.withValues(alpha: p.opacity.clamp(0.0, 1.0))
+        ..color = p.color.withOpacity( p.opacity.clamp(0.0, 1.0))
         ..style = PaintingStyle.fill;
 
       canvas.save();

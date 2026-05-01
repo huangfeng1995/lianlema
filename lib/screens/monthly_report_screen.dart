@@ -85,7 +85,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                   '${report.year}年${report.month}月',
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.85),
+                    color: Colors.white.withOpacity( 0.85),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -144,7 +144,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
           label,
           style: TextStyle(
             fontSize: 12,
-            color: Colors.white.withValues(alpha: 0.8),
+            color: Colors.white.withOpacity( 0.8),
           ),
         ),
       ],
@@ -172,8 +172,8 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                 height: 44,
                 decoration: BoxDecoration(
                   color: isBossDefeated
-                      ? AppColors.success.withValues(alpha: 0.1)
-                      : const Color(0xFFFF9500).withValues(alpha: 0.1),
+                      ? AppColors.success.withOpacity( 0.1)
+                      : const Color(0xFFFF9500).withOpacity( 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
@@ -212,8 +212,8 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: isBossDefeated
-                      ? AppColors.success.withValues(alpha: 0.1)
-                      : const Color(0xFFFF9500).withValues(alpha: 0.1),
+                      ? AppColors.success.withOpacity( 0.1)
+                      : const Color(0xFFFF9500).withOpacity( 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -233,7 +233,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: hpPercent.clamp(0.0, 1.0),
-                backgroundColor: AppColors.textLight.withValues(alpha: 0.15),
+                backgroundColor: AppColors.textLight.withOpacity( 0.15),
                 valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF9500)),
                 minHeight: 10,
               ),
@@ -286,7 +286,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                       child: CircularProgressIndicator(
                         value: attendance.clamp(0.0, 1.0),
                         strokeWidth: 8,
-                        backgroundColor: AppColors.textLight.withValues(alpha: 0.15),
+                        backgroundColor: AppColors.textLight.withOpacity( 0.15),
                         valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF9500)),
                       ),
                     ),
@@ -369,7 +369,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color: AppColors.primary.withOpacity( 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -416,13 +416,13 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.primary.withValues(alpha: 0.1),
-            AppColors.primaryLight.withValues(alpha: 0.05),
+            AppColors.primary.withOpacity( 0.1),
+            AppColors.primaryLight.withOpacity( 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.2),
+          color: AppColors.primary.withOpacity( 0.2),
         ),
       ),
       child: Row(
@@ -431,7 +431,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.15),
+              color: AppColors.primary.withOpacity( 0.15),
               borderRadius: BorderRadius.circular(14),
             ),
             child: const Center(

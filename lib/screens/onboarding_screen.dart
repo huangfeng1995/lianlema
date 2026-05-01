@@ -380,7 +380,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.06),
+                  color: Colors.black.withOpacity( 0.06),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.arrow_back_ios, size: 16),
@@ -399,7 +399,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   decoration: BoxDecoration(
                     color: index == _currentPage
                         ? AppColors.primary
-                        : AppColors.primary.withValues(alpha: 0.3),
+                        : AppColors.primary.withOpacity( 0.3),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 );
@@ -436,7 +436,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   _nextPage();
                 },
           style: ElevatedButton.styleFrom(
-            backgroundColor: canProceed ? AppColors.primary : AppColors.textLight.withValues(alpha: 0.3),
+            backgroundColor: canProceed ? AppColors.primary : AppColors.textLight.withOpacity( 0.3),
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -485,7 +485,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               border: Border.all(
                 color: _antiVision.isNotEmpty
                     ? AppColors.primary
-                    : AppColors.textLight.withValues(alpha: 0.3),
+                    : AppColors.textLight.withOpacity( 0.3),
               ),
             ),
             child: TextField(
@@ -524,7 +524,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               border: Border.all(
                 color: _vision.isNotEmpty
                     ? AppColors.primary
-                    : AppColors.textLight.withValues(alpha: 0.3),
+                    : AppColors.textLight.withOpacity( 0.3),
               ),
             ),
             child: TextField(
@@ -568,7 +568,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             '这一年结束后，你在哪方面想有突破？',
             style: TextStyle(
               fontSize: 14,
-              color: AppColors.textSecondary.withValues(alpha: 0.7),
+              color: AppColors.textSecondary.withOpacity( 0.7),
               height: 1.5,
             ),
           ),
@@ -586,7 +586,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     height: 28,
                     margin: const EdgeInsets.only(top: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF6B35).withValues(alpha: 0.1),
+                      color: const Color(0xFFFF6B35).withOpacity( 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Center(
@@ -607,19 +607,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       decoration: InputDecoration(
                         hintText: '例如：读完24本书，跑完半程马拉松...',
                         hintStyle: TextStyle(
-                          color: AppColors.textLight.withValues(alpha: 0.6),
+                          color: AppColors.textLight.withOpacity( 0.6),
                           fontSize: 13,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide(
-                            color: AppColors.textLight.withValues(alpha: 0.2),
+                            color: AppColors.textLight.withOpacity( 0.2),
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide(
-                            color: AppColors.textLight.withValues(alpha: 0.2),
+                            color: AppColors.textLight.withOpacity( 0.2),
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
@@ -647,7 +647,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         child: Icon(
                           Icons.close,
                           size: 18,
-                          color: AppColors.textLight.withValues(alpha: 0.4),
+                          color: AppColors.textLight.withOpacity( 0.4),
                         ),
                       ),
                     ),
@@ -684,7 +684,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFFFF6B35).withValues(alpha: 0.1),
+                color: const Color(0xFFFF6B35).withOpacity( 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Row(
@@ -708,7 +708,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             '你最想突破的领域是什么？这一年你想成为什么样的自己？',
             style: TextStyle(
               fontSize: 12,
-              color: AppColors.textSecondary.withValues(alpha: 0.55),
+              color: AppColors.textSecondary.withOpacity( 0.55),
               fontStyle: FontStyle.italic,
               height: 1.6,
             ),
@@ -745,7 +745,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             '基于你的年度目标，建议当月挑战如下',
             style: TextStyle(
               fontSize: 14,
-              color: AppColors.textSecondary.withValues(alpha: 0.7),
+              color: AppColors.textSecondary.withOpacity( 0.7),
             ),
           ),
           const SizedBox(height: 24),
@@ -754,10 +754,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFFF6B35).withValues(alpha: 0.06),
+              color: const Color(0xFFFF6B35).withOpacity( 0.06),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: const Color(0xFFFF6B35).withValues(alpha: 0.15),
+                color: const Color(0xFFFF6B35).withOpacity( 0.15),
               ),
             ),
             child: Row(
@@ -766,7 +766,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 Icon(
                   Icons.format_quote,
                   size: 18,
-                  color: const Color(0xFFFF6B35).withValues(alpha: 0.5),
+                  color: const Color(0xFFFF6B35).withOpacity( 0.5),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -774,7 +774,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     '年度目标：${_yearGoals.where((g) => g.isNotEmpty).join('；')}',
                     style: TextStyle(
                       fontSize: 13,
-                      color: AppColors.textPrimary.withValues(alpha: 0.75),
+                      color: AppColors.textPrimary.withOpacity( 0.75),
                       fontStyle: FontStyle.italic,
                       height: 1.5,
                     ),
@@ -792,7 +792,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               decoration: BoxDecoration(
                 color: AppColors.cardBackground,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.textLight.withValues(alpha: 0.1)),
+                border: Border.all(color: AppColors.textLight.withOpacity( 0.1)),
               ),
               child: Row(
                 children: [
@@ -801,7 +801,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: const Color(0xFFFF6B35).withValues(alpha: 0.7),
+                      color: const Color(0xFFFF6B35).withOpacity( 0.7),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -810,7 +810,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       '宠物正在帮你拆解目标...',
                       style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.textSecondary.withValues(alpha: 0.7),
+                        color: AppColors.textSecondary.withOpacity( 0.7),
                       ),
                     ),
                   ),
@@ -820,7 +820,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       '跳过',
                       style: TextStyle(
                         fontSize: 13,
-                        color: const Color(0xFFFF6B35).withValues(alpha: 0.7),
+                        color: const Color(0xFFFF6B35).withOpacity( 0.7),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -838,7 +838,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary.withValues(alpha: 0.6),
+                color: AppColors.textSecondary.withOpacity( 0.6),
                 letterSpacing: 2,
               ),
             ),
@@ -858,8 +858,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       gradient: isSelected
                           ? LinearGradient(
                               colors: [
-                                const Color(0xFFFF6B35).withValues(alpha: 0.12),
-                                const Color(0xFFE85D2D).withValues(alpha: 0.06),
+                                const Color(0xFFFF6B35).withOpacity( 0.12),
+                                const Color(0xFFE85D2D).withOpacity( 0.06),
                               ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
@@ -870,7 +870,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       border: Border.all(
                         color: isSelected
                             ? const Color(0xFFFF6B35)
-                            : AppColors.textLight.withValues(alpha: 0.15),
+                            : AppColors.textLight.withOpacity( 0.15),
                         width: isSelected ? 1.5 : 1,
                       ),
                     ),
@@ -882,7 +882,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           decoration: BoxDecoration(
                             color: isSelected
                                 ? const Color(0xFFFF6B35)
-                                : AppColors.textLight.withValues(alpha: 0.1),
+                                : AppColors.textLight.withOpacity( 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
@@ -890,7 +890,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             size: 16,
                             color: isSelected
                                 ? Colors.white
-                                : AppColors.textLight.withValues(alpha: 0.3),
+                                : AppColors.textLight.withOpacity( 0.3),
                           ),
                         ),
                         const SizedBox(width: 14),
@@ -902,7 +902,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               fontWeight: FontWeight.w500,
                               color: isSelected
                                   ? const Color(0xFFE85D2D)
-                                  : AppColors.textPrimary.withValues(alpha: 0.8),
+                                  : AppColors.textPrimary.withOpacity( 0.8),
                             ),
                           ),
                         ),
@@ -910,7 +910,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           Icon(
                             Icons.chevron_right,
                             size: 18,
-                            color: const Color(0xFFFF6B35).withValues(alpha: 0.6),
+                            color: const Color(0xFFFF6B35).withOpacity( 0.6),
                           ),
                       ],
                     ),
@@ -925,7 +925,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Row(
             children: [
               Expanded(
-                child: Container(height: 1, color: AppColors.textLight.withValues(alpha: 0.1)),
+                child: Container(height: 1, color: AppColors.textLight.withOpacity( 0.1)),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -933,12 +933,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   '自定义',
                   style: TextStyle(
                     fontSize: 11,
-                    color: AppColors.textSecondary.withValues(alpha: 0.45),
+                    color: AppColors.textSecondary.withOpacity( 0.45),
                   ),
                 ),
               ),
               Expanded(
-                child: Container(height: 1, color: AppColors.textLight.withValues(alpha: 0.1)),
+                child: Container(height: 1, color: AppColors.textLight.withOpacity( 0.1)),
               ),
             ],
           ),
@@ -952,8 +952,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: _customBosses.any((b) => b.isNotEmpty)
-                    ? AppColors.primary.withValues(alpha: 0.4)
-                    : AppColors.textLight.withValues(alpha: 0.15),
+                    ? AppColors.primary.withOpacity( 0.4)
+                    : AppColors.textLight.withOpacity( 0.15),
                 width: _customBosses.any((b) => b.isNotEmpty) ? 1.5 : 1,
               ),
             ),
@@ -965,7 +965,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     Icon(
                       Icons.edit_note,
                       size: 18,
-                      color: AppColors.textSecondary.withValues(alpha: 0.6),
+                      color: AppColors.textSecondary.withOpacity( 0.6),
                     ),
                     const SizedBox(width: 8),
                     Text(
@@ -973,7 +973,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary.withValues(alpha: 0.75),
+                        color: AppColors.textPrimary.withOpacity( 0.75),
                       ),
                     ),
                     const Spacer(),
@@ -986,7 +986,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFF6B35).withValues(alpha: 0.1),
+                          color: const Color(0xFFFF6B35).withOpacity( 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Row(
@@ -1016,7 +1016,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           height: 28,
                           margin: const EdgeInsets.only(top: 8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFF6B35).withValues(alpha: 0.1),
+                            color: const Color(0xFFFF6B35).withOpacity( 0.1),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Center(
@@ -1036,17 +1036,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             maxLines: 2,
                             decoration: InputDecoration(
                               hintText: '例如：每天跑步30分钟',
-                              hintStyle: TextStyle(color: AppColors.textLight.withValues(alpha: 0.6), fontSize: 13),
+                              hintStyle: TextStyle(color: AppColors.textLight.withOpacity( 0.6), fontSize: 13),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10),
                                 borderSide: BorderSide(
-                                  color: AppColors.textLight.withValues(alpha: 0.2),
+                                  color: AppColors.textLight.withOpacity( 0.2),
                                 ),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10),
                                 borderSide: BorderSide(
-                                  color: AppColors.textLight.withValues(alpha: 0.2),
+                                  color: AppColors.textLight.withOpacity( 0.2),
                                 ),
                               ),
                               focusedBorder: OutlineInputBorder(
@@ -1075,7 +1075,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               child: Icon(
                                 Icons.close,
                                 size: 18,
-                                color: AppColors.textLight.withValues(alpha: 0.4),
+                                color: AppColors.textLight.withOpacity( 0.4),
                               ),
                             ),
                           ),
@@ -1090,7 +1090,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   '好目标的标准：具体可衡量、一个月内能完成、有挑战但不至于不可能',
                   style: TextStyle(
                     fontSize: 11,
-                    color: AppColors.textSecondary.withValues(alpha: 0.5),
+                    color: AppColors.textSecondary.withOpacity( 0.5),
                     fontStyle: FontStyle.italic,
                     height: 1.5,
                   ),
@@ -1153,7 +1153,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFFF6B5B).withValues(alpha: 0.3),
+                      color: const Color(0xFFFF6B5B).withOpacity( 0.3),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -1221,12 +1221,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                AppColors.primary.withValues(alpha: 0.15),
-                AppColors.primaryLight.withValues(alpha: 0.08),
+                AppColors.primary.withOpacity( 0.15),
+                AppColors.primaryLight.withOpacity( 0.08),
               ],
             ),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+            border: Border.all(color: AppColors.primary.withOpacity( 0.3)),
           ),
           child: Row(
             children: [
@@ -1252,7 +1252,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFFF8E53).withValues(alpha: 0.08),
+              color: const Color(0xFFFF8E53).withOpacity( 0.08),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -1294,7 +1294,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   height: 28,
                   margin: const EdgeInsets.only(top: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF8E53).withValues(alpha: 0.15),
+                    color: const Color(0xFFFF8E53).withOpacity( 0.15),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Center(
@@ -1316,16 +1316,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     decoration: InputDecoration(
                       hintText: '例如：每天跑步30分钟',
                       hintStyle: TextStyle(
-                        color: AppColors.textLight.withValues(alpha: 0.6),
+                        color: AppColors.textLight.withOpacity( 0.6),
                         fontSize: 13,
                       ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.2), width: 1.5),
+                        borderSide: BorderSide(color: AppColors.textLight.withOpacity( 0.2), width: 1.5),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.2), width: 1.5),
+                        borderSide: BorderSide(color: AppColors.textLight.withOpacity( 0.2), width: 1.5),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -1350,7 +1350,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       child: Icon(
                         Icons.close,
                         size: 18,
-                        color: AppColors.textLight.withValues(alpha: 0.5),
+                        color: AppColors.textLight.withOpacity( 0.5),
                       ),
                     ),
                   ),
@@ -1369,10 +1369,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFFFF8E53).withValues(alpha: 0.08),
+                color: const Color(0xFFFF8E53).withOpacity( 0.08),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: const Color(0xFFFF8E53).withValues(alpha: 0.25),
+                  color: const Color(0xFFFF8E53).withOpacity( 0.25),
                 ),
               ),
               child: const Row(
@@ -1432,7 +1432,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       color: isSelected ? AppColors.primary : AppColors.cardBackground,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: isSelected ? AppColors.primary : AppColors.textLight.withValues(alpha: 0.3),
+                        color: isSelected ? AppColors.primary : AppColors.textLight.withOpacity( 0.3),
                       ),
                     ),
                     child: Row(
@@ -1470,7 +1470,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     border: Border.all(
                       color: _customLevers[index].isNotEmpty
                           ? AppColors.primary
-                          : AppColors.textLight.withValues(alpha: 0.3),
+                          : AppColors.textLight.withOpacity( 0.3),
                     ),
                   ),
                   child: TextField(
@@ -1514,7 +1514,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               border: Border.all(
                 color: _constraints.isNotEmpty
                     ? AppColors.primary
-                    : AppColors.textLight.withValues(alpha: 0.3),
+                    : AppColors.textLight.withOpacity( 0.3),
               ),
             ),
             child: TextField(
@@ -1587,7 +1587,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           color: isSelected ? AppColors.primary : AppColors.cardBackground,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.textLight.withValues(alpha: 0.3),
+            color: isSelected ? AppColors.primary : AppColors.textLight.withOpacity( 0.3),
           ),
         ),
         child: Column(
@@ -1631,7 +1631,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
+              color: AppColors.primary.withOpacity( 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -1646,7 +1646,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.12),
+                  color: iconColor.withOpacity( 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, size: 22, color: iconColor),
@@ -1681,9 +1681,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.06),
+        color: AppColors.primary.withOpacity( 0.06),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+        border: Border.all(color: AppColors.primary.withOpacity( 0.15)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

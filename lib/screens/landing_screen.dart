@@ -166,7 +166,7 @@ class _NewUserViewState extends State<_NewUserView>
                           borderRadius: BorderRadius.circular(4),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF2E1F0E).withValues(alpha: 0.1),
+                              color: const Color(0xFF2E1F0E).withOpacity( 0.1),
                               blurRadius: 24,
                               offset: const Offset(0, 8),
                             ),
@@ -216,7 +216,7 @@ class _NewUserViewState extends State<_NewUserView>
                                       _letterDate,
                                       style: TextStyle(
                                         fontSize: 11,
-                                        color: AppColors.textSecondary.withValues(alpha: 0.5),
+                                        color: AppColors.textSecondary.withOpacity( 0.5),
                                         letterSpacing: 0.5,
                                       ),
                                     ),
@@ -260,7 +260,7 @@ class _GreetingBlock extends StatelessWidget {
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary.withValues(alpha: 0.9),
+            color: AppColors.textPrimary.withOpacity( 0.9),
             letterSpacing: 0.5,
           ),
         ),
@@ -269,7 +269,7 @@ class _GreetingBlock extends StatelessWidget {
           '我是你的 AI 伙伴，等你很久了。',
           style: TextStyle(
             fontSize: 14,
-            color: AppColors.textSecondary.withValues(alpha: 0.55),
+            color: AppColors.textSecondary.withOpacity( 0.55),
             fontStyle: FontStyle.italic,
             height: 1.6,
           ),
@@ -301,7 +301,7 @@ class _Divider extends StatelessWidget {
         Expanded(
           child: Container(
             height: 1,
-            color: AppColors.textSecondary.withValues(alpha: 0.1),
+            color: AppColors.textSecondary.withOpacity( 0.1),
           ),
         ),
       ],
@@ -320,7 +320,7 @@ class _QuoteBlock extends StatelessWidget {
       style: TextStyle(
         fontSize: 15,
         height: 2.2,
-        color: AppColors.textPrimary.withValues(alpha: 0.8),
+        color: AppColors.textPrimary.withOpacity( 0.8),
         fontStyle: FontStyle.italic,
       ),
     );
@@ -343,7 +343,7 @@ class _PlanBlock extends StatelessWidget {
           style: TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w600,
-            color: const Color(0xFFFF6B35).withValues(alpha: 0.7),
+            color: const Color(0xFFFF6B35).withOpacity( 0.7),
             letterSpacing: 2,
           ),
         ),
@@ -352,7 +352,7 @@ class _PlanBlock extends StatelessWidget {
           question,
           style: TextStyle(
             fontSize: 15,
-            color: AppColors.textPrimary.withValues(alpha: 0.85),
+            color: AppColors.textPrimary.withOpacity( 0.85),
             fontWeight: FontWeight.w500,
             height: 1.5,
           ),
@@ -372,7 +372,7 @@ class _ClosingLine extends StatelessWidget {
       '想好了的话，我们就出发吧。',
       style: TextStyle(
         fontSize: 14,
-        color: AppColors.textSecondary.withValues(alpha: 0.55),
+        color: AppColors.textSecondary.withOpacity( 0.55),
         fontStyle: FontStyle.italic,
       ),
     );
@@ -431,7 +431,7 @@ class _StartButtonState extends State<_StartButton> {
               ? []
               : [
                   BoxShadow(
-                    color: const Color(0xFFFF6B35).withValues(alpha: 0.3),
+                    color: const Color(0xFFFF6B35).withOpacity( 0.3),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -523,8 +523,8 @@ class _FlameLogo extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  AppColors.primary.withValues(alpha: 0.15),
-                  AppColors.primary.withValues(alpha: 0),
+                  AppColors.primary.withOpacity( 0.15),
+                  AppColors.primary.withOpacity( 0),
                 ],
               ),
             ),
@@ -541,7 +541,7 @@ class _FlameLogo extends StatelessWidget {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.4),
+                  color: AppColors.primary.withOpacity( 0.4),
                   blurRadius: size * 0.28,
                   spreadRadius: 2,
                 ),
@@ -584,14 +584,14 @@ class _EnterButtonState extends State<_EnterButton> {
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
           color: _pressed
-              ? AppColors.primary.withValues(alpha: 0.85)
+              ? AppColors.primary.withOpacity( 0.85)
               : AppColors.primary,
           borderRadius: BorderRadius.circular(16),
           boxShadow: _pressed
               ? []
               : [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.3),
+                    color: AppColors.primary.withOpacity( 0.3),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),

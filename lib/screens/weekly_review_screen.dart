@@ -200,7 +200,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.06),
+                    color: Colors.black.withOpacity( 0.06),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.close, size: 18),
@@ -227,7 +227,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
                   decoration: BoxDecoration(
                     color: index <= _currentStep
                         ? AppColors.primary
-                        : AppColors.primary.withValues(alpha: 0.3),
+                        : AppColors.primary.withOpacity( 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -294,7 +294,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
+              color: AppColors.primary.withOpacity( 0.08),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -306,7 +306,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
                     '每一个小行动，都在塑造更大的自己',
                     style: TextStyle(
                       fontSize: 13,
-                      color: AppColors.primary.withValues(alpha: 0.8),
+                      color: AppColors.primary.withOpacity( 0.8),
                     ),
                   ),
                 ),
@@ -325,7 +325,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppColors.textLight.withValues(alpha: 0.2),
+          color: AppColors.textLight.withOpacity( 0.2),
         ),
       ),
       child: Row(
@@ -386,7 +386,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
             decoration: BoxDecoration(
               color: AppColors.cardBackground,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              border: Border.all(color: AppColors.primary.withOpacity( 0.3)),
             ),
             child: TextField(
               maxLines: 4,
@@ -434,7 +434,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
             decoration: BoxDecoration(
               color: AppColors.cardBackground,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              border: Border.all(color: AppColors.primary.withOpacity( 0.3)),
             ),
             child: TextField(
               maxLines: 4,

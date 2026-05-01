@@ -112,13 +112,13 @@ class _YearlyReportScreenState extends State<YearlyReportScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppColors.primary.withValues(alpha: 0.15),
-                    AppColors.primaryLight.withValues(alpha: 0.08),
+                    AppColors.primary.withOpacity( 0.15),
+                    AppColors.primaryLight.withOpacity( 0.08),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.3),
+                  color: AppColors.primary.withOpacity( 0.3),
                 ),
               ),
               child: Row(
@@ -127,7 +127,7 @@ class _YearlyReportScreenState extends State<YearlyReportScreen> {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.15),
+                      color: AppColors.primary.withOpacity( 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Center(
@@ -183,7 +183,7 @@ class _YearlyReportScreenState extends State<YearlyReportScreen> {
                   '${report.year}年度报告',
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.85),
+                    color: Colors.white.withOpacity( 0.85),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -202,7 +202,7 @@ class _YearlyReportScreenState extends State<YearlyReportScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.25),
+                        color: Colors.white.withOpacity( 0.25),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -283,7 +283,7 @@ class _YearlyReportScreenState extends State<YearlyReportScreen> {
                             decoration: BoxDecoration(
                               color: data.hp >= data.total
                                   ? AppColors.success
-                                  : const Color(0xFF34C759).withValues(alpha: 0.6),
+                                  : const Color(0xFF34C759).withOpacity( 0.6),
                               borderRadius: const BorderRadius.vertical(
                                 top: Radius.circular(4),
                               ),
@@ -311,7 +311,7 @@ class _YearlyReportScreenState extends State<YearlyReportScreen> {
             children: [
               _buildLegendItem('全部完成', AppColors.success),
               const SizedBox(width: 20),
-              _buildLegendItem('部分完成', const Color(0xFF34C759).withValues(alpha: 0.6)),
+              _buildLegendItem('部分完成', const Color(0xFF34C759).withOpacity( 0.6)),
             ],
           ),
           const SizedBox(height: 24),
@@ -441,7 +441,7 @@ class _YearlyReportScreenState extends State<YearlyReportScreen> {
           label,
           style: TextStyle(
             fontSize: 12,
-            color: Colors.white.withValues(alpha: 0.8),
+            color: Colors.white.withOpacity( 0.8),
           ),
         ),
       ],

@@ -156,9 +156,9 @@ class _BossVictoryCelebrationState extends State<BossVictoryCelebration>
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Colors.black.withValues(alpha: 0.95),
-                        const Color(0xFF2C0700).withValues(alpha: 0.9),
-                        Colors.black.withValues(alpha: 0.95),
+                        Colors.black.withOpacity( 0.95),
+                        const Color(0xFF2C0700).withOpacity( 0.9),
+                        Colors.black.withOpacity( 0.95),
                       ],
                     ),
                   ),
@@ -210,8 +210,8 @@ class _BossVictoryCelebrationState extends State<BossVictoryCelebration>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColors.primary.withValues(alpha: 0.6),
-                    AppColors.primary.withValues(alpha: 0.0),
+                    AppColors.primary.withOpacity( 0.6),
+                    AppColors.primary.withOpacity( 0.0),
                   ],
                 ),
               ),
@@ -253,10 +253,10 @@ class _BossVictoryCelebrationState extends State<BossVictoryCelebration>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.2),
+            color: AppColors.primary.withOpacity( 0.2),
             borderRadius: BorderRadius.circular(30),
             border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.5),
+              color: AppColors.primary.withOpacity( 0.5),
               width: 1.5,
             ),
           ),
@@ -275,7 +275,7 @@ class _BossVictoryCelebrationState extends State<BossVictoryCelebration>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
+            color: Colors.white.withOpacity( 0.1),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Text(
@@ -310,7 +310,7 @@ class _BossVictoryCelebrationState extends State<BossVictoryCelebration>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFD700).withValues(alpha: 0.15),
+            color: const Color(0xFFFFD700).withOpacity( 0.15),
             borderRadius: BorderRadius.circular(30),
           ),
           child: const Text(
@@ -360,7 +360,7 @@ class _FireParticlePainter extends CustomPainter {
 
       final opacity = (1.0 - (progress - 0.1).clamp(0.0, 1.0) * 1.2).clamp(0.0, 1.0);
       final paint = Paint()
-        ..color = p.color.withValues(alpha: opacity)
+        ..color = p.color.withOpacity( opacity)
         ..style = PaintingStyle.fill;
 
       canvas.drawCircle(Offset(x, y), p.size * (1.0 - progress * 0.7), paint);
@@ -409,7 +409,7 @@ class _SparkleParticlePainter extends CustomPainter {
 
       final opacity = (1.0 - adjustedProgress).clamp(0.0, 1.0);
       final paint = Paint()
-        ..color = p.color.withValues(alpha: opacity)
+        ..color = p.color.withOpacity( opacity)
         ..style = PaintingStyle.fill;
 
       // 画菱形闪光

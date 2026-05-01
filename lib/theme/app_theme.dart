@@ -5,20 +5,20 @@ class AppColors {
   static const primary = Color(0xFFE85A1C);  // 炭火橙
   static const primaryLight = Color(0xFFFF8E72);
   static const secondary = Color(0xFF8B7355);  // 暖灰
-  
+
   // 背景
   static const background = Color(0xFFF5F0EB);  // 宣纸米白
   static const cardBackground = Color(0xFFFFFFFF);
-  
+
   // 文字
   static const textPrimary = Color(0xFF1A1A1A);  // 深炭色
   static const textSecondary = Color(0xFF8B7355);  // 暖灰
   static const textLight = Color(0xFF999999);
-  
+
   // 其他
   static const success = Color(0xFF4CAF50);
   static const streak = Color(0xFFFF6B5B);
-  
+
   // 暗色模式
   static const darkBackground = Color(0xFF0A0A0A);
   static const darkCard = Color(0xFF1C1C1E);
@@ -31,9 +31,9 @@ class AppTheme {
   // ====== 通用阴影 ======
   static List<BoxShadow> cardShadow({bool isDark = false}) => [
     BoxShadow(
-      color: isDark 
-          ? Colors.black.withValues(alpha: 0.3)
-          : AppColors.primary.withValues(alpha: 0.08),
+      color: isDark
+          ? Colors.black.withOpacity(0.3)
+          : AppColors.primary.withOpacity(0.08),
       blurRadius: 12,
       offset: const Offset(0, 4),
     ),
@@ -41,7 +41,7 @@ class AppTheme {
 
   static List<BoxShadow> cardShadowLight = [
     BoxShadow(
-      color: AppColors.primary.withValues(alpha: 0.08),
+      color: AppColors.primary.withOpacity(0.08),
       blurRadius: 12,
       offset: const Offset(0, 4),
     ),
@@ -49,7 +49,7 @@ class AppTheme {
 
   static List<BoxShadow> cardShadowDark = [
     BoxShadow(
-      color: Colors.black.withValues(alpha: 0.3),
+      color: Colors.black.withOpacity(0.3),
       blurRadius: 12,
       offset: const Offset(0, 4),
     ),
@@ -140,8 +140,8 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.35),
-          disabledForegroundColor: Colors.white.withValues(alpha: 0.6),
+          disabledBackgroundColor: AppColors.primary.withOpacity( 0.35),
+          disabledForegroundColor: Colors.white.withOpacity( 0.6),
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
@@ -232,8 +232,8 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.35),
-          disabledForegroundColor: Colors.white.withValues(alpha: 0.6),
+          disabledBackgroundColor: AppColors.primary.withOpacity( 0.35),
+          disabledForegroundColor: Colors.white.withOpacity( 0.6),
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(

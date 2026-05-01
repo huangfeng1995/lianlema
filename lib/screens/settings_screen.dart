@@ -217,7 +217,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
+                    color: AppColors.primary.withOpacity( 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Center(
@@ -319,7 +319,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
+            color: AppColors.primary.withOpacity( 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: const Center(
@@ -364,7 +364,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
+            color: AppColors.primary.withOpacity( 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Center(
@@ -408,7 +408,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
+            color: AppColors.primary.withOpacity( 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Center(
@@ -442,7 +442,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: Colors.black.withOpacity( 0.04),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -523,7 +523,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(
-                    color: AppColors.textLight.withValues(alpha: 0.2),
+                    color: AppColors.textLight.withOpacity( 0.2),
                   ),
                 ),
               ),
@@ -611,7 +611,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
+                color: Colors.red.withOpacity( 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
@@ -741,8 +741,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           height: 36,
           decoration: BoxDecoration(
             color: hasModel
-                ? Colors.green.withValues(alpha: 0.1)
-                : AppColors.primary.withValues(alpha: 0.1),
+                ? Colors.green.withOpacity( 0.1)
+                : AppColors.primary.withOpacity( 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Center(

@@ -188,7 +188,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
       isLocked: false,
       canEdit: _isEditing,
       onEditChanged: (v) => _antiVision = v,
-      borderColor: AppColors.textLight.withValues(alpha: 0.3),
+      borderColor: AppColors.textLight.withOpacity( 0.3),
       hintText: '描述你最不想成为的人、最不想过的生活',
     );
   }
@@ -204,7 +204,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
       isLocked: false,
       canEdit: _isEditing,
       onEditChanged: (v) => _vision = v,
-      borderColor: AppColors.primary.withValues(alpha: 0.3),
+      borderColor: AppColors.primary.withOpacity( 0.3),
       hintText: '描述你理想中的一年后的生活',
     );
   }
@@ -220,7 +220,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
       isLocked: false,
       canEdit: _isEditing,
       onEditChanged: (v) => _yearGoal = v,
-      borderColor: AppColors.primary.withValues(alpha: 0.3),
+      borderColor: AppColors.primary.withOpacity( 0.3),
     );
   }
 
@@ -236,7 +236,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
       canEdit: _isEditing,
       onEditChanged: (v) => _annualIdentity = v,
       hintText: '例如：早起读书、持续运动、写作',
-      borderColor: AppColors.primary.withValues(alpha: 0.3),
+      borderColor: AppColors.primary.withOpacity( 0.3),
     );
   }
 
@@ -259,7 +259,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.3),
+          color: AppColors.primary.withOpacity( 0.3),
         ),
       ),
       child: Column(
@@ -271,7 +271,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color: AppColors.primary.withOpacity( 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Center(
@@ -307,7 +307,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.05),
+              color: AppColors.primary.withOpacity( 0.05),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Column(
@@ -325,7 +325,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: total > 0 ? hp / total : 0,
-                    backgroundColor: AppColors.textLight.withValues(alpha: 0.2),
+                    backgroundColor: AppColors.textLight.withOpacity( 0.2),
                     valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
                     minHeight: 8,
                   ),
@@ -341,7 +341,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color: AppColors.primary.withOpacity( 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Center(
@@ -390,7 +390,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
             const SizedBox(height: 8),
             Text(
               '保存后可点击「AI智能拆解」生成每日行动',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary.withValues(alpha: 0.7)),
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary.withOpacity( 0.7)),
             ),
           ],
         ),
@@ -528,7 +528,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.3),
+          color: AppColors.primary.withOpacity( 0.3),
         ),
       ),
       child: Column(
@@ -540,7 +540,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color: AppColors.primary.withOpacity( 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Center(
@@ -590,8 +590,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
                       height: 24,
                       decoration: BoxDecoration(
                         color: hasContent
-                            ? AppColors.primary.withValues(alpha: 0.1)
-                            : AppColors.textLight.withValues(alpha: 0.1),
+                            ? AppColors.primary.withOpacity( 0.1)
+                            : AppColors.textLight.withOpacity( 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Center(
@@ -692,13 +692,13 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      AppColors.primary.withValues(alpha: 0.1),
-                      const Color(0xFFFF6B35).withValues(alpha: 0.1),
+                      AppColors.primary.withOpacity( 0.1),
+                      const Color(0xFFFF6B35).withOpacity( 0.1),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: const Color(0xFFFF6B35).withValues(alpha: 0.3),
+                    color: const Color(0xFFFF6B35).withOpacity( 0.3),
                   ),
                 ),
                 child: Row(
@@ -742,7 +742,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
       isLocked: false,
       canEdit: _isEditing,
       onEditChanged: (v) => _constraints = v,
-      borderColor: AppColors.textLight.withValues(alpha: 0.3),
+      borderColor: AppColors.textLight.withOpacity( 0.3),
       hintText: '哪些原则是你绝对不能打破的？',
     );
   }
@@ -766,7 +766,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: borderColor ?? AppColors.primary.withValues(alpha: 0.3),
+          color: borderColor ?? AppColors.primary.withOpacity( 0.3),
         ),
       ),
       child: Column(
@@ -778,7 +778,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.1),
+                  color: iconColor.withOpacity( 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Center(
@@ -812,7 +812,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.textLight.withValues(alpha: 0.1),
+                    color: AppColors.textLight.withOpacity( 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
@@ -901,7 +901,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
         decoration: BoxDecoration(
           color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+          border: Border.all(color: AppColors.primary.withOpacity( 0.3)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -196,7 +196,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.08),
+            color: AppColors.primary.withOpacity( 0.08),
             blurRadius: 20,
             offset: const Offset(0, 6),
           ),
@@ -216,8 +216,8 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
                   borderRadius: BorderRadius.circular(80),
                   gradient: RadialGradient(
                     colors: [
-                      AppColors.primary.withValues(alpha: 0.25),
-                      AppColors.primary.withValues(alpha: 0.05),
+                      AppColors.primary.withOpacity( 0.25),
+                      AppColors.primary.withOpacity( 0.05),
                       Colors.transparent,
                     ],
                   ),
@@ -234,7 +234,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
                     gradient: LinearGradient(
                       colors: [
                         Colors.transparent,
-                        AppColors.primary.withValues(alpha: 0.3),
+                        AppColors.primary.withOpacity( 0.3),
                         Colors.transparent,
                       ],
                     ),
@@ -249,12 +249,12 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      AppColors.primary.withValues(alpha: 0.12),
-                      AppColors.primary.withValues(alpha: 0.04),
+                      AppColors.primary.withOpacity( 0.12),
+                      AppColors.primary.withOpacity( 0.04),
                     ],
                   ),
                   border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.2),
+                    color: AppColors.primary.withOpacity( 0.2),
                     width: 2,
                   ),
                 ),
@@ -273,7 +273,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
+                                color: Colors.black.withOpacity( 0.1),
                                 blurRadius: 4,
                               ),
                             ],
@@ -305,7 +305,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color: AppColors.primary.withOpacity( 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -326,14 +326,14 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
               decoration: BoxDecoration(
-                color: const Color(0xFF1A1A1A).withValues(alpha: 0.06),
+                color: const Color(0xFF1A1A1A).withOpacity( 0.06),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
                 _personality!.archetype,
                 style: TextStyle(
                   fontSize: 11,
-                  color: AppColors.textPrimary.withValues(alpha: 0.7),
+                  color: AppColors.textPrimary.withOpacity( 0.7),
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -362,7 +362,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accent.withValues(alpha: 0.15)),
+        border: Border.all(color: accent.withOpacity( 0.15)),
       ),
       child: Row(
         children: [
@@ -420,7 +420,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.1)),
+        border: Border.all(color: AppColors.textLight.withOpacity( 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -444,7 +444,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.15),
+                      color: AppColors.primary.withOpacity( 0.15),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: AppColors.primary, width: 1.5),
                     ),
@@ -536,7 +536,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
+                  color: AppColors.primary.withOpacity( 0.08),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -609,10 +609,10 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.textLight.withValues(alpha: 0.12)),
+          border: Border.all(color: AppColors.textLight.withOpacity( 0.12)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: Colors.black.withOpacity( 0.04),
               blurRadius: 6,
               offset: const Offset(0, 1.5),
             ),
@@ -765,7 +765,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
           });
         },
         child: Container(
-          color: Colors.black.withValues(alpha: 0.4),
+          color: Colors.black.withOpacity( 0.4),
           height: MediaQuery.of(context).size.height,
           child: Stack(
             children: [
@@ -780,7 +780,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
+                          color: Colors.black.withOpacity( 0.15),
                           blurRadius: 20,
                           offset: const Offset(0, -4),
                         ),
@@ -794,7 +794,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
                           width: 40,
                           height: 4,
                           decoration: BoxDecoration(
-                            color: AppColors.textLight.withValues(alpha: 0.3),
+                            color: AppColors.textLight.withOpacity( 0.3),
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -809,13 +809,13 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
                                   gradient: LinearGradient(
                                     colors: [
                                       AppColors.primary,
-                                      AppColors.primary.withValues(alpha: 0.7),
+                                      AppColors.primary.withOpacity( 0.7),
                                     ],
                                   ),
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: AppColors.primary.withValues(alpha: 0.3),
+                                      color: AppColors.primary.withOpacity( 0.3),
                                       blurRadius: 12,
                                       offset: const Offset(0, 4),
                                     ),
@@ -858,13 +858,13 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
                                   gradient: LinearGradient(
                                     colors: [
                                       AppColors.primary,
-                                      AppColors.primary.withValues(alpha: 0.8),
+                                      AppColors.primary.withOpacity( 0.8),
                                     ],
                                   ),
                                   borderRadius: BorderRadius.circular(20),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: AppColors.primary.withValues(alpha: 0.3),
+                                      color: AppColors.primary.withOpacity( 0.3),
                                       blurRadius: 10,
                                       offset: const Offset(0, 3),
                                     ),
@@ -910,7 +910,7 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
                         // 分隔线
                         Container(
                           height: 1,
-                          color: AppColors.textLight.withValues(alpha: 0.1),
+                          color: AppColors.textLight.withOpacity( 0.1),
                           margin: const EdgeInsets.symmetric(horizontal: 24),
                         ),
                         const SizedBox(height: 16),
@@ -1145,9 +1145,9 @@ class _SnackChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.08),
+          color: AppColors.primary.withOpacity( 0.08),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+          border: Border.all(color: AppColors.primary.withOpacity( 0.3)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1280,9 +1280,9 @@ class _ItemChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isEquipped ? AppColors.primary : AppColors.primary.withValues(alpha: 0.08),
+          color: isEquipped ? AppColors.primary : AppColors.primary.withOpacity( 0.08),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isEquipped ? AppColors.primary : AppColors.primary.withValues(alpha: 0.3)),
+          border: Border.all(color: isEquipped ? AppColors.primary : AppColors.primary.withOpacity( 0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1299,7 +1299,7 @@ class _ItemChip extends StatelessWidget {
             ),
             if (isEquipped) ...[
               const SizedBox(width: 4),
-              Icon(Icons.check_circle, size: 14, color: Colors.white.withValues(alpha: 0.8)),
+              Icon(Icons.check_circle, size: 14, color: Colors.white.withOpacity( 0.8)),
             ],
           ],
         ),
@@ -1387,7 +1387,7 @@ class _PetAdoptionDialogState extends State<_PetAdoptionDialog> {
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? AppColors.primary.withValues(alpha: 0.12)
+                            ? AppColors.primary.withOpacity( 0.12)
                             : AppColors.background,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
@@ -1491,7 +1491,7 @@ class RadarChartPainter extends CustomPainter {
 
   void _drawGrid(Canvas canvas, Offset center, double radius) {
     final paint = Paint()
-      ..color = Colors.grey.withValues(alpha: 0.2)
+      ..color = Colors.grey.withOpacity( 0.2)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
 
@@ -1527,7 +1527,7 @@ class RadarChartPainter extends CustomPainter {
     // 画填充区域
     final path = Path()..addPolygon(points, true);
     final fillPaint = Paint()
-      ..color = AppColors.primary.withValues(alpha: 0.15)
+      ..color = AppColors.primary.withOpacity( 0.15)
       ..style = PaintingStyle.fill;
     canvas.drawPath(path, fillPaint);
 
@@ -1603,9 +1603,9 @@ class _TraitAllocateTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.05),
+        color: color.withOpacity( 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
+        border: Border.all(color: color.withOpacity( 0.2), width: 1),
       ),
       child: Row(
         children: [
@@ -1623,7 +1623,7 @@ class _TraitAllocateTile extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.15),
+                        color: color.withOpacity( 0.15),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -1644,7 +1644,7 @@ class _TraitAllocateTile extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: current / 10,
                     color: color,
-                    backgroundColor: color.withValues(alpha: 0.2),
+                    backgroundColor: color.withOpacity( 0.2),
                     minHeight: 6,
                   ),
                 ),
@@ -1657,7 +1657,7 @@ class _TraitAllocateTile extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: canAdd ? color.withValues(alpha: 0.15) : AppColors.textLight.withValues(alpha: 0.1),
+                color: canAdd ? color.withOpacity( 0.15) : AppColors.textLight.withOpacity( 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -1700,10 +1700,10 @@ class _NewTraitAllocateTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.15), width: 1.5),
+        border: Border.all(color: color.withOpacity( 0.15), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: color.withValues(alpha: 0.05),
+            color: color.withOpacity( 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1714,7 +1714,7 @@ class _NewTraitAllocateTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
+              color: color.withOpacity( 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, size: 24, color: color),
@@ -1734,7 +1734,7 @@ class _NewTraitAllocateTile extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.12),
+                        color: color.withOpacity( 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -1755,7 +1755,7 @@ class _NewTraitAllocateTile extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: current / 10,
                     color: color,
-                    backgroundColor: color.withValues(alpha: 0.15),
+                    backgroundColor: color.withOpacity( 0.15),
                     minHeight: 8,
                   ),
                 ),
@@ -1769,12 +1769,12 @@ class _NewTraitAllocateTile extends StatelessWidget {
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: canAdd ? color : AppColors.textLight.withValues(alpha: 0.1),
+                color: canAdd ? color : AppColors.textLight.withOpacity( 0.1),
                 shape: BoxShape.circle,
                 boxShadow: canAdd
                     ? [
                         BoxShadow(
-                          color: color.withValues(alpha: 0.3),
+                          color: color.withOpacity( 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 3),
                         ),

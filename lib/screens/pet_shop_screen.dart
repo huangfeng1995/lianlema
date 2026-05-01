@@ -212,10 +212,10 @@ class _PetShopScreenState extends State<PetShopScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppColors.primary.withValues(alpha: 0.15), AppColors.primaryLight.withValues(alpha: 0.08)],
+                colors: [AppColors.primary.withOpacity( 0.15), AppColors.primaryLight.withOpacity( 0.08)],
               ),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+              border: Border.all(color: AppColors.primary.withOpacity( 0.2)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -239,9 +239,9 @@ class _PetShopScreenState extends State<PetShopScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
+              color: AppColors.primary.withOpacity( 0.08),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+              border: Border.all(color: AppColors.primary.withOpacity( 0.15)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -298,12 +298,12 @@ class _PetShopScreenState extends State<PetShopScreen> {
                     color: isSelected ? AppColors.primary : AppColors.cardBackground,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: isSelected ? AppColors.primary : AppColors.textLight.withValues(alpha: 0.3),
+                      color: isSelected ? AppColors.primary : AppColors.textLight.withOpacity( 0.3),
                     ),
                     boxShadow: isSelected
                         ? [
                             BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.3),
+                              color: AppColors.primary.withOpacity( 0.3),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -385,7 +385,7 @@ class _ShopItemCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: AppTheme.cardShadowLight,
           border: Border.all(
-            color: AppColors.textLight.withValues(alpha: 0.15),
+            color: AppColors.textLight.withOpacity( 0.15),
           ),
         ),
         child: Column(
@@ -414,8 +414,8 @@ class _ShopItemCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 4),
               decoration: BoxDecoration(
                 color: canAfford
-                    ? AppColors.primary.withValues(alpha: 0.1)
-                    : Colors.grey.withValues(alpha: 0.1),
+                    ? AppColors.primary.withOpacity( 0.1)
+                    : Colors.grey.withOpacity( 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -667,10 +667,10 @@ class _BagItemChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isEquipped ? AppColors.primary : AppColors.primary.withValues(alpha: 0.08),
+          color: isEquipped ? AppColors.primary : AppColors.primary.withOpacity( 0.08),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isEquipped ? AppColors.primary : AppColors.primary.withValues(alpha: 0.3),
+            color: isEquipped ? AppColors.primary : AppColors.primary.withOpacity( 0.3),
           ),
         ),
         child: Row(
@@ -688,7 +688,7 @@ class _BagItemChip extends StatelessWidget {
             ),
             if (isEquipped) ...[
               const SizedBox(width: 4),
-              Icon(Icons.check_circle, size: 14, color: Colors.white.withValues(alpha: 0.8)),
+              Icon(Icons.check_circle, size: 14, color: Colors.white.withOpacity( 0.8)),
             ],
           ],
         ),

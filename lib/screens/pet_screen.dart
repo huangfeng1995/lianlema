@@ -182,8 +182,8 @@ class _PetScreenState extends State<PetScreen> {
                   boxShadow: [
                     BoxShadow(
                       color: isEggPhase
-                          ? Colors.brown.withValues(alpha: 0.4)
-                          : AppColors.primary.withValues(alpha: 0.3),
+                          ? Colors.brown.withOpacity( 0.4)
+                          : AppColors.primary.withOpacity( 0.3),
                       blurRadius: 16,
                       offset: const Offset(0, 4),
                     ),
@@ -219,7 +219,7 @@ class _PetScreenState extends State<PetScreen> {
                           Icon(
                             Icons.edit,
                             size: 14,
-                            color: AppColors.textSecondary.withValues(alpha: 0.6),
+                            color: AppColors.textSecondary.withOpacity( 0.6),
                           ),
                         ],
                       ),
@@ -363,7 +363,7 @@ class _PetScreenState extends State<PetScreen> {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
+                color: AppColors.primary.withOpacity( 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Center(
@@ -378,14 +378,14 @@ class _PetScreenState extends State<PetScreen> {
               decoration: BoxDecoration(
                 color: isUser
                     ? AppColors.primary
-                    : AppColors.primary.withValues(alpha: 0.08),
+                    : AppColors.primary.withOpacity( 0.08),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(12),
                   topRight: const Radius.circular(12),
                   bottomLeft: Radius.circular(isUser ? 12 : 4),
                   bottomRight: Radius.circular(isUser ? 4 : 12),
                 ),
-                border: isUser ? null : Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                border: isUser ? null : Border.all(color: AppColors.primary.withOpacity( 0.2)),
               ),
               child: Text(
                 msg.text,
@@ -413,9 +413,9 @@ class _PetScreenState extends State<PetScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
+              color: AppColors.primary.withOpacity( 0.08),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+              border: Border.all(color: AppColors.primary.withOpacity( 0.2)),
             ),
             child: Row(
               children: [
@@ -442,7 +442,7 @@ class _PetScreenState extends State<PetScreen> {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        border: Border(top: BorderSide(color: AppColors.primary.withValues(alpha: 0.1))),
+        border: Border(top: BorderSide(color: AppColors.primary.withOpacity( 0.1))),
       ),
       child: Row(
         children: [
@@ -452,7 +452,7 @@ class _PetScreenState extends State<PetScreen> {
               decoration: BoxDecoration(
                 color: AppColors.background,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.textLight.withValues(alpha: 0.3)),
+                border: Border.all(color: AppColors.textLight.withOpacity( 0.3)),
               ),
               child: TextField(
                 controller: _inputController,
@@ -512,9 +512,9 @@ class _PetScreenState extends State<PetScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.08),
+            color: AppColors.primary.withOpacity( 0.08),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+            border: Border.all(color: AppColors.primary.withOpacity( 0.2)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -684,12 +684,12 @@ class _PetScreenState extends State<PetScreen> {
                       decoration: BoxDecoration(
                         color: isSelected
                             ? AppColors.primary
-                            : AppColors.primary.withValues(alpha: 0.1),
+                            : AppColors.primary.withOpacity( 0.1),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: isSelected
                               ? AppColors.primary
-                              : AppColors.primary.withValues(alpha: 0.3),
+                              : AppColors.primary.withOpacity( 0.3),
                         ),
                       ),
                       child: Text(
@@ -802,15 +802,15 @@ class _PetPushBannerState extends State<_PetPushBanner>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  const Color(0xFFFF6B35).withValues(alpha: 0.12),
-                  const Color(0xFFE85D2D).withValues(alpha: 0.06),
+                  const Color(0xFFFF6B35).withOpacity( 0.12),
+                  const Color(0xFFE85D2D).withOpacity( 0.06),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: const Color(0xFFFF6B35).withValues(alpha: 0.2),
+                color: const Color(0xFFFF6B35).withOpacity( 0.2),
               ),
             ),
             child: Row(
@@ -832,7 +832,7 @@ class _PetPushBannerState extends State<_PetPushBanner>
                         widget.push.body,
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textPrimary.withValues(alpha: 0.7),
+                          color: AppColors.textPrimary.withOpacity( 0.7),
                           height: 1.4,
                         ),
                       ),
@@ -846,7 +846,7 @@ class _PetPushBannerState extends State<_PetPushBanner>
                     child: Icon(
                       Icons.close,
                       size: 16,
-                      color: AppColors.textSecondary.withValues(alpha: 0.4),
+                      color: AppColors.textSecondary.withOpacity( 0.4),
                     ),
                   ),
                 ),

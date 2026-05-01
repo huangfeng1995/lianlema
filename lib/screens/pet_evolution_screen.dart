@@ -126,12 +126,12 @@ class _PetEvolutionScreenState extends State<PetEvolutionScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.primary.withValues(alpha: 0.15),
-            AppColors.primary.withValues(alpha: 0.05),
+            AppColors.primary.withOpacity( 0.15),
+            AppColors.primary.withOpacity( 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.primary.withOpacity( 0.3)),
       ),
       child: Row(
         children: [
@@ -139,7 +139,7 @@ class _PetEvolutionScreenState extends State<PetEvolutionScreen> {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.2),
+              color: AppColors.primary.withOpacity( 0.2),
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -213,13 +213,13 @@ class _PetEvolutionScreenState extends State<PetEvolutionScreen> {
                   decoration: BoxDecoration(
                     color: isUnlocked 
                         ? AppColors.primary 
-                        : AppColors.textLight.withValues(alpha: 0.2),
+                        : AppColors.textLight.withOpacity( 0.2),
                     shape: BoxShape.circle,
                     border: isCurrent 
                         ? Border.all(color: AppColors.primary, width: 3)
                         : null,
                     boxShadow: isUnlocked 
-                        ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.4), blurRadius: 8)]
+                        ? [BoxShadow(color: AppColors.primary.withOpacity( 0.4), blurRadius: 8)]
                         : null,
                   ),
                   child: Center(
@@ -236,7 +236,7 @@ class _PetEvolutionScreenState extends State<PetEvolutionScreen> {
                     height: 50,
                     color: currentLevel > stage.level
                         ? AppColors.primary
-                        : AppColors.textLight.withValues(alpha: 0.2),
+                        : AppColors.textLight.withOpacity( 0.2),
                   ),
               ],
             ),
@@ -248,10 +248,10 @@ class _PetEvolutionScreenState extends State<PetEvolutionScreen> {
                 decoration: BoxDecoration(
                   color: isUnlocked 
                       ? AppColors.cardBackground 
-                      : AppColors.textLight.withValues(alpha: 0.05),
+                      : AppColors.textLight.withOpacity( 0.05),
                   borderRadius: BorderRadius.circular(12),
                   border: isCurrent 
-                      ? Border.all(color: AppColors.primary.withValues(alpha: 0.5))
+                      ? Border.all(color: AppColors.primary.withOpacity( 0.5))
                       : null,
                 ),
                 child: Row(
@@ -355,12 +355,12 @@ class _PetEvolutionScreenState extends State<PetEvolutionScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.primary.withValues(alpha: 0.1),
-            AppColors.primary.withValues(alpha: 0.05),
+            AppColors.primary.withOpacity( 0.1),
+            AppColors.primary.withOpacity( 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.primary.withOpacity( 0.3)),
       ),
       child: Row(
         children: [
@@ -368,7 +368,7 @@ class _PetEvolutionScreenState extends State<PetEvolutionScreen> {
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.2),
+              color: AppColors.primary.withOpacity( 0.2),
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -435,12 +435,12 @@ class _PetEvolutionScreenState extends State<PetEvolutionScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Color(0xFFFFD700).withValues(alpha: 0.2),
-            Color(0xFFFF6B35).withValues(alpha: 0.1),
+            Color(0xFFFFD700).withOpacity( 0.2),
+            Color(0xFFFF6B35).withOpacity( 0.1),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Color(0xFFFFD700).withValues(alpha: 0.5)),
+        border: Border.all(color: Color(0xFFFFD700).withOpacity( 0.5)),
       ),
       child: Column(
         children: [

@@ -34,7 +34,7 @@ class EncouragementStatsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.primary.withOpacity( 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -45,7 +45,7 @@ class EncouragementStatsCard extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color: AppColors.primary.withOpacity( 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Center(
@@ -116,7 +116,7 @@ class EncouragementStatsCard extends StatelessWidget {
                         Container(
                           height: 8,
                           decoration: BoxDecoration(
-                            color: AppColors.textLight.withValues(alpha: 0.1),
+                            color: AppColors.textLight.withOpacity( 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -129,8 +129,8 @@ class EncouragementStatsCard extends StatelessWidget {
                                 colors: percent >= 70
                                     ? [AppColors.primary, Color(0xFFFF6B35)]
                                     : percent >= 40
-                                        ? [AppColors.primary.withValues(alpha: 0.7), AppColors.primary]
-                                        : [AppColors.textLight.withValues(alpha: 0.5), AppColors.textLight],
+                                        ? [AppColors.primary.withOpacity( 0.7), AppColors.primary]
+                                        : [AppColors.textLight.withOpacity( 0.5), AppColors.textLight],
                               ),
                               borderRadius: BorderRadius.circular(4),
                             ),
@@ -157,9 +157,9 @@ class EncouragementStatsCard extends StatelessWidget {
               Container(
                 padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
+                  color: AppColors.primary.withOpacity( 0.08),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                  border: Border.all(color: AppColors.primary.withOpacity( 0.2)),
                 ),
                 child: Row(
                   children: [

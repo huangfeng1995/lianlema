@@ -83,13 +83,13 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppColors.primary.withValues(alpha: 0.15),
-                    AppColors.primaryLight.withValues(alpha: 0.08),
+                    AppColors.primary.withOpacity( 0.15),
+                    AppColors.primaryLight.withOpacity( 0.08),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.3),
+                  color: AppColors.primary.withOpacity( 0.3),
                 ),
               ),
               child: Row(
@@ -98,7 +98,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.15),
+                      color: AppColors.primary.withOpacity( 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Center(
@@ -154,7 +154,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
                   '${DateFormat('MM月dd日').format(report.weekStart)} - ${DateFormat('MM月dd日').format(report.weekEnd)}',
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.85),
+                    color: Colors.white.withOpacity( 0.85),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -264,7 +264,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
           weekday,
           style: TextStyle(
             fontSize: 10,
-            color: Colors.white.withValues(alpha: 0.7),
+            color: Colors.white.withOpacity( 0.7),
           ),
         ),
         const SizedBox(height: 4),
@@ -272,7 +272,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
           width: 28,
           height: 28,
           decoration: BoxDecoration(
-            color: isCheckedIn ? Colors.white : Colors.white.withValues(alpha: 0.25),
+            color: isCheckedIn ? Colors.white : Colors.white.withOpacity( 0.25),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Center(
@@ -291,7 +291,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
           '${day.day}',
           style: TextStyle(
             fontSize: 10,
-            color: Colors.white.withValues(alpha: 0.7),
+            color: Colors.white.withOpacity( 0.7),
           ),
         ),
       ],
@@ -395,7 +395,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
+              color: color.withOpacity( 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(

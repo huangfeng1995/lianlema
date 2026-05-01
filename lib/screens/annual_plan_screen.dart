@@ -149,7 +149,7 @@ class _AnnualPlanScreenState extends State<AnnualPlanScreen> {
                       height: 28,
                       margin: const EdgeInsets.only(top: 8),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
+                        color: AppColors.primary.withOpacity( 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Center(
@@ -171,19 +171,19 @@ class _AnnualPlanScreenState extends State<AnnualPlanScreen> {
                         decoration: InputDecoration(
                           hintText: '例如：读完24本书，跑完半程马拉松...',
                           hintStyle: TextStyle(
-                            color: AppColors.textLight.withValues(alpha: 0.6),
+                            color: AppColors.textLight.withOpacity( 0.6),
                             fontSize: 13,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                             borderSide: BorderSide(
-                              color: AppColors.textLight.withValues(alpha: 0.2),
+                              color: AppColors.textLight.withOpacity( 0.2),
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                             borderSide: BorderSide(
-                              color: AppColors.textLight.withValues(alpha: 0.2),
+                              color: AppColors.textLight.withOpacity( 0.2),
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
@@ -211,7 +211,7 @@ class _AnnualPlanScreenState extends State<AnnualPlanScreen> {
                           child: Icon(
                             Icons.close,
                             size: 18,
-                            color: AppColors.textLight.withValues(alpha: 0.4),
+                            color: AppColors.textLight.withOpacity( 0.4),
                           ),
                         ),
                       ),
@@ -240,10 +240,10 @@ class _AnnualPlanScreenState extends State<AnnualPlanScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.06),
+                  color: AppColors.primary.withOpacity( 0.06),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.2),
+                    color: AppColors.primary.withOpacity( 0.2),
                   ),
                 ),
                 child: Row(
@@ -272,7 +272,7 @@ class _AnnualPlanScreenState extends State<AnnualPlanScreen> {
                 border: Border.all(
                   color: _antiVisionController.text.isNotEmpty
                       ? AppColors.primary
-                      : AppColors.textLight.withValues(alpha: 0.25),
+                      : AppColors.textLight.withOpacity( 0.25),
                 ),
               ),
               child: TextField(
@@ -281,7 +281,7 @@ class _AnnualPlanScreenState extends State<AnnualPlanScreen> {
                 decoration: InputDecoration(
                   hintText: '例如：拖延成性的人，三分钟热度的人...',
                   hintStyle: TextStyle(
-                    color: AppColors.textLight.withValues(alpha: 0.6),
+                    color: AppColors.textLight.withOpacity( 0.6),
                     fontSize: 13,
                   ),
                   border: InputBorder.none,
@@ -295,7 +295,7 @@ class _AnnualPlanScreenState extends State<AnnualPlanScreen> {
               '可跳过',
               style: TextStyle(
                 fontSize: 11,
-                color: AppColors.textLight.withValues(alpha: 0.45),
+                color: AppColors.textLight.withOpacity( 0.45),
               ),
             ),
 
@@ -316,7 +316,7 @@ class _AnnualPlanScreenState extends State<AnnualPlanScreen> {
                 border: Border.all(
                   color: _visionController.text.isNotEmpty
                       ? AppColors.primary
-                      : AppColors.textLight.withValues(alpha: 0.25),
+                      : AppColors.textLight.withOpacity( 0.25),
                 ),
               ),
               child: TextField(
@@ -325,7 +325,7 @@ class _AnnualPlanScreenState extends State<AnnualPlanScreen> {
                 decoration: InputDecoration(
                   hintText: '例如：每天早起写作的人\n知识渊博、能清晰表达想法\n活成了自己尊重的那个人...',
                   hintStyle: TextStyle(
-                    color: AppColors.textLight.withValues(alpha: 0.6),
+                    color: AppColors.textLight.withOpacity( 0.6),
                     fontSize: 13,
                   ),
                   border: InputBorder.none,
@@ -339,7 +339,7 @@ class _AnnualPlanScreenState extends State<AnnualPlanScreen> {
               '可跳过',
               style: TextStyle(
                 fontSize: 11,
-                color: AppColors.textLight.withValues(alpha: 0.45),
+                color: AppColors.textLight.withOpacity( 0.45),
               ),
             ),
           ],
@@ -385,7 +385,7 @@ class _AnnualPlanScreenState extends State<AnnualPlanScreen> {
         decoration: BoxDecoration(
           color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+          border: Border.all(color: AppColors.primary.withOpacity( 0.3)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -459,7 +459,7 @@ class _AnnualPlanScreenState extends State<AnnualPlanScreen> {
           subtitle,
           style: TextStyle(
             fontSize: 12,
-            color: AppColors.textSecondary.withValues(alpha: 0.7),
+            color: AppColors.textSecondary.withOpacity( 0.7),
           ),
         ),
       ],

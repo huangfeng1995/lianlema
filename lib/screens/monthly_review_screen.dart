@@ -262,7 +262,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+        border: Border.all(color: AppColors.primary.withOpacity( 0.15)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -278,8 +278,8 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: isDefeated
-                      ? AppColors.success.withValues(alpha: 0.15)
-                      : const Color(0xFFFF9500).withValues(alpha: 0.15),
+                      ? AppColors.success.withOpacity( 0.15)
+                      : const Color(0xFFFF9500).withOpacity( 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -357,7 +357,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.06),
+                    color: Colors.black.withOpacity( 0.06),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.close, size: 18),
@@ -384,7 +384,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
                   decoration: BoxDecoration(
                     color: index <= _currentStep
                         ? AppColors.primary
-                        : AppColors.primary.withValues(alpha: 0.2),
+                        : AppColors.primary.withOpacity( 0.2),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -446,7 +446,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
+              color: AppColors.primary.withOpacity( 0.1),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
@@ -479,8 +479,8 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isDefeated
-                    ? AppColors.success.withValues(alpha: 0.4)
-                    : const Color(0xFFFF9500).withValues(alpha: 0.3),
+                    ? AppColors.success.withOpacity( 0.4)
+                    : const Color(0xFFFF9500).withOpacity( 0.3),
               ),
             ),
             child: Column(
@@ -492,8 +492,8 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
                       height: 48,
                       decoration: BoxDecoration(
                         color: isDefeated
-                            ? AppColors.success.withValues(alpha: 0.1)
-                            : const Color(0xFFFF9500).withValues(alpha: 0.1),
+                            ? AppColors.success.withOpacity( 0.1)
+                            : const Color(0xFFFF9500).withOpacity( 0.1),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Center(
@@ -561,7 +561,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
                       value: (bossHp / bossTotal).clamp(0.0, 1.0),
-                      backgroundColor: AppColors.textLight.withValues(alpha: 0.15),
+                      backgroundColor: AppColors.textLight.withOpacity( 0.15),
                       valueColor: AlwaysStoppedAnimation<Color>(
                         isDefeated ? AppColors.success : const Color(0xFFFF9500),
                       ),
@@ -581,8 +581,8 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: isDefeated
-                  ? AppColors.success.withValues(alpha: 0.08)
-                  : AppColors.primary.withValues(alpha: 0.06),
+                  ? AppColors.success.withOpacity( 0.08)
+                  : AppColors.primary.withOpacity( 0.06),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
@@ -716,7 +716,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
               color: AppColors.cardBackground,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.3),
+                color: AppColors.primary.withOpacity( 0.3),
               ),
             ),
             child: TextField(
@@ -780,7 +780,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
               color: AppColors.cardBackground,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppColors.textLight.withValues(alpha: 0.2),
+                color: AppColors.textLight.withOpacity( 0.2),
               ),
             ),
             child: Column(
@@ -811,7 +811,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
+                color: AppColors.primary.withOpacity( 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Row(
@@ -840,13 +840,13 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppColors.primary.withValues(alpha: 0.12),
-                  AppColors.primaryLight.withValues(alpha: 0.06),
+                  AppColors.primary.withOpacity( 0.12),
+                  AppColors.primaryLight.withOpacity( 0.06),
                 ],
               ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.3),
+                color: AppColors.primary.withOpacity( 0.3),
               ),
             ),
             child: Column(
@@ -855,7 +855,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.15),
+                    color: AppColors.primary.withOpacity( 0.15),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: const Text(
@@ -911,7 +911,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
+              color: AppColors.primary.withOpacity( 0.1),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
@@ -950,7 +950,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
               border: Border.all(
                 color: _newBossContent.trim().isNotEmpty
                     ? AppColors.primary
-                    : AppColors.primary.withValues(alpha: 0.3),
+                    : AppColors.primary.withOpacity( 0.3),
               ),
             ),
             child: TextField(
@@ -970,7 +970,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.06),
+              color: AppColors.primary.withOpacity( 0.06),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(

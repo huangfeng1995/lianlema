@@ -111,7 +111,7 @@ class PetBubbleState extends State<PetBubble>
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.4),
+                color: AppColors.primary.withOpacity( 0.4),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -173,7 +173,7 @@ class PetBubbleState extends State<PetBubble>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
+            color: Colors.black.withOpacity( 0.15),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -209,7 +209,7 @@ class PetBubbleState extends State<PetBubble>
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
+              color: Colors.white.withOpacity( 0.2),
               shape: BoxShape.circle,
             ),
             child: Center(child: _buildMoodIcon(_mood)),
@@ -243,7 +243,7 @@ class PetBubbleState extends State<PetBubble>
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: Colors.white.withOpacity( 0.2),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.close, size: 16, color: Colors.white),
@@ -287,9 +287,9 @@ class PetBubbleState extends State<PetBubble>
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.08),
+        color: AppColors.primary.withOpacity( 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+        border: Border.all(color: AppColors.primary.withOpacity( 0.2)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -314,9 +314,9 @@ class PetBubbleState extends State<PetBubble>
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.amber.withValues(alpha: 0.1),
+        color: Colors.amber.withOpacity( 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+        border: Border.all(color: Colors.amber.withOpacity( 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -360,7 +360,7 @@ class PetBubbleState extends State<PetBubble>
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
+                color: AppColors.primary.withOpacity( 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Center(
@@ -376,7 +376,7 @@ class PetBubbleState extends State<PetBubble>
               decoration: BoxDecoration(
                 color: isUser
                     ? AppColors.primary
-                    : AppColors.primary.withValues(alpha: 0.08),
+                    : AppColors.primary.withOpacity( 0.08),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(12),
                   topRight: const Radius.circular(12),
@@ -386,7 +386,7 @@ class PetBubbleState extends State<PetBubble>
                 border: isUser
                     ? null
                     : Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.2)),
+                        color: AppColors.primary.withOpacity( 0.2)),
               ),
               child: Text(
                 msg.text,
@@ -414,10 +414,10 @@ class PetBubbleState extends State<PetBubble>
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
+              color: AppColors.primary.withOpacity( 0.08),
               borderRadius: BorderRadius.circular(12),
               border:
-                  Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                  Border.all(color: AppColors.primary.withOpacity( 0.2)),
             ),
             child: Row(
               children: [
@@ -446,7 +446,7 @@ class PetBubbleState extends State<PetBubble>
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: BoxDecoration(
         border: Border(
-            top: BorderSide(color: AppColors.primary.withValues(alpha: 0.1))),
+            top: BorderSide(color: AppColors.primary.withOpacity( 0.1))),
       ),
       child: Row(
         children: [
@@ -457,7 +457,7 @@ class PetBubbleState extends State<PetBubble>
                 color: AppColors.background,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                    color: AppColors.textLight.withValues(alpha: 0.3)),
+                    color: AppColors.textLight.withOpacity( 0.3)),
               ),
               child: TextField(
                 controller: _inputController,
@@ -510,10 +510,10 @@ class PetBubbleState extends State<PetBubble>
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
+                  color: AppColors.primary.withOpacity( 0.08),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.2)),
+                      color: AppColors.primary.withOpacity( 0.2)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,

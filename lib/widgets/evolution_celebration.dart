@@ -125,7 +125,7 @@ class _EvolutionCelebrationState extends State<EvolutionCelebration>
           children: [
             // 背景遮罩
             Container(
-              color: Colors.black.withValues(alpha: 0.85 * _flashAnimation.value.clamp(0.0, 1.0)),
+              color: Colors.black.withOpacity( 0.85 * _flashAnimation.value.clamp(0.0, 1.0)),
             ),
 
             // 闪光效果
@@ -136,10 +136,10 @@ class _EvolutionCelebrationState extends State<EvolutionCelebration>
                   height: 300 * _flashAnimation.value,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: _flashAnimation.value * 0.8),
+                    color: Colors.white.withOpacity( _flashAnimation.value * 0.8),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.white.withValues(alpha: _flashAnimation.value),
+                        color: Colors.white.withOpacity( _flashAnimation.value),
                         blurRadius: 100,
                         spreadRadius: 50,
                       ),
@@ -185,13 +185,13 @@ class _EvolutionCelebrationState extends State<EvolutionCelebration>
             shape: BoxShape.circle,
             gradient: RadialGradient(
               colors: [
-                AppColors.primary.withValues(alpha: 0.6),
-                AppColors.primary.withValues(alpha: 0.0),
+                AppColors.primary.withOpacity( 0.6),
+                AppColors.primary.withOpacity( 0.0),
               ],
             ),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.5),
+                color: AppColors.primary.withOpacity( 0.5),
                 blurRadius: 60,
                 spreadRadius: 20,
               ),
@@ -209,8 +209,8 @@ class _EvolutionCelebrationState extends State<EvolutionCelebration>
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                AppColors.primary.withValues(alpha: 0.8),
-                const Color(0xFFFF6B35).withValues(alpha: 0.8),
+                AppColors.primary.withOpacity( 0.8),
+                const Color(0xFFFF6B35).withOpacity( 0.8),
               ],
             ),
             borderRadius: BorderRadius.circular(40),
@@ -281,7 +281,7 @@ class _SparkPainter extends CustomPainter {
 
       final opacity = (1.0 - progress).clamp(0.0, 1.0);
       final paint = Paint()
-        ..color = spark.color.withValues(alpha: opacity * 0.8)
+        ..color = spark.color.withOpacity( opacity * 0.8)
         ..style = PaintingStyle.fill;
 
       canvas.drawCircle(Offset(x, y), spark.size * (1.0 - progress * 0.3), paint);

@@ -83,7 +83,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                   DateFormat('yyyy年MM月dd日 EEEE', 'zh_CN').format(report.date),
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.85),
+                    color: Colors.white.withOpacity( 0.85),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -102,7 +102,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.25),
+                        color: Colors.white.withOpacity( 0.25),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -152,7 +152,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
               ),
               child: Column(
                 children: [
-                  Icon(Icons.edit_note, size: 36, color: AppColors.primary.withValues(alpha: 0.5)),
+                  Icon(Icons.edit_note, size: 36, color: AppColors.primary.withOpacity( 0.5)),
                   const SizedBox(height: 8),
                   const Text(
                     '今日暂无打卡记录',
@@ -180,7 +180,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                       width: 28,
                       height: 28,
                       decoration: BoxDecoration(
-                        color: AppColors.success.withValues(alpha: 0.1),
+                        color: AppColors.success.withOpacity( 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(
@@ -225,7 +225,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
           label,
           style: TextStyle(
             fontSize: 12,
-            color: Colors.white.withValues(alpha: 0.8),
+            color: Colors.white.withOpacity( 0.8),
           ),
         ),
       ],
@@ -238,13 +238,13 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.amber.withValues(alpha: 0.15),
-            Colors.orange.withValues(alpha: 0.08),
+            Colors.amber.withOpacity( 0.15),
+            Colors.orange.withOpacity( 0.08),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.amber.withValues(alpha: 0.3),
+          color: Colors.amber.withOpacity( 0.3),
         ),
       ),
       child: Column(
@@ -266,7 +266,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.amber.withValues(alpha: 0.2),
+                  color: Colors.amber.withOpacity( 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Text(

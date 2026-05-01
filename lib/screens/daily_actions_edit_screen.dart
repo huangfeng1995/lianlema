@@ -210,7 +210,7 @@ class _DailyActionsEditScreenState extends State<DailyActionsEditScreen> {
                             height: 28,
                             margin: const EdgeInsets.only(top: 8),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.1),
+                              color: AppColors.primary.withOpacity( 0.1),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Center(
@@ -236,19 +236,19 @@ class _DailyActionsEditScreenState extends State<DailyActionsEditScreen> {
                                   decoration: InputDecoration(
                                     hintText: '例如：写500字，联系3个客户...',
                                     hintStyle: TextStyle(
-                                      color: AppColors.textLight.withValues(alpha: 0.6),
+                                      color: AppColors.textLight.withOpacity( 0.6),
                                       fontSize: 13,
                                     ),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(10),
                                       borderSide: BorderSide(
-                                        color: AppColors.textLight.withValues(alpha: 0.2),
+                                        color: AppColors.textLight.withOpacity( 0.2),
                                       ),
                                     ),
                                     enabledBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(10),
                                       borderSide: BorderSide(
-                                        color: AppColors.textLight.withValues(alpha: 0.2),
+                                        color: AppColors.textLight.withOpacity( 0.2),
                                       ),
                                     ),
                                     focusedBorder: OutlineInputBorder(
@@ -278,10 +278,10 @@ class _DailyActionsEditScreenState extends State<DailyActionsEditScreen> {
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                       decoration: BoxDecoration(
-                                        color: AppColors.primary.withValues(alpha: 0.06),
+                                        color: AppColors.primary.withOpacity( 0.06),
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
-                                          color: AppColors.primary.withValues(alpha: 0.2),
+                                          color: AppColors.primary.withOpacity( 0.2),
                                         ),
                                       ),
                                       child: Row(
@@ -324,19 +324,19 @@ class _DailyActionsEditScreenState extends State<DailyActionsEditScreen> {
                                               decoration: InputDecoration(
                                                 hintText: '什么情况下容易放弃？',
                                                 hintStyle: TextStyle(
-                                                  color: AppColors.textLight.withValues(alpha: 0.6),
+                                                  color: AppColors.textLight.withOpacity( 0.6),
                                                   fontSize: 12,
                                                 ),
                                                 border: OutlineInputBorder(
                                                   borderRadius: BorderRadius.circular(8),
                                                   borderSide: BorderSide(
-                                                    color: AppColors.textLight.withValues(alpha: 0.2),
+                                                    color: AppColors.textLight.withOpacity( 0.2),
                                                   ),
                                                 ),
                                                 enabledBorder: OutlineInputBorder(
                                                   borderRadius: BorderRadius.circular(8),
                                                   borderSide: BorderSide(
-                                                    color: AppColors.textLight.withValues(alpha: 0.2),
+                                                    color: AppColors.textLight.withOpacity( 0.2),
                                                   ),
                                                 ),
                                                 focusedBorder: OutlineInputBorder(
@@ -374,19 +374,19 @@ class _DailyActionsEditScreenState extends State<DailyActionsEditScreen> {
                                               decoration: InputDecoration(
                                                 hintText: '你会怎么做？',
                                                 hintStyle: TextStyle(
-                                                  color: AppColors.textLight.withValues(alpha: 0.6),
+                                                  color: AppColors.textLight.withOpacity( 0.6),
                                                   fontSize: 12,
                                                 ),
                                                 border: OutlineInputBorder(
                                                   borderRadius: BorderRadius.circular(8),
                                                   borderSide: BorderSide(
-                                                    color: AppColors.textLight.withValues(alpha: 0.2),
+                                                    color: AppColors.textLight.withOpacity( 0.2),
                                                   ),
                                                 ),
                                                 enabledBorder: OutlineInputBorder(
                                                   borderRadius: BorderRadius.circular(8),
                                                   borderSide: BorderSide(
-                                                    color: AppColors.textLight.withValues(alpha: 0.2),
+                                                    color: AppColors.textLight.withOpacity( 0.2),
                                                   ),
                                                 ),
                                                 focusedBorder: OutlineInputBorder(
@@ -429,7 +429,7 @@ class _DailyActionsEditScreenState extends State<DailyActionsEditScreen> {
                                 child: Icon(
                                   Icons.close,
                                   size: 18,
-                                  color: AppColors.textLight.withValues(alpha: 0.4),
+                                  color: AppColors.textLight.withOpacity( 0.4),
                                 ),
                               ),
                             ),
@@ -461,10 +461,10 @@ class _DailyActionsEditScreenState extends State<DailyActionsEditScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.06),
+                        color: AppColors.primary.withOpacity( 0.06),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.2),
+                          color: AppColors.primary.withOpacity( 0.2),
                         ),
                       ),
                       child: Row(
@@ -511,7 +511,7 @@ class _DailyActionsEditScreenState extends State<DailyActionsEditScreen> {
           subtitle,
           style: TextStyle(
             fontSize: 12,
-            color: AppColors.textSecondary.withValues(alpha: 0.7),
+            color: AppColors.textSecondary.withOpacity( 0.7),
           ),
         ),
       ],

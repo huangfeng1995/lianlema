@@ -27,44 +27,44 @@ final Map<PushType, PushTypeConfig> _pushConfigCache = {
   PushType.streakReminder: PushTypeConfig(
     icon: CupertinoIcons.sun_max_fill,
     primaryColor: const Color(0xFFFF9500),
-    bgColor: const Color(0xFFFF9500).withValues(alpha: 0.08),
-    accentColor: const Color(0xFFFF9500).withValues(alpha: 0.15),
+    bgColor: const Color(0xFFFF9500).withOpacity( 0.08),
+    accentColor: const Color(0xFFFF9500).withOpacity( 0.15),
   ),
   PushType.milestoneApproaching: PushTypeConfig(
     icon: CupertinoIcons.star_fill,
     primaryColor: const Color(0xFFFF2D55),
-    bgColor: const Color(0xFFFF2D55).withValues(alpha: 0.08),
-    accentColor: const Color(0xFFFF2D55).withValues(alpha: 0.15),
+    bgColor: const Color(0xFFFF2D55).withOpacity( 0.08),
+    accentColor: const Color(0xFFFF2D55).withOpacity( 0.15),
   ),
   PushType.idleWarning: PushTypeConfig(
     icon: CupertinoIcons.heart_fill,
     primaryColor: const Color(0xFFFF2D92),
-    bgColor: const Color(0xFFFF2D92).withValues(alpha: 0.08),
-    accentColor: const Color(0xFFFF2D92).withValues(alpha: 0.15),
+    bgColor: const Color(0xFFFF2D92).withOpacity( 0.08),
+    accentColor: const Color(0xFFFF2D92).withOpacity( 0.15),
   ),
   PushType.weeklySummary: PushTypeConfig(
     icon: CupertinoIcons.chart_bar_fill,
     primaryColor: const Color(0xFF5856D6),
-    bgColor: const Color(0xFF5856D6).withValues(alpha: 0.08),
-    accentColor: const Color(0xFF5856D6).withValues(alpha: 0.15),
+    bgColor: const Color(0xFF5856D6).withOpacity( 0.08),
+    accentColor: const Color(0xFF5856D6).withOpacity( 0.15),
   ),
   PushType.challengeProgress: PushTypeConfig(
     icon: CupertinoIcons.flag_fill,
     primaryColor: const Color(0xFFFF3B30),
-    bgColor: const Color(0xFFFF3B30).withValues(alpha: 0.08),
-    accentColor: const Color(0xFFFF3B30).withValues(alpha: 0.15),
+    bgColor: const Color(0xFFFF3B30).withOpacity( 0.08),
+    accentColor: const Color(0xFFFF3B30).withOpacity( 0.15),
   ),
   PushType.obstacleGuidance: PushTypeConfig(
     icon: CupertinoIcons.compass,
     primaryColor: const Color(0xFF007AFF),
-    bgColor: const Color(0xFF007AFF).withValues(alpha: 0.08),
-    accentColor: const Color(0xFF007AFF).withValues(alpha: 0.15),
+    bgColor: const Color(0xFF007AFF).withOpacity( 0.08),
+    accentColor: const Color(0xFF007AFF).withOpacity( 0.15),
   ),
   PushType.annualPlanGuide: PushTypeConfig(
     icon: CupertinoIcons.star_circle_fill,
     primaryColor: const Color(0xFFFFD60A),
-    bgColor: const Color(0xFFFFD60A).withValues(alpha: 0.08),
-    accentColor: const Color(0xFFFFD60A).withValues(alpha: 0.15),
+    bgColor: const Color(0xFFFFD60A).withOpacity( 0.08),
+    accentColor: const Color(0xFFFFD60A).withOpacity( 0.15),
   ),
 };
 
@@ -186,13 +186,13 @@ class _PetPushBannerState extends State<PetPushBanner>
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: config.primaryColor.withValues(alpha: 0.12),
+                color: config.primaryColor.withOpacity( 0.12),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
                 spreadRadius: -4,
               ),
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
+                color: Colors.black.withOpacity( 0.06),
                 blurRadius: 12,
                 offset: const Offset(0, 2),
               ),
@@ -244,13 +244,13 @@ class _PetPushBannerState extends State<PetPushBanner>
                             end: Alignment.bottomRight,
                             colors: [
                               config.primaryColor,
-                              config.primaryColor.withValues(alpha: 0.7),
+                              config.primaryColor.withOpacity( 0.7),
                             ],
                           ),
                           borderRadius: BorderRadius.circular(18),
                           boxShadow: [
                             BoxShadow(
-                              color: config.primaryColor.withValues(alpha: 0.3),
+                              color: config.primaryColor.withOpacity( 0.3),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -285,7 +285,7 @@ class _PetPushBannerState extends State<PetPushBanner>
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
-                              color: AppColors.textPrimary.withValues(alpha: 0.85),
+                              color: AppColors.textPrimary.withOpacity( 0.85),
                               height: 1.35,
                               letterSpacing: -0.2,
                             ),
@@ -306,7 +306,7 @@ class _PetPushBannerState extends State<PetPushBanner>
                           width: 36,
                           height: 36,
                           decoration: BoxDecoration(
-                            color: AppColors.textLight.withValues(alpha: 0.08),
+                            color: AppColors.textLight.withOpacity( 0.08),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(

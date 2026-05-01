@@ -127,7 +127,7 @@ class _StreakBrokenCelebrationState extends State<StreakBrokenCelebration>
                   0, 0, 0, 1 - _fireFadeAnimation.value * 0.7, 0,
                 ]),
                 child: Container(
-                  color: Colors.black.withValues(alpha: 0.5 * _fadeInAnimation.value),
+                  color: Colors.black.withOpacity( 0.5 * _fadeInAnimation.value),
                 ),
               ),
               // 裂痕效果
@@ -228,7 +228,7 @@ class _StreakBrokenCelebrationState extends State<StreakBrokenCelebration>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Colors.black.withOpacity( 0.3),
             borderRadius: BorderRadius.circular(30),
           ),
           child: Text(
@@ -245,7 +245,7 @@ class _StreakBrokenCelebrationState extends State<StreakBrokenCelebration>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.15),
+            color: AppColors.primary.withOpacity( 0.15),
             borderRadius: BorderRadius.circular(16),
           ),
           child: const Text(
@@ -292,7 +292,7 @@ class _SmokeParticlePainter extends CustomPainter {
       final yPos = (p.y - progress * p.speed * size.height * 0.5) % size.height;
 
       final paint = Paint()
-        ..color = Colors.grey.withValues(alpha: opacity * 0.4)
+        ..color = Colors.grey.withOpacity( opacity * 0.4)
         ..style = PaintingStyle.fill;
 
       canvas.drawOval(
@@ -321,7 +321,7 @@ class _CrackPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF1A1A1A).withValues(alpha: 0.8 * progress)
+      ..color = const Color(0xFF1A1A1A).withOpacity( 0.8 * progress)
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;

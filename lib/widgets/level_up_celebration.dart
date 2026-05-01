@@ -119,7 +119,7 @@ class _LevelUpCelebrationState extends State<LevelUpCelebration>
             children: [
               // 背景遮罩
               Container(
-                color: Colors.black.withValues(alpha: 0.7 * _opacityAnimation.value),
+                color: Colors.black.withOpacity( 0.7 * _opacityAnimation.value),
               ),
               // 粒子层
               CustomPaint(
@@ -155,8 +155,8 @@ class _LevelUpCelebrationState extends State<LevelUpCelebration>
             shape: BoxShape.circle,
             gradient: RadialGradient(
               colors: [
-                AppColors.primary.withValues(alpha: 0.4),
-                AppColors.primary.withValues(alpha: 0.0),
+                AppColors.primary.withOpacity( 0.4),
+                AppColors.primary.withOpacity( 0.0),
               ],
             ),
           ),
@@ -170,7 +170,7 @@ class _LevelUpCelebrationState extends State<LevelUpCelebration>
             color: AppColors.primary,
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.6),
+                color: AppColors.primary.withOpacity( 0.6),
                 blurRadius: 40,
                 spreadRadius: 10,
               ),
@@ -205,7 +205,7 @@ class _LevelUpCelebrationState extends State<LevelUpCelebration>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.15),
+            color: Colors.white.withOpacity( 0.15),
             borderRadius: BorderRadius.circular(30),
           ),
           child: const Text(
@@ -223,7 +223,7 @@ class _LevelUpCelebrationState extends State<LevelUpCelebration>
           '已解锁更多宠物外观',
           style: TextStyle(
             fontSize: 14,
-            color: Colors.white.withValues(alpha: 0.7),
+            color: Colors.white.withOpacity( 0.7),
           ),
         ),
       ],
@@ -264,7 +264,7 @@ class _ParticlePainter extends CustomPainter {
 
       final opacity = (1.0 - progress).clamp(0.0, 1.0);
       final paint = Paint()
-        ..color = p.color.withValues(alpha: opacity * 0.8)
+        ..color = p.color.withOpacity( opacity * 0.8)
         ..style = PaintingStyle.fill;
 
       canvas.drawCircle(Offset(x, y), p.size * (1.0 - progress * 0.5), paint);
