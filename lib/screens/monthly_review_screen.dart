@@ -352,7 +352,13 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
           Row(
             children: [
               GestureDetector(
-                onTap: () => Navigator.pop(context),
+                onTap: () {
+                  // 直接返回首页，避免黑屏
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const HomeScreen()),
+                    (route) => false,
+                  );
+                },
                 child: Container(
                   width: 36,
                   height: 36,
