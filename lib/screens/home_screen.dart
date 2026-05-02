@@ -241,7 +241,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final reviewInfo = _storage.getReviewMonth();
     final year = forYear ?? reviewInfo[0];
     final month = forMonth ?? reviewInfo[1];
-    Navigator.of(context).pushReplacement(
+    // 使用 push 而不是 pushReplacement，这样返回按钮可以正常工作
+    Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => MonthlyReviewScreen(
           reviewYear: year,

@@ -153,8 +153,8 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
               Container(
                 width: 72,
                 height: 72,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
                     colors: [AppColors.primary, AppColors.primaryLight],
                   ),
                   borderRadius: BorderRadius.circular(20),
@@ -216,10 +216,54 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () {
+            // 直接 pop 返回上一个页面
+            Navigator.of(context).pop();
+          },
+          icon: Icon(Icons.close, size: 24, color: AppColors.primary),
+        ),
+        actions: [
+          Container(
+            width: 40,
+            alignment: Alignment.center,
+            child: Text(
+              '${_currentStep + 1}/$_totalSteps',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(),
+            // 原进度条
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: List.generate(_totalSteps, (index) {
+                  return Expanded(
+                    child: Container(
+                      height: 4,
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                      decoration: BoxDecoration(
+                        color: index <= _currentStep
+                            ? AppColors.primary
+                            : AppColors.primary.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
             _buildReportSummary(),
             Expanded(
               child: PageView(
@@ -345,71 +389,8 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
     );
   }
 
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () {
-                  print('🚀 月度回顾页面返回按钮被点击');
-                  print('🎯 可以 pop吗: ${Navigator.of(context).canPop()}');
+  // 进度条现在在 AppBar 下方的 body 中
 
-                  // 先尝试返回上一页（这适用于从报告中心进入的情况）
-                  if (Navigator.of(context).canPop()) {
-                    Navigator.of(context).pop();
-                  } else {
-                    // 如果已经是最顶层，回到 MainScreen（适用于从首页进入的情况）
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const MainScreen()),
-                      (route) => false,
-                    );
-                  }
-                },
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity( 0.06),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.close, size: 18),
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '${_currentStep + 1}/$_totalSteps',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: List.generate(_totalSteps, (index) {
-              return Expanded(
-                child: Container(
-                  height: 4,
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  decoration: BoxDecoration(
-                    color: index <= _currentStep
-                        ? AppColors.primary
-                        : AppColors.primary.withOpacity( 0.2),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              );
-            }),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildBottomButton() {
     final canProceed = _currentStep < 2 || _newBossContent.trim().isNotEmpty;
