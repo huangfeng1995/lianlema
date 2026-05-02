@@ -153,14 +153,14 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
               Container(
                 width: 72,
                 height: 72,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
                     colors: [AppColors.primary, AppColors.primaryLight],
                   ),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Center(
-                  child: const Icon(Icons.check_circle, size: 36, color: AppColors.primary),
+                child: const Center(
+                  child: Icon(Icons.check_circle, size: 36, color: AppColors.primary),
                 ),
               ),
               const SizedBox(height: 20),
@@ -173,7 +173,7 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
+              const Text(
                 '下个月，一起继续前行',
                 style: TextStyle(
                   fontSize: 14,
@@ -186,12 +186,8 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.of(ctx).pop();
-                    // 尝试多种返回方式
-                    if (Navigator.of(context).canPop()) {
-                      Navigator.of(context).pop();
-                      return;
-                    }
+                    Navigator.pop(ctx); // 关闭对话框
+                    // 完成复盘后始终回到MainScreen
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(builder: (_) => const MainScreen()),
                       (route) => false,
@@ -358,18 +354,19 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
             children: [
               GestureDetector(
                 onTap: () {
-                  // 尝试多种返回方式
-                  // 方式1：直接 pop（最保守）
+                  print('🚀 月度回顾页面返回按钮被点击');
+                  print('🎯 可以 pop吗: ${Navigator.of(context).canPop()}');
+
+                  // 先尝试返回上一页（这适用于从报告中心进入的情况）
                   if (Navigator.of(context).canPop()) {
                     Navigator.of(context).pop();
-                    return;
+                  } else {
+                    // 如果已经是最顶层，回到 MainScreen（适用于从首页进入的情况）
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const MainScreen()),
+                      (route) => false,
+                    );
                   }
-
-                  // 方式2：pushAndRemoveUntil 到 MainScreen
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const MainScreen()),
-                    (route) => false,
-                  );
                 },
                 child: Container(
                   width: 36,
