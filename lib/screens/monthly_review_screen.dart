@@ -54,7 +54,11 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
   }
 
   Future<void> _completeReview() async {
-    if (_isSaving) return;
+    debugPrint('月度回顾：_completeReview 被调用, _isSaving=$_isSaving');
+    if (_isSaving) {
+      debugPrint('月度回顾：_isSaving=true，直接返回');
+      return;
+    }
 
     final goals = _bossControllers
         .map((c) => c.text.trim())
@@ -90,7 +94,10 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
       final currentMonth = '${widget.reviewYear ?? DateTime.now().year}-${(widget.reviewMonth ?? DateTime.now().month).toString().padLeft(2, '0')}';
       await _storage.saveLastReviewMonth(currentMonth);
 
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) {
+        debugPrint('月度回顾：mounted=true，执行pop');
+        Navigator.of(context).pop(true);
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -164,143 +171,97 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ====== 上月战报 - 渐变卡片 ======
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFFFF9500), Color(0xFFFFAD30)]),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '$reviewYear年$reviewMonth月',
-                      style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.85)),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      '上月战报',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        _buildHeaderStat('${report?.checkInDays ?? 0}天', '打卡'),
-                        const SizedBox(width: 24),
-                        _buildHeaderStat('${(attendance * 100).toInt()}%', '出勤率'),
-                        const SizedBox(width: 24),
-                        _buildHeaderStat('+${report?.xpEarned ?? 0}', 'XP'),
-                        const SizedBox(width: 24),
-                        _buildHeaderStat('${report?.longestStreak ?? 0}天', '最长连续'),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // ====== 上月挑战回顾 ======
-              if (isBossForReviewMonth && bossTotal > 0)
-                _buildSectionCard(
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: isDefeated
-                                ? AppColors.success.withValues(alpha: 0.1)
-                                : const Color(0xFFFF9500).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            isDefeated ? Icons.emoji_events : Icons.local_fire_department,
-                            color: isDefeated ? AppColors.success : const Color(0xFFFF9500),
-                          ),
+              // ====== 挑战结果 ======
+              _buildSectionCard(
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: isDefeated
+                              ? AppColors.success.withValues(alpha: 0.12)
+                              : const Color(0xFFFF9500).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                '月度挑战',
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                        child: Icon(
+                          isDefeated ? Icons.emoji_events : Icons.local_fire_department,
+                          size: 28,
+                          color: isDefeated ? AppColors.success : const Color(0xFFFF9500),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isDefeated ? '挑战完成！' : '挑战进行中',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: isDefeated ? AppColors.success : AppColors.textPrimary,
                               ),
+                            ),
+                            if (isBossForReviewMonth) ...[
                               const SizedBox(height: 4),
                               Text(
-                                isDefeated ? '✓ 已击败！' : 'HP $bossHp/$bossTotal',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: isDefeated ? AppColors.success : AppColors.textSecondary,
-                                ),
+                                boss.content,
+                                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
-                          ),
-                        ),
-                        if (isDefeated)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AppColors.success.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Text(
-                              '已击败',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.success),
-                            ),
-                          ),
-                      ],
-                    ),
-                    if (!isDefeated && bossTotal > 0) ...[
-                      const SizedBox(height: 14),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: (bossHp / bossTotal).clamp(0.0, 1.0),
-                          backgroundColor: AppColors.textLight.withValues(alpha: 0.15),
-                          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF9500)),
-                          minHeight: 10,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        boss.content,
-                        style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    if (isDefeated) ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.success.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            const Text('✨', style: TextStyle(fontSize: 20)),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                '连续打卡$bossHp天，你做到了！',
-                                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                              ),
-                            ),
                           ],
                         ),
                       ),
                     ],
+                  ),
+                  if (!isDefeated && bossTotal > 0) ...[
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: LinearProgressIndicator(
+                              value: (bossHp / bossTotal).clamp(0.0, 1.0),
+                              backgroundColor: AppColors.textLight.withValues(alpha: 0.15),
+                              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF9500)),
+                              minHeight: 10,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          '$bossHp/$bossTotal天',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
                   ],
-                ),
+                ],
+              ),
 
-              if (isBossForReviewMonth && bossTotal > 0) const SizedBox(height: 16),
+              const SizedBox(height: 16),
+
+              // ====== 本月数据 ======
+              _buildSectionCard(
+                children: [
+                  Row(
+                    children: [
+                      _buildStatCard('${report?.checkInDays ?? 0}', '打卡天数', Icons.calendar_today_outlined),
+                      const SizedBox(width: 12),
+                      _buildStatCard('${report?.longestStreak ?? 0}', '最长连续', Icons.local_fire_department_outlined),
+                      const SizedBox(width: 12),
+                      _buildStatCard('${(attendance * 100).toInt()}%', '出勤率', Icons.trending_up_outlined),
+                    ],
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
 
               // ====== 新月度挑战 ======
               _buildSectionCard(
@@ -463,20 +424,31 @@ class _MonthlyReviewScreenState extends State<MonthlyReviewScreen> {
     );
   }
 
-  Widget _buildHeaderStat(String value, String label) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          value,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
+  Widget _buildStatCard(String value, String label, IconData icon) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(12),
         ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8)),
+        child: Column(
+          children: [
+            Icon(icon, size: 18, color: AppColors.primary),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
-}
+
+  }

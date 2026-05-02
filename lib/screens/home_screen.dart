@@ -100,6 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hasLongTermPlanning = false; // 是否有长期规划
   PetContext? _context; // 宠物上下文
   String _petName = StorageService.defaultPetName; // 宠物名字
+  bool _isShowingReview = false; // 防止重复触发月度回顾
 
   // 长期计划轮播
   Timer? _visionCarouselTimer;
@@ -219,7 +220,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // 月末/月初检查：显示月度复盘
-    if (_storage.shouldShowMonthlyReview()) {
+    if (_storage.shouldShowMonthlyReview() && !_isShowingReview) {
+      _isShowingReview = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _showMonthlyReview());
     }
 
@@ -237,12 +239,12 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _showMonthlyReview({int? forYear, int? forMonth}) {
+  void _showMonthlyReview({int? forYear, int? forMonth}) async {
     final reviewInfo = _storage.getReviewMonth();
     final year = forYear ?? reviewInfo[0];
     final month = forMonth ?? reviewInfo[1];
     // 使用 push 而不是 pushReplacement，这样返回按钮可以正常工作
-    Navigator.of(context).push(
+    final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => MonthlyReviewScreen(
           reviewYear: year,
@@ -250,6 +252,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+    // 复盘完成后刷新数据
+    debugPrint('月度回顾：返回 result = $result');
+    if (result == true) {
+      debugPrint('月度回顾：开始刷新数据');
+      await _loadData();
+      debugPrint('月度回顾：刷新完成');
+    }
   }
 
   Future<void> _checkIn() async {
