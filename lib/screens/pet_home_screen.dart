@@ -189,159 +189,504 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
         ? PetShopConfig.getById(_equippedCostume!)
         : null;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFAF7F2),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity( 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // ===== 站立平台（光效）=====
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              // 光效底座
-              Container(
-                width: 160,
-                height: 30,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(80),
-                  gradient: RadialGradient(
-                    colors: [
-                      AppColors.primary.withOpacity( 0.25),
-                      AppColors.primary.withOpacity( 0.05),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-              // 平台装饰线
-              Positioned(
-                bottom: 8,
-                child: Container(
-                  width: 120,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(2),
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.transparent,
-                        AppColors.primary.withOpacity( 0.3),
-                        Colors.transparent,
+    // 获取已装备的家居装饰
+    final equippedDecos = _equippedDecorations
+        .map((id) => PetShopConfig.getById(id))
+        .whereType<PetShopItem>()
+        .toList();
+
+    // 颜色变体服装的渐变色
+    final costumeGradient = _getCostumeGradient(costume?.id);
+
+    // 判断是否配件类服装
+    final isAccessoryCostume = ['costume_hat', 'costume_glasses', 'costume_scarf', 'costume_cape'].contains(costume?.id);
+    // 判断是否特效服装
+    final isEffectCostume = ['costume_fire', 'costume_star'].contains(costume?.id);
+
+    return GestureDetector(
+      onTap: _showDecorationSheet, // 点击卡片进入装饰模式
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFAF7F2),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // ===== 场景区域（200px高度，展示宠物+装饰） =====
+            SizedBox(
+              height: 200,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // 背景装饰（挂毯、窗户等大装饰）- 直接用emoji
+                  if (equippedDecos.any((d) => d.id == 'deco_tapestry'))
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: Opacity(
+                        opacity: 0.3,
+                        child: Text('🧶', style: TextStyle(fontSize: 50)),
+                      ),
+                    ),
+                  if (equippedDecos.any((d) => d.id == 'deco_window'))
+                    Positioned(
+                      top: 5,
+                      left: 15,
+                      child: Opacity(
+                        opacity: 0.3,
+                        child: Text('🪟', style: TextStyle(fontSize: 45)),
+                      ),
+                    ),
+                  if (equippedDecos.any((d) => d.id == 'deco_frame'))
+                    Positioned(
+                      left: 5,
+                      top: 20,
+                      child: Opacity(
+                        opacity: 0.35,
+                        child: Text('🖼️', style: TextStyle(fontSize: 30)),
+                      ),
+                    ),
+
+                  // 底部平台或软垫
+                  if (equippedDecos.any((d) => d.id == 'deco_cushion'))
+                    Positioned(
+                      bottom: 0,
+                      child: Container(
+                        width: 100,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF8B7355).withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    )
+                  else
+                    Positioned(
+                      bottom: 8,
+                      child: Container(
+                        width: 80,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.textLight.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+
+                  // 左右装饰（灯笼、植物）- 直接用emoji
+                  if (equippedDecos.any((d) => d.id == 'deco_lantern'))
+                    Positioned(
+                      left: 10,
+                      bottom: 30,
+                      child: Text('🏮', style: TextStyle(fontSize: 32)),
+                    ),
+                  if (equippedDecos.any((d) => d.id == 'deco_plant'))
+                    Positioned(
+                      right: 10,
+                      bottom: 30,
+                      child: Text('🪴', style: TextStyle(fontSize: 32)),
+                    ),
+
+                  // 星星灯闪烁效果
+                  if (equippedDecos.any((d) => d.id == 'deco_starlight'))
+                    Positioned(
+                      top: 10,
+                      right: 20,
+                      child: const _StarlightDecoration(),
+                    ),
+
+                  // 宠物大头像（中心，重点展示）
+                  // 特效服装：火焰光环
+                  if (costume?.id == 'costume_fire')
+                    Container(
+                      width: 140,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            Colors.orange.withValues(alpha: 0.4),
+                            Colors.red.withValues(alpha: 0.2),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  // 宠物本体：直接显示emoji文本，更清晰
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          costumeGradient.withValues(alpha: 0.2),
+                          costumeGradient.withValues(alpha: 0.05),
+                        ],
+                      ),
+                      border: Border.all(
+                        color: costumeGradient.withValues(alpha: 0.5),
+                        width: 3,
+                      ),
+                      boxShadow: isEffectCostume
+                          ? [
+                              BoxShadow(
+                                color: costumeGradient.withValues(alpha: 0.4),
+                                blurRadius: 20,
+                                spreadRadius: 2,
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // 宠物用emoji直接显示（60px大字体）- 使用NotoColor字体
+                        Container(
+                          child: Center(
+                            child: _buildPetAvatar(),
+                          ),
+                        ),
+                        // 配件服装叠加emoji在宠物周围
+                        if (costume?.id == 'costume_hat')
+                          const Positioned(
+                            top: -5,
+                            child: Text('🎩', style: TextStyle(fontSize: 24)),
+                          ),
+                        if (costume?.id == 'costume_glasses')
+                          const Positioned(
+                            top: 32,
+                            child: Text('🕶️', style: TextStyle(fontSize: 22)),
+                          ),
+                        if (costume?.id == 'costume_scarf')
+                          const Positioned(
+                            bottom: 0,
+                            child: Text('🧣', style: TextStyle(fontSize: 20)),
+                          ),
+                        if (costume?.id == 'costume_cape')
+                          Positioned(
+                            bottom: 10,
+                            child: Transform.rotate(
+                              angle: -0.2,
+                              child: Opacity(
+                                opacity: 0.7,
+                                child: Text('🛡️', style: TextStyle(fontSize: 32)),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
-                ),
-              ),
-              // 宠物大头像
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      AppColors.primary.withOpacity( 0.12),
-                      AppColors.primary.withOpacity( 0.04),
-                    ],
-                  ),
-                  border: Border.all(
-                    color: AppColors.primary.withOpacity( 0.2),
-                    width: 2,
-                  ),
-                ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Icon(petEmojiToIcon(_petEmoji), size: 64, color: AppColors.primary),
-                    if (costume != null)
-                      Positioned(
-                        bottom: 6,
-                        right: 6,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity( 0.1),
-                                blurRadius: 4,
-                              ),
-                            ],
+
+                  // 等级星星（进化效果）
+                  if (_appearanceLevel > 1)
+                    Positioned(
+                      bottom: 25,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: List.generate(
+                          _appearanceLevel.clamp(1, 5),
+                          (i) => const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 1),
+                            child: Text('⭐', style: TextStyle(fontSize: 10)),
                           ),
-                          child: Text(costume.icon, style: const TextStyle(fontSize: 14)),
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
+            ),
+            const SizedBox(height: 12),
 
-          // 名字 + 等级标签
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                _petName,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                  letterSpacing: 0.5,
+            // 名字 + 等级标签
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  _petName,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                    letterSpacing: 0.5,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    'Lv$_appearanceLevel',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.edit_outlined, size: 14, color: AppColors.textLight),
+              ],
+            ),
+            const SizedBox(height: 6),
+
+            // 性格标签
+            if (_personality != null)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity( 0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  color: const Color(0xFF1A1A1A).withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
-                  'Lv$_appearanceLevel',
-                  style: const TextStyle(
+                  _personality!.archetype,
+                  style: TextStyle(
                     fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
+                    color: AppColors.textPrimary.withValues(alpha: 0.7),
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 6),
+            // 记忆亮点
+            _buildMemoryHighlights(),
+          ],
+        ),
+      ),
+    );
+  }
 
-          // 性格标签
-          if (_personality != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A1A1A).withOpacity( 0.06),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                _personality!.archetype,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textPrimary.withOpacity( 0.7),
-                  fontWeight: FontWeight.w500,
-                ),
+  /// 构建背景装饰（大装饰物）
+  List<Widget> _buildBackgroundDecorations(List<PetShopItem> decorations) {
+    final widgets = <Widget>[];
+
+    for (final deco in decorations) {
+      switch (deco.id) {
+        case 'deco_tapestry':
+          widgets.add(Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: _buildDecorationEmoji('🧶', 50, opacity: 0.3),
+          ));
+          break;
+        case 'deco_window':
+          widgets.add(Positioned(
+            top: 5,
+            left: 15,
+            child: _buildDecorationEmoji('🪟', 45, opacity: 0.3),
+          ));
+          break;
+        case 'deco_frame':
+          widgets.add(Positioned(
+            left: 5,
+            top: 20,
+            child: _buildDecorationEmoji('🖼️', 30, opacity: 0.35),
+          ));
+          break;
+      }
+    }
+
+    return widgets;
+  }
+
+  /// 构建装饰emoji（更清晰可见）
+  Widget _buildDecorationEmoji(String emoji, double size, {double opacity = 0.8}) {
+    return Opacity(
+      opacity: opacity,
+      child: Text(emoji, style: TextStyle(fontSize: size)),
+    );
+  }
+
+  /// 宠物图标映射
+  IconData _getPetIcon() {
+    switch (_petEmoji) {
+      case '🦊': return CupertinoIcons.paw;
+      case '🐺': return CupertinoIcons.flame;
+      case '🐰': return CupertinoIcons.hare;
+      case '🦌': return CupertinoIcons.leaf_arrow_circlepath;
+      case '🦋': return CupertinoIcons.sparkles;
+      case '🖤': return CupertinoIcons.moon_fill;
+      default: return CupertinoIcons.paw;
+    }
+  }
+
+  /// 宠物配色方案
+  Color _getPetColor() {
+    switch (_petEmoji) {
+      case '🦊': return const Color(0xFFFF6B35); // 橙色
+      case '🐺': return const Color(0xFF6B7280); // 灰色
+      case '🐰': return const Color(0xFFFFB7C5); // 粉色
+      case '🦌': return const Color(0xFFD4A574); // 棕色
+      case '🦋': return const Color(0xFF9333EA); // 紫色
+      case '🖤': return const Color(0xFF1F2937); // 深灰
+      default: return AppColors.primary;
+    }
+  }
+
+  /// 获取宠物图片资源路径
+  String? _getPetImageAsset() {
+    final petConfig = getPetTypeConfig(_storage.getPetType());
+    return petConfig?.imageAsset;
+  }
+
+  /// 构建宠物头像（图片优先，降级到美化图标）
+  Widget _buildPetAvatar() {
+    final petColor = _getPetColor();
+    final petIcon = _getPetIcon();
+    final imageAsset = _getPetImageAsset();
+
+    return SizedBox(
+      width: 120,
+      height: 120,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // 外层光环
+          Container(
+            width: 110,
+            height: 110,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  petColor.withValues(alpha: 0.3),
+                  petColor.withValues(alpha: 0.1),
+                  Colors.transparent,
+                ],
               ),
             ),
-          // 记忆亮点
-          _buildMemoryHighlights(),
+          ),
+          // 中层装饰圈
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white,
+                  petColor.withValues(alpha: 0.2),
+                ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: petColor.withValues(alpha: 0.3),
+                  blurRadius: 15,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+          ),
+          // 核心内容：图片或图标
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  petColor,
+                  petColor.withValues(alpha: 0.7),
+                ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: petColor.withValues(alpha: 0.5),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipOval(
+              child: imageAsset != null
+                  ? Image.asset(
+                      imageAsset,
+                      fit: BoxFit.cover,
+                      width: 80,
+                      height: 80,
+                      errorBuilder: (context, error, stackTrace) {
+                        // 图片加载失败，降级到图标
+                        return Icon(petIcon, size: 40, color: Colors.white);
+                      },
+                    )
+                  : Icon(petIcon, size: 40, color: Colors.white),
+            ),
+          ),
+          // 内层高光
+          Positioned(
+            top: 25,
+            left: 35,
+            child: Container(
+              width: 20,
+              height: 10,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: Colors.white.withValues(alpha: 0.4),
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  /// 构建装饰图标（避免emoji渲染问题）
+  Widget _buildDecorationIcon(IconData icon, double size, {Color? color}) {
+    return Icon(
+      icon,
+      size: size,
+      color: color ?? AppColors.textSecondary.withValues(alpha: 0.8),
+    );
+  }
+
+  /// 根据服装ID获取渐变色
+  Color _getCostumeGradient(String? costumeId) {
+    if (costumeId == null) return AppColors.primary;
+    switch (costumeId) {
+      case 'costume_spring': return const Color(0xFFFFB7C5); // 粉色
+      case 'costume_summer': return const Color(0xFF40E0D0); // 绿松石
+      case 'costume_autumn': return const Color(0xFFFFD700); // 金色
+      case 'costume_winter': return const Color(0xFF87CEEB); // 冰蓝
+      case 'costume_neon': return const Color(0xFFFF00FF); // 霓虹紫
+      default: return AppColors.primary;
+    }
+  }
+
+  /// 显示装饰弹窗（点击宠物卡片触发）
+  void _showDecorationSheet() {
+    if (!_initialized || _storage.getPetAdoptDate() == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _DecorationMainSheet(
+        ownedItems: _ownedItems,
+        equippedCostume: _equippedCostume,
+        equippedDecorations: _equippedDecorations,
+        onToggleCostume: _toggleCostume,
+        onToggleDecoration: _toggleDecoration,
+        onRefresh: _loadData,
       ),
     );
   }
@@ -585,10 +930,6 @@ class _PetHomeScreenState extends State<PetHomeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             children: [
               _buildActionChip(Icons.restaurant, '喂零食', _openSnackSheet),
-              const SizedBox(width: 10),
-              _buildActionChip(Icons.home, '家居', _openDecorationSheet),
-              const SizedBox(width: 10),
-              _buildActionChip(Icons.checkroom, '换装', _openCostumeSheet),
               const SizedBox(width: 10),
               _buildActionChip(Icons.store, '商店', _openShop),
               const SizedBox(width: 10),
@@ -1791,6 +2132,251 @@ class _NewTraitAllocateTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 星星灯装饰动画
+class _StarlightDecoration extends StatefulWidget {
+  const _StarlightDecoration();
+
+  @override
+  State<_StarlightDecoration> createState() => _StarlightDecorationState();
+}
+
+class _StarlightDecorationState extends State<_StarlightDecoration>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (i) {
+            final offset = i * 0.33;
+            final opacity = (((_controller.value + offset) % 1.0) * 2 - 1).abs();
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Opacity(
+                opacity: opacity * 0.7 + 0.3,
+                child: const Icon(
+                  Icons.auto_awesome,
+                  size: 12,
+                  color: Color(0xFFFFD700),
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+
+/// 装饰主面板（点击宠物卡片弹出）
+class _DecorationMainSheet extends StatelessWidget {
+  final List<PetOwnedItem> ownedItems;
+  final String? equippedCostume;
+  final List<String> equippedDecorations;
+  final void Function(PetOwnedItem, bool) onToggleCostume;
+  final void Function(PetOwnedItem, bool) onToggleDecoration;
+  final VoidCallback onRefresh;
+
+  const _DecorationMainSheet({
+    required this.ownedItems,
+    this.equippedCostume,
+    required this.equippedDecorations,
+    required this.onToggleCostume,
+    required this.onToggleDecoration,
+    required this.onRefresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final costumes = ownedItems
+        .where((o) => PetShopConfig.getById(o.itemId)?.category == PetShopCategory.costume)
+        .toList();
+    final decorations = ownedItems
+        .where((o) => PetShopConfig.getById(o.itemId)?.category == PetShopCategory.decoration)
+        .toList();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.7,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 标题栏
+          Row(
+            children: [
+              const Icon(Icons.pets, color: AppColors.primary),
+              const SizedBox(width: 8),
+              const Text('我的宠物', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Spacer(),
+              IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => Navigator.pop(context)),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Tab切换：换装 / 家居
+          Expanded(
+            child: DefaultTabController(
+              length: 2,
+              child: Column(
+                children: [
+                  const TabBar(
+                    labelColor: AppColors.primary,
+                    unselectedLabelColor: AppColors.textSecondary,
+                    indicatorColor: AppColors.primary,
+                    tabs: [
+                      Tab(text: '换装'),
+                      Tab(text: '家居'),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        // 换装Tab
+                        _buildCostumeGrid(costumes),
+                        // 家居Tab
+                        _buildDecorationGrid(decorations),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCostumeGrid(List<PetOwnedItem> costumes) {
+    if (costumes.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text('还没有外观，快去商店买一些吧～', style: TextStyle(color: AppColors.textSecondary)),
+        ),
+      );
+    }
+    return GridView.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 0.8,
+      ),
+      itemCount: costumes.length,
+      itemBuilder: (context, index) {
+        final item = PetShopConfig.getById(costumes[index].itemId)!;
+        final isEquipped = equippedCostume == costumes[index].itemId;
+        return GestureDetector(
+          onTap: () {
+            onToggleCostume(costumes[index], isEquipped);
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: isEquipped ? AppColors.primary.withValues(alpha: 0.1) : AppColors.cardBackground,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isEquipped ? AppColors.primary : AppColors.textLight.withValues(alpha: 0.2),
+                width: isEquipped ? 2 : 1,
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(anyEmojiToIcon(item.icon), size: 28, color: AppColors.primary),
+                const SizedBox(height: 4),
+                Text(
+                  item.name,
+                  style: const TextStyle(fontSize: 11),
+                  textAlign: TextAlign.center,
+                ),
+                if (isEquipped)
+                  const Icon(Icons.check_circle, size: 14, color: AppColors.primary),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDecorationGrid(List<PetOwnedItem> decorations) {
+    if (decorations.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text('还没有家居，快去商店买一些吧～', style: TextStyle(color: AppColors.textSecondary)),
+        ),
+      );
+    }
+    return GridView.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 0.8,
+      ),
+      itemCount: decorations.length,
+      itemBuilder: (context, index) {
+        final item = PetShopConfig.getById(decorations[index].itemId)!;
+        final isEquipped = equippedDecorations.contains(decorations[index].itemId);
+        return GestureDetector(
+          onTap: () {
+            onToggleDecoration(decorations[index], isEquipped);
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: isEquipped ? AppColors.primary.withValues(alpha: 0.1) : AppColors.cardBackground,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isEquipped ? AppColors.primary : AppColors.textLight.withValues(alpha: 0.2),
+                width: isEquipped ? 2 : 1,
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(anyEmojiToIcon(item.icon), size: 28, color: AppColors.primary),
+                const SizedBox(height: 4),
+                Text(
+                  item.name,
+                  style: const TextStyle(fontSize: 11),
+                  textAlign: TextAlign.center,
+                ),
+                if (isEquipped)
+                  const Icon(Icons.check_circle, size: 14, color: AppColors.primary),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
