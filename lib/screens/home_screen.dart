@@ -24,7 +24,6 @@ import 'profile_screen.dart';
 import 'monthly_review_screen.dart';
 import 'pet_screen.dart';
 import 'monthly_boss_edit_screen.dart';
-import 'annual_plan_screen.dart';
 import 'daily_actions_edit_screen.dart';
 
 /// 蛋形Painter（绘制椭圆形的蛋轮廓）
@@ -89,46 +88,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<DailyLever> _todayLevers = [];
   bool _isCheckedInToday = false;
-  String _antiVision = '';
-  String _vision = '';
   MonthlyBoss? _monthlyBoss;
   List<CheckIn> _checkIns = [];
   bool _minimalMode = false;
   String _temptingBundling = '';
   bool _streakBroken = false; // 检测streak是否昨天断裂
   bool _canUseRemedy = false; // 本月是否可以使用补救
-  bool _hasLongTermPlanning = false; // 是否有长期规划
   PetContext? _context; // 宠物上下文
   String _petName = StorageService.defaultPetName; // 宠物名字
   bool _isShowingReview = false; // 防止重复触发月度回顾
-
-  // 长期计划轮播
-  Timer? _visionCarouselTimer;
-  bool _showVision = true; // true显示愿景，false显示反愿景
 
   @override
   void initState() {
     super.initState();
     _loadData();
-  }
-
-  void _startVisionCarousel() {
-    // 先取消之前的定时器
-    _visionCarouselTimer?.cancel();
-    // 每10分钟切换一次
-    _visionCarouselTimer = Timer.periodic(const Duration(minutes: 10), (timer) {
-      if (mounted) {
-        setState(() {
-          _showVision = !_showVision;
-        });
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _visionCarouselTimer?.cancel();
-    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -153,9 +126,6 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
     final effectiveLevers = merged;
-    final antiVision = _storage.getAntiVision();
-    final vision = _storage.getVision();
-    final yearGoal = _storage.getYearGoal();
     final constraints = _storage.getConstraints();
     final checkIns = _storage.getCheckIns();
     final monthlyBoss = _storage.getMonthlyBoss();
@@ -196,28 +166,15 @@ class _HomeScreenState extends State<HomeScreen> {
           order: e.key,
         );
       }).toList();
-      _antiVision = antiVision;
-      _vision = vision;
       _monthlyBoss = monthlyBoss;
       _checkIns = checkIns;
       _isCheckedInToday = checkedIn;
       _streakBroken = streakBroken;
       _canUseRemedy = _storage.canUseStreakRemedy();
-      _hasLongTermPlanning = antiVision.isNotEmpty ||
-          vision.isNotEmpty ||
-          yearGoal.isNotEmpty ||
-          constraints.isNotEmpty;
       _minimalMode = minimalMode;
       _temptingBundling = temptingBundling;
       _isLoading = false;
     });
-
-    // 如果愿景和反愿景都填写了，启动轮播
-    final hasVision = vision.isNotEmpty;
-    final hasAntiVision = antiVision.isNotEmpty;
-    if (hasVision && hasAntiVision) {
-      _startVisionCarousel();
-    }
 
     // 月末/月初检查：显示月度复盘
     if (_storage.shouldShowMonthlyReview() && !_isShowingReview) {
@@ -1010,12 +967,6 @@ class _HomeScreenState extends State<HomeScreen> {
               // ===== 大字问候语 =====
               _buildGreetingHeader(),
               const SizedBox(height: 28),
-              // 长期计划
-              _buildWarmCard(
-                accent: const Color(0xFFE8533A),
-                child: _buildVisionCard(),
-              ),
-              const SizedBox(height: 16),
               // 本月挑战
               if (_monthlyBoss != null &&
                   _monthlyBoss!.month == DateTime.now().month &&
@@ -2161,153 +2112,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Widget _buildAntiVisionCard() {
-    if (_antiVision.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '反愿景提醒',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.cardBackground,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: AppColors.textLight.withOpacity( 0.2),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.textLight.withOpacity( 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text(
-                        '我不想成为的人',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-                    const Text(
-                      '—',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textLight,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  _antiVision,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
-                    height: 1.6,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 显示用户愿景的卡片（原 _buildVisionCard，尚未集成到 build()）
-  Widget _buildVisionDisplay() {
-    if (_vision.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '我的愿景',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.cardBackground,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: AppColors.textLight.withOpacity( 0.2),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity( 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text(
-                        '我是_____的人',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-                    const Text(
-                      '—',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textLight,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  _vision,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
-                    height: 1.6,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// 统一卡片包装
   /// Warm Editorial 风格：无白卡，左侧彩色强调边
   Widget _buildWarmCard({required Color accent, required Widget child}) {
@@ -2426,177 +2230,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ],
-    );
-  }
-
-  /// 长期计划卡片
-  Widget _buildVisionCard() {
-    final vision = _vision;
-    final antiVision = _antiVision;
-    final yearGoal = _storage.getYearGoal();
-    final hasVision = vision.isNotEmpty;
-    final hasAntiVision = antiVision.isNotEmpty;
-    final hasYearGoal = yearGoal.isNotEmpty && yearGoal != '持续成长';
-    if (!hasVision && !hasAntiVision && !hasYearGoal) {
-      return const SizedBox.shrink();
-    }
-    return GestureDetector(
-      onTap: () {
-        if (mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AnnualPlanScreen()),
-          );
-        }
-      },
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 长期计划 标题 + 打卡统计
-                  Row(
-                    children: [
-                      const Text(
-                        '长期计划',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      // 连续 + 累计
-                      Text(
-                        '连续 ${_stats.streak} 天',
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                      ),
-                      const SizedBox(width: 10),
-                      Container(width: 1, height: 10, color: AppColors.textLight.withOpacity( 0.2)),
-                      const SizedBox(width: 10),
-                      Text(
-                        '累计 ${_stats.totalCheckIns}天',
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  if (hasYearGoal)
-                    ...yearGoal
-                        .split('；')
-                        .where((s) => s.trim().isNotEmpty)
-                        .map((goal) => Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    width: 6,
-                                    height: 6,
-                                    margin:
-                                        const EdgeInsets.only(top: 6, right: 8),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary,
-                                      borderRadius: BorderRadius.circular(3),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: Text(
-                                      goal.trim(),
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        color: AppColors.textPrimary,
-                                        fontWeight: FontWeight.w500,
-                                        height: 1.4,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )),
-                  // 愿景和反愿景轮播
-                  if (hasVision || hasAntiVision) ...[
-                    const SizedBox(height: 6),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: _buildVisionContent(
-                        hasVision: hasVision,
-                        hasAntiVision: hasAntiVision,
-                        vision: vision,
-                        antiVision: antiVision,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right, size: 18, color: AppColors.textLight),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVisionContent({
-    required bool hasVision,
-    required bool hasAntiVision,
-    required String vision,
-    required String antiVision,
-  }) {
-    // 如果都填写了，轮播展示
-    if (hasVision && hasAntiVision) {
-      if (_showVision) {
-        return _buildVisionText(vision);
-      } else {
-        return _buildAntiVisionText(antiVision);
-      }
-    }
-    // 如果只写了一个，只展示那一个
-    else if (hasVision) {
-      return _buildVisionText(vision);
-    } else if (hasAntiVision) {
-      return _buildAntiVisionText(antiVision);
-    }
-    // 都没写，不展示
-    else {
-      return const SizedBox.shrink();
-    }
-  }
-
-  Widget _buildVisionText(String vision) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      key: const ValueKey('vision'),
-      children: vision
-          .split('；')
-          .where((s) => s.trim().isNotEmpty)
-          .map((v) => Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Text(
-                  v.trim(),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                    height: 1.4,
-                  ),
-                ),
-              ))
-          .toList(),
-    );
-  }
-
-  Widget _buildAntiVisionText(String antiVision) {
-    return Text(
-      antiVision,
-      key: const ValueKey('antiVision'),
-      style: const TextStyle(
-        fontSize: 13,
-        color: AppColors.textSecondary,
-        height: 1.4,
-      ),
     );
   }
 

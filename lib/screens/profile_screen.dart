@@ -11,7 +11,6 @@ import '../utils/xp_service.dart';
 import '../utils/date_utils.dart' as app_date;
 import '../utils/badge_icon.dart';
 import '../utils/pet_service.dart';
-import '../widgets/encouragement_stats_card.dart';
 import '../services/share_service.dart';
 import 'settings_screen.dart';
 import 'report_center_screen.dart';
@@ -149,10 +148,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildCalendarSection(),
                   const SizedBox(height: 24),
                   _buildBadgesSection(),
-                  const SizedBox(height: 12),
-                  _buildEncouragementStatsSection(),
-                  const SizedBox(height: 24),
-                  _buildLongTermPlanningSection(),
                   const SizedBox(height: 12),
                   _buildReviewSection(),
                   const SizedBox(height: 12),
@@ -651,172 +646,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               );
             },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEncouragementStatsSection() {
-    return const EncouragementStatsCard();
-  }
-
-  Widget _buildLongTermPlanningSection() {
-    final hasAntiVision = _antiVision.isNotEmpty;
-    final hasVision = _vision.isNotEmpty;
-    final hasYearGoal = _annualIdentity.isNotEmpty;
-    final constraints = _storage.getConstraints();
-    // 排除默认值「每天进步一点点」，只有用户真实填写才算已完成
-    final hasConstraints = constraints.isNotEmpty && constraints != '每天进步一点点';
-
-    final completedCount = [hasAntiVision, hasVision, hasYearGoal, hasConstraints].where((b) => b).length;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              '长期规划',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            if (completedCount > 0)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity( 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '已完成 $completedCount/4',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            children: [
-              if (hasAntiVision) ...[
-                _buildPlanningItem(
-                  icon: Icons.map_outlined,
-                  iconColor: const Color(0xFF888888),
-                  title: '反愿景',
-                  desc: _antiVision,
-                  isSet: true,
-                ),
-                const SizedBox(height: 12),
-              ],
-              if (hasVision) ...[
-                _buildPlanningItem(
-                  icon: Icons.visibility_outlined,
-                  iconColor: AppColors.primary,
-                  title: '愿景',
-                  desc: _vision,
-                  isSet: true,
-                ),
-                const SizedBox(height: 12),
-              ],
-              if (hasYearGoal) ...[
-                _buildPlanningItem(
-                  icon: Icons.flag_outlined,
-                  iconColor: AppColors.primary,
-                  title: '年度目标',
-                  desc: _annualIdentity,
-                  isSet: true,
-                ),
-                const SizedBox(height: 12),
-              ],
-              if (hasConstraints) ...[
-                _buildPlanningItem(
-                  icon: Icons.balance_outlined,
-                  iconColor: const Color(0xFF888888),
-                  title: '约束条件',
-                  desc: constraints,
-                  isSet: true,
-                ),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPlanningItem({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String desc,
-    required bool isSet,
-  }) {
-    return Row(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: isSet ? iconColor.withOpacity( 0.1) : AppColors.textLight.withOpacity( 0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Center(
-            child: Icon(
-              icon,
-              size: 20,
-              color: isSet ? iconColor : AppColors.textLight,
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: isSet ? AppColors.textPrimary : AppColors.textLight,
-                ),
-              ),
-              Text(
-                desc,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isSet ? AppColors.textSecondary : AppColors.textLight,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: isSet ? AppColors.success.withOpacity( 0.1) : AppColors.textLight.withOpacity( 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            isSet ? '✓' : '未设置',
-            style: TextStyle(
-              fontSize: 12,
-              color: isSet ? AppColors.success : AppColors.textLight,
-            ),
           ),
         ),
       ],

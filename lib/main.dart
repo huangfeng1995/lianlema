@@ -7,7 +7,6 @@ import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/pet_screen.dart';
-import 'screens/annual_plan_screen.dart';
 import 'utils/notification_service.dart';
 import 'utils/storage_service.dart';
 import 'controllers/pet_mood_controller.dart';
@@ -110,7 +109,6 @@ class _LianlemaAppState extends State<LianlemaApp> {
           final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
           return PetScreen(initialMessage: args?['initialMessage'] as String?);
         },
-        '/annual-plan': (context) => const AnnualPlanScreen(),
       },
       builder: (context, child) {
         return Stack(
